@@ -29,6 +29,11 @@ The cooperative rite is not cosmetic: a second authenticated character is necess
 
 Movement uses `东`, `西`, `北`, and `南`. English movement and gameplay commands remain compatibility aliases, not the default player experience.
 
+In the browser client, authored exits and context-relevant actions are selectable command
+links. Clicking a choice submits the same server command as keyboard entry, so authorization,
+location, resource, and cooperation rules stay server-authoritative. Clients without MXP link
+support receive the same labels as ordinary text and can type them normally.
+
 ## Abuse and consistency boundaries
 
 - The command caller supplies no reward amount or target realm.
