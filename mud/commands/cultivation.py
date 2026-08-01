@@ -17,6 +17,7 @@ from world.rules import (
 )
 
 from commands.command import Command
+from commands.links import command_choices, command_link
 
 ERROR_MESSAGES = {
     "no_resource": "此地没有可采集的月芽草。",
@@ -58,7 +59,8 @@ class CmdCultivationStatus(Command):
             f"|w{self.caller.key}|n · {state.realm}\n"
             f"灵气：{state.qi}/{3 if state.realm == '凡身' else '∞'} · "
             f"月芽草：{state.moonleaf} · 悟性：{state.insight}\n"
-            f"因果：{state.karma} · 寿元：{state.lifespan}"
+            f"因果：{state.karma} · 寿元：{state.lifespan}\n"
+            f"{command_link('查看', '查看地点与可选行动')}"
         )
 
 
@@ -86,7 +88,9 @@ class CmdForage(Command):
         visited.add(site_id)
         self.caller.db.foraged_sites = sorted(visited)
         persist(self.caller, outcome.state, outcome.events)
-        self.caller.msg("你俯身拨开水雾，采得一株月芽草。")
+        self.caller.msg(
+            f"你俯身拨开水雾，采得一株月芽草。下一步：{command_link('西', '返回渡口')}"
+        )
 
 
 class CmdCultivate(Command):
@@ -114,7 +118,10 @@ class CmdCultivate(Command):
                 f"{self.caller.key}气息内敛，初次引灵入脉，踏入{outcome.state.realm}。"
             )
         else:
-            self.caller.msg(f"你引泉息入脉，灵气积累增至 {outcome.state.qi}。")
+            self.caller.msg(
+                f"你引泉息入脉，灵气积累增至 {outcome.state.qi}。"
+                f"可继续：{command_choices('布阵', '修为')}"
+            )
 
 
 class CmdPrepareRitual(Command):
@@ -138,7 +145,8 @@ class CmdPrepareRitual(Command):
             return
         location.db.pending_ritual = ritual.to_dict()
         location.msg_contents(
-            f"{self.caller.key}以石灯定住泉眼，布下共鸣阵，等待另一位修行者见证。"
+            f"{self.caller.key}以石灯定住泉眼，布下共鸣阵，等待另一位修行者"
+            f"{command_link('见证')}。"
         )
 
 
@@ -182,7 +190,7 @@ class CmdWitness(Command):
         location.db.pending_ritual = None
         location.msg_contents(
             f"{leader.key}与{self.caller.key}共同点亮石灯，灵脉随阵共振；"
-            "二人各得两缕灵气与一点悟性。"
+            f"二人各得两缕灵气与一点悟性。{command_link('修为', '查看修为')}"
         )
 
 
@@ -197,9 +205,9 @@ class CmdPath(Command):
     def func(self) -> None:
         self.caller.msg(
             "|w照禾县引息试炼|n\n"
-            "一、从渡口向东前往月芽田，采药。\n"
-            "二、向西返回渡口，再向北进入藏泉石室。\n"
-            "三、在泉边修炼；月芽草可助你引息。\n"
-            "四、一人布阵，另一位同场修行者负责见证。\n"
-            "五、使用修为查看境界、灵气、悟性与寿元。"
+            f"一、从渡口向{command_link('东')}前往月芽田，{command_link('采药')}。\n"
+            f"二、向{command_link('西')}返回渡口，再向{command_link('北')}进入藏泉石室。\n"
+            f"三、在泉边{command_link('修炼')}；月芽草可助你引息。\n"
+            f"四、一人{command_link('布阵')}，另一位同场修行者负责{command_link('见证')}。\n"
+            f"五、使用{command_link('修为')}查看境界、灵气、悟性与寿元。"
         )

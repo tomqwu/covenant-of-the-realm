@@ -11,6 +11,12 @@ text uses Simplified Chinese. Chinese command names are the documented/default p
 English command names remain compatibility aliases. A runtime language switch is not
 part of this vertical slice.
 
+### 2026-08-01 — Selectable actions remain commands
+
+Browser choices use Evennia's server-authored MXP command links rather than a parallel client
+state machine. Links degrade to readable text in Telnet and assistive clients, and clicking a
+choice follows the same authoritative command path as keyboard input.
+
 ### 2026-08-01 — Repository workflow
 
 Implementation work proceeds on `codex/` feature branches. The complete relevant

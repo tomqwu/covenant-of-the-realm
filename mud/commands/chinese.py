@@ -11,6 +11,7 @@ from evennia.commands.default import unloggedin
 from evennia.utils import class_from_module
 
 from commands.command import Command
+from commands.links import command_choices, command_link
 
 
 def _split_credentials(arguments: str) -> list[str]:
@@ -73,7 +74,10 @@ class CmdChineseCreate(unloggedin.CmdUnconnectedCreate):
             session.msg(f"账号名已规范化为：{normalized}")
         username = normalized
 
-        answer = yield f"确认创建账号『{username}』？[是]/否"
+        answer = yield (
+            f"确认创建账号『{username}』？"
+            f"{command_link('是', '[是]')} / {command_link('否')}"
+        )
         if answer.strip().lower() in {"否", "不", "n", "no"}:
             session.msg("已取消注册。")
             return
@@ -111,9 +115,9 @@ class CmdChineseUnloggedinHelp(unloggedin.CmdUnconnectedHelp):
             "|w登录前可用命令|n\n"
             "  |w注册 <账号名> <密码>|n —— 创建账号\n"
             "  |w登录 <账号名> <密码>|n —— 进入游戏\n"
-            "  |w查看|n —— 重看欢迎页\n"
-            "  |w帮助|n —— 显示本说明\n"
-            "  |w退出|n —— 断开连接\n\n"
+            f"  {command_link('查看')} —— 重看欢迎页\n"
+            f"  {command_link('帮助')} —— 显示本说明\n"
+            f"  {command_link('退出')} —— 断开连接\n\n"
             "示例：|w注册 青石客 一段足够长的密码|n"
         )
 
@@ -185,12 +189,12 @@ class CmdChineseGameHelp(Command):
     def func(self) -> None:
         self.caller.msg(
             "|w《山河有契》常用命令|n\n"
-            "  查看 —— 查看当前地点\n"
-            "  东／西／南／北 —— 移动\n"
+            f"  {command_link('查看')} —— 查看当前地点\n"
+            f"  {command_choices('东', '西', '南', '北')} —— 移动\n"
             "  说 <内容> —— 与同场玩家交谈\n"
-            "  指引 —— 查看当前修行路线\n"
-            "  修为 —— 查看境界与资源\n"
-            "  采药／修炼／布阵／见证 —— 执行修行行动"
+            f"  {command_link('指引')} —— 查看当前修行路线\n"
+            f"  {command_link('修为')} —— 查看境界与资源\n"
+            f"  {command_choices('采药', '修炼', '布阵', '见证')} —— 执行修行行动"
         )
 
 
@@ -201,4 +205,6 @@ class CmdChineseNoMatch(Command):
     locks = "cmd:all()"
 
     def func(self) -> None:
-        self.caller.msg(f"无法识别指令『{self.args}』。输入『帮助』查看可用命令。")
+        self.caller.msg(
+            f"无法识别指令『{self.args}』。点击{command_link('帮助')}查看可用命令。"
+        )

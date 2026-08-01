@@ -30,4 +30,7 @@ class BootstrapTests(EvenniaTest):
         self.assertEqual(south.destination, crossing)
         self.assertTrue(east.aliases.has("east"))
         self.assertTrue(south.aliases.has("south"))
+        displayed_exits = crossing.get_display_exits(self.char1)
+        self.assertIn("|lc东|lt东|le", displayed_exits)
+        self.assertIn("|lc北|lt北|le", displayed_exits)
         self.assertEqual(len(search_object("moonleaf-terrace", attribute_name="zone_id")), 1)
