@@ -1,0 +1,43 @@
+# macOS
+.DS_Store
+
+# Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Node
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+dist/
+build/
+coverage/
+
+# Runtime data
+*.sqlite
+*.sqlite3
+*.db
+logs/
+tmp/
