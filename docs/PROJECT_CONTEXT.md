@@ -1,6 +1,23 @@
 # Project Context
 
-Last updated: 2026-07-31
+Last updated: 2026-08-01
+
+## Current direction
+
+The primary future product is now an original, Chinese-first, story-driven 2D cultivation
+RPG. Its high-level interaction grammar is the classic single-player party RPG: chapter-based
+story, top-down exploration, towns and dungeons, temporary companions, preparation, and
+deterministic turn-based combat. This is a genre and structure reference, not permission to
+copy another game's presentation or content.
+
+Godot 4.7.1 is the chosen engine for the first 90-minute vertical slice. The Evennia MUD and
+Journey PWA remain playable research prototypes and regression suites; they no longer define
+the primary client architecture.
+
+The content remains original. The user has not established a production license for any
+external novel IP, so no protected characters, names, prose, locations, treasures, or plot
+combinations may enter this public repository. If formal adaptation rights are obtained later,
+licensed content needs a separate repository and legal-review pipeline.
 
 ## Origin of the project
 
@@ -39,7 +56,7 @@ The useful long-form principles are:
 
 These are genre-level principles. They do not authorize copying any protected expression or distinctive combination.
 
-## Current product decision
+## Cultivation scope retained from the earlier direction
 
 The user clarified that the game must be a **complete cultivation game**, not simply an abstract “covenant-based Eastern fantasy.” It should visibly and mechanically contain the major pillars players expect from cultivation fiction:
 
@@ -71,9 +88,9 @@ An initial design report exists at:
 
 It contains useful work on multiplayer persistence, factions, economy, technical architecture, copyright clean-room procedures, operational risks, and MVP planning. Its metaphysics are a draft, not final canon, because the user later requested a more complete and recognizably traditional cultivation system.
 
-## Proposed technical direction
+## Previous multiplayer technical direction
 
-The initial recommendation was:
+The implemented multiplayer prototype used:
 
 - Evennia and Python for the first MUD server;
 - PostgreSQL for production persistence;
@@ -100,31 +117,28 @@ Nakama may be evaluated later if the product grows into match-based content, ext
 
 ## Next major deliverable
 
-Write a new **Complete Cultivation World and Multiplayer MUD Bible v0.2** that replaces the draft metaphysics while preserving useful multiplayer and operational work. It should cover, in order:
+Expand the executable RPG graybox into a complete 90-minute original chapter:
 
-1. design pillars and target player fantasy;
-2. cosmology and rules of spiritual energy;
-3. original historical eras and causal timeline;
-4. worlds, continents, regions, ecology, and travel;
-5. complete cultivation realms, paths, techniques, professions, costs, failure, lifespan, mind, karma, tribulation, death, and ascension;
-6. factions and ordinary society;
-7. character creation and long-, medium-, and short-session loops;
-8. combat, exploration, crafting, economy, quests, politics, PvP, inheritance, and seasonal world evolution;
-9. multiplayer fairness and abuse prevention;
-10. data model, command model, architecture, security, deployment, observability, and recovery;
-11. copyright clean-room workflow and launch-market compliance;
-12. a small vertical slice suitable for implementation.
+1. top-down movement and collision in 照禾渡口;
+2. dialogue and quest-state presentation;
+3. 月芽田 resource choice;
+4. 藏泉山道 exploration, warning, and retreat path;
+5. three regular enemy profiles and one boss;
+6. an active chapter companion and one deployable tactical slot;
+7. versioned save/load and chapter replay;
+8. mouse, keyboard, and controller parity;
+9. original visual/audio direction with recorded provenance;
+10. new-game-to-chapter-end automated acceptance path.
 
 ## Open decisions
 
 Do not assume answers without recording them:
 
 - primary launch market and languages;
-- pure text MUD versus text-first graphical interface;
-- PvP intensity and permanent-loss tolerance;
+- final 2D pixel, hand-painted, or 2.5D visual direction;
 - monetization or fully open-source/non-commercial operation;
-- desired concurrency and operations budget;
-- solo-versus-social balance;
-- real-time, tick-based, or hybrid combat pacing;
-- whether the world is one canonical server, several shards, or seasonal worlds;
+- PC-only first release versus mobile and console ports;
+- degree of main-story branching;
+- controller launch requirement;
+- voice acting scope;
 - whether the codebase, game content, or both will be open source.

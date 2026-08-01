@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "story_id": "zhaohe_first_breath",
+  "origin": "original",
+  "start_node": "riverbank",
+  "nodes": {
+    "riverbank": {
+      "kind": "explore",
+      "title": "照禾渡口",
+      "description": "河水绕过石堤，薄雾贴着芦苇缓缓散去。砚青正在渡碑旁等你。",
+      "actions": [
+        {
+          "id": "gather_moonleaf",
+          "label": "查看月芽田",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "enter_spring",
+          "label": "进入藏泉山道",
+          "possible_targets": ["riverbank", "battle"]
+        }
+      ]
+    },
+    "battle": {
+      "kind": "battle",
+      "title": "藏泉山道",
+      "description": "一头受惊的岩甲兽堵住石室入口。砚青展开药囊，提醒你留好退路。",
+      "actions": [
+        {
+          "id": "use_art",
+          "label": "引气术",
+          "possible_targets": ["battle", "spring"]
+        },
+        {
+          "id": "use_talisman",
+          "label": "镇岩符",
+          "possible_targets": ["battle", "spring"]
+        },
+        {
+          "id": "guard",
+          "label": "守势调息",
+          "possible_targets": ["battle"]
+        }
+      ]
+    },
+    "spring": {
+      "kind": "cultivation",
+      "title": "藏泉石室",
+      "description": "泉息从石脉间涌出。砚青守住洞口，你终于能安静梳理体内灵气。",
+      "actions": [
+        {
+          "id": "breakthrough",
+          "label": "静心引息",
+          "possible_targets": ["complete"]
+        }
+      ]
+    },
+    "complete": {
+      "kind": "ending",
+      "title": "第一息",
+      "description": "灵息沿经脉完成第一个周天。山河仍旧辽阔，但你已能看见它隐约的纹理。",
+      "actions": [
+        {
+          "id": "review_journey",
+          "label": "回顾此行",
+          "possible_targets": ["complete"]
+        }
+      ]
+    }
+  },
+  "messages": {
+    "gathered": "你与砚青只取一株月芽草，将余下幼株重新覆好薄土。",
+    "already_gathered": "本轮可取的月芽草已经收好，继续采摘会伤及田脉。",
+    "need_moonleaf": "山道灵雾刺骨。砚青建议先去月芽田准备一株护脉灵草。",
+    "battle_started": "岩甲兽踏碎石屑逼近。战斗开始。",
+    "art_hit": "你引出一缕泉息，击中岩甲兽的甲缝。",
+    "talisman_hit": "镇岩符贴上甲壳，灵纹骤然收紧。",
+    "no_talisman": "镇岩符已经用尽。",
+    "guarded": "你收束气息稳住经脉，砚青替你看住岩甲兽的冲势。",
+    "enemy_hit": "岩甲兽撞来，你受到伤害。",
+    "enemy_glanced": "守势卸去了大半冲击。",
+    "battle_won": "岩甲兽退入山缝，通往泉室的道路已经打开。",
+    "breakthrough": "月芽草化开寒意，你完成第一次引息，踏入引息境一层。",
+    "review": "渡口、月芽田与藏泉连成了你的第一段修行记忆。",
+    "invalid_action": "此刻无法执行这个行动。"
+  }
+}

@@ -3,12 +3,31 @@
 [![Checks](https://github.com/tomqwu/covenant-of-the-realm/actions/workflows/check.yml/badge.svg)](https://github.com/tomqwu/covenant-of-the-realm/actions/workflows/check.yml)
 [![Deterministic rules coverage](https://img.shields.io/badge/rules%20coverage-100%25-brightgreen)](docs/TESTING.md)
 [![Playable slice](https://img.shields.io/badge/multiplayer%20slice-playable-8a5cf5)](docs/VERTICAL_SLICE.md)
+[![RPG foundation](https://img.shields.io/badge/Godot%20RPG-graybox-4b8f8c)](rpg/README.md)
 
-**《山河有契》**（英文工作名：**Covenant of the Realm**）是一个原创、多人在线、持续演化的中文修仙 MUD。当前版本是一段可完整游玩的、服务器权威的双人修行流程。
+**《山河有契》**（英文工作名：**Covenant of the Realm**）正在发展为一款原创、
+中文优先、章节式的 2D 修仙剧情 RPG。新的 Godot 灰盒已经建立数据驱动行动、
+确定性回合战斗和首次境界突破；现有多人 MUD 与单人 PWA 作为可运行研究原型保留。
+
+## Play the RPG graybox
+
+Requires Godot 4.7.1. On macOS, `make setup-rpg` verifies an existing Homebrew install；
+on Linux x86_64 it resolves the checksum-pinned official build into the ignored `.tools/`
+directory.
+
+```sh
+make setup-rpg
+make play-rpg
+```
+
+The current graybox uses original project locations and characters only. It validates the
+journey from preparation through a deterministic battle to `引息境一层`; map movement,
+controller input, save files, and the complete 90-minute chapter are the next implementation
+milestones. See the [RPG foundation](docs/design/RPG_FOUNDATION_v0.1.md).
+
+## Play the preserved multiplayer slice
 
 两位修行者可以进入同一个持久世界，采集灵草、炼化灵气、合力完成阵式，从 `凡身` 突破到 `引息境一层`，并在重新登录后读取服务器保存的进度。游戏可通过 Evennia 的 WebSocket 浏览器客户端或 Telnet 客户端游玩。
-
-## Play the multiplayer slice
 
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.13. Node.js 22.12+ is only needed for the preserved journey prototype and its complete repository check (`make setup-prototype`).
 
@@ -40,9 +59,11 @@ Open `http://127.0.0.1:4001/webclient/`. Create an account with:
 ## Engineering
 
 ```sh
+make test-rpg                # Godot domain and scene tests
+make rpg-content-check       # original story-graph integrity
 make test                    # rules, Evennia integration, real two-client E2E
 make lint                    # Ruff and documentation integrity
-make check                   # all MUD gates plus the preserved prototype matrix
+make check                   # RPG, MUD, and preserved PWA gates
 make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
@@ -52,6 +73,7 @@ The deterministic domain rules have an enforced 99% statement/branch minimum and
 
 - `mud/` — Evennia game, commands, typeclasses, world bootstrap, and server settings.
 - `mud/world/rules.py` — deterministic, transport-free cultivation domain rules.
+- `rpg/` — primary Godot RPG, original story content, domain rules, UI, and headless tests.
 - `tests/` — exhaustive rules tests.
 - `prototypes/journey/` — the earlier single-player PWA, preserved as a narrative/accessibility study rather than multiplayer architecture or canon.
 - `docs/` — product context, decisions, architecture, testing, and design bible.
@@ -60,6 +82,6 @@ Read [AGENTS.md](AGENTS.md), [Project Context](docs/PROJECT_CONTEXT.md), and the
 
 ## Originality and license
 
-This is an original cultivation world, not an adaptation of any existing novel. Reference fiction may inform high-level genre research only; protected prose, characters, locations, treasures, distinctive sequences, or plot combinations must not enter the product.
+This is an original cultivation world, not an adaptation of any existing novel. Reference fiction may inform high-level genre and game-structure research only; protected prose, characters, locations, treasures, distinctive sequences, or plot combinations must not enter the product.
 
 A public-use license has not been selected. Visibility of the repository does not grant permission to copy, redistribute, or commercially reuse its code, writing, or assets. See [asset provenance](docs/ASSET_PROVENANCE.md).

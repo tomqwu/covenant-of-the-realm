@@ -11,16 +11,20 @@ Keep durable product decisions in `docs/DECISIONS.md` so future Codex tasks do n
 
 ## Product objective
 
-Build an original, persistent, multiplayer online cultivation MUD with:
+Build an original, Chinese-first, story-driven 2D cultivation RPG with:
 
 - a complete and recognizably xianxia cultivation experience;
 - a coherent deep history, cosmology, geography, ecology, economy, and social order;
 - long-term progression from mortal life through cultivation and ascension;
-- sects, clans, dynasties, markets, professions, inheritance, and player-created history;
-- server-authoritative rules suitable for persistent online operation;
+- chapter-based companions, exploration, preparation, deterministic turn-based combat,
+  cultivation professions, inheritance, failure, and ascension;
+- fixed, testable main-story progression with bounded side branches;
 - a clean intellectual-property boundary from all reference novels.
 
 This must feel like a complete cultivation world, not merely an abstract Eastern fantasy system wearing cultivation terminology.
+
+The Evennia MUD and Journey PWA remain playable research prototypes. Preserve them, but
+do not treat their transport or client architecture as the primary RPG architecture.
 
 ## Naming
 
@@ -47,12 +51,13 @@ The earlier “covenant and cost” idea may survive as deep metaphysics, but it
 
 ## Technical principles
 
-- Prefer a modular monolith for the first playable version.
-- Keep gameplay server-authoritative and deterministic.
+- Use Godot 4.7.1 for the first graphical RPG slice.
+- Prefer a modular, offline-first application for the first playable version.
+- Keep gameplay rules deterministic and independent of UI scenes.
 - Separate rules and structured content from display prose.
-- Treat PostgreSQL state as authoritative; keep append-only audit events for permanent world changes, valuable items, economic operations, moderation, and administration.
+- Use versioned local saves and semantic event summaries; do not serialize scene trees.
 - LLM-generated text may vary presentation, but must never decide combat, rewards, ownership, economic state, law, or permanent history.
-- Design for WebSocket/PWA first; preserve a text-client interface where practical.
+- Keep keyboard, mouse, and future controller actions on one semantic command path.
 - Add infrastructure only after measurement demonstrates the need.
 
 ## Working practice

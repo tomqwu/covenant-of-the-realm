@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+required_version="4.7.1"
+required_prefix="4.7.1.stable"
+linux_sha256="c7ff14fd28472c8d4f193043de30278dcf7e5241a1dcf7566b02e27addaa33ba"
+linux_url="https://github.com/godotengine/godot-builds/releases/download/4.7.1-stable/Godot_v4.7.1-stable_linux.x86_64.zip"
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+install_dir="$repo_dir/.tools/godot-$required_version"
+local_godot="$install_dir/godot"
+
+check_version() {
+  local binary="$1"
+  [[ "$("$binary" --version)" == "$required_prefix"* ]]
+}
+
+if command -v godot >/dev/null 2>&1 && check_version "$(command -v godot)"; then
+  printf 'Godot %s is ready at %s.\n' "$required_version" "$(command -v godot)"
+  exit 0
+fi
+
+if [[ -x "$local_godot" ]] && check_version "$local_godot"; then
+  printf 'Godot %s is ready at %s.\n' "$required_version" "$local_godot"
+  exit 0
+fi
+
+if [[ "$(uname -s)" != "Linux" || "$(uname -m)" != "x86_64" ]]; then
+  printf '%s\n' \
+    "Godot $required_version is required." \
+    "On macOS, install it with: brew install --cask godot" >&2
+  exit 1
+fi
+
+mkdir -p "$install_dir"
+archive="$install_dir/godot.zip"
+curl --fail --location --silent --show-error "$linux_url" --output "$archive"
+printf '%s  %s\n' "$linux_sha256" "$archive" | sha256sum --check --status
+unzip -q -o "$archive" -d "$install_dir"
+mv "$install_dir/Godot_v4.7.1-stable_linux.x86_64" "$local_godot"
+rm -f "$archive"
+chmod +x "$local_godot"
+printf 'Godot %s installed at %s.\n' "$required_version" "$local_godot"

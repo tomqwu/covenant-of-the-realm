@@ -4,6 +4,27 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-01 — Primary direction becomes an original story-driven RPG
+
+The primary future product is an original, Chinese-first, single-player 2D cultivation RPG.
+It uses chapter-based companions, top-down exploration, preparation, deterministic turn-based
+combat, and bounded story branches. Classic Chinese party RPGs inform its interaction grammar
+only; their protected content, assets, presentation, and distinctive combinations are not
+production inputs.
+
+The existing Evennia MUD and Journey PWA remain playable research prototypes and quality
+suites. They are preserved but no longer define the primary client architecture.
+
+### 2026-08-01 — Godot 4.7.1 RPG foundation
+
+Use Godot 4.7.1 and GDScript for the first graphical RPG vertical slice. Keep deterministic
+rules outside UI scenes, display prose in validated original-content files, and run rule and
+scene tests headlessly. The first slice is offline-first and needs no gameplay server. Python
+is limited to build-time content validation and repository tooling.
+
+The first content target is a 90-minute original chapter around the already-original 照禾县
+region. PC/macOS/Linux is a development assumption, not a confirmed release-platform decision.
+
 ### 2026-08-01 — Finite and idempotent onboarding progression
 
 The 照禾县 vertical slice ends at `引息境一层`; it does not imply an infinite local
@@ -48,7 +69,8 @@ not the multiplayer MUD architecture and does not define cultivation canon.
 
 ### 2026-07-31 — Product category
 
-The project is a complete, original, multiplayer online cultivation MUD with a persistent world, deep history, and full game framework.
+Historical decision, superseded on 2026-08-01: the project began as a complete, original,
+multiplayer online cultivation MUD with a persistent world.
 
 ### 2026-07-31 — Copyright boundary
 
@@ -67,6 +89,19 @@ These are working names pending formal clearance.
 The player-facing design must be recognizably and comprehensively cultivation-based. The initial covenant framework is optional deep metaphysics, not a replacement for cultivation systems.
 
 ## Proposed, not yet confirmed
+
+### Unity CLI engine evaluation
+
+Unity CLI `1.0.0-beta.3` and Unity `6000.3.21f1` (6.3 LTS, ARM64) were installed
+and evaluated locally. Editor discovery, the Universal 2D template catalog, and the
+`pipeline`, `command`, `test`, and `mcp` command surfaces are available. A disposable
+Universal 2D project could not yet be created because this machine has no active Unity
+Editor license. Activating Unity Personal requires the account owner to accept Unity's
+license terms explicitly.
+
+Keep Godot as the confirmed implementation engine until a licensed Unity spike proves
+project creation, EditMode and PlayMode tests, headless automation, and the Pipeline/MCP
+workflow. Do not maintain both engines as parallel production clients.
 
 ### Content structure
 
