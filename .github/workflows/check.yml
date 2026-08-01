@@ -36,6 +36,7 @@ jobs:
         with:
           python-version: "3.13"
           enable-cache: true
+          save-cache: false
       - run: uv sync --locked --all-groups
       - run: make test-multiplayer-e2e
 
