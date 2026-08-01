@@ -28,3 +28,17 @@ These boards are internal visual-development candidates, not production sprites,
 marketing art, or evidence of clearance. Before public or commercial use, review the applicable
 OpenAI terms, complete similarity and trademark checks, and replace or explicitly approve each
 asset through the project's final art pipeline.
+
+## 2026-08-01 · RPG art-direction v1 concept baseline
+
+The five images under `docs/concepts/art-direction-v1/` were generated with Codex's built-in
+OpenAI ImageGen workflow. The only image inputs were the project-owned/generated A, B, and C
+style-exploration boards recorded above. No external novel illustration, game screenshot, artist
+work, stock asset, or third-party visual reference was used.
+
+The images define character identity, a gameplay-map target, a combat-readability target, and the
+limited use of a layered breakthrough scene. Their prompt summaries and originality constraints
+are recorded in `docs/concepts/art-direction-v1/PROMPTS.md`. They are internal concept references,
+not cuttable production art, marketing art, or evidence of clearance. Final sprites, tiles,
+portraits, textures, and promotional assets must be separately authored, reviewed for similarity,
+and entered in this provenance record before release.

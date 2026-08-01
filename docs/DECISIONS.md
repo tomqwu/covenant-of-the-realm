@@ -4,6 +4,17 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-01 — Hybrid pixel, painted, and layered art direction
+
+Use the `像素行旅` direction for ordinary maps, characters, combat, and interaction
+readability. Bring the `纸上山河` direction into dialogue portraits, chapter art, subdued
+paper texture, and the shared ink/celadon/indigo/rust/gold palette. Reserve the `叠景秘境`
+direction for breakthroughs, dreams, major secret-realm reveals, and rare chapter climaxes;
+it is not a parallel default world-production pipeline.
+
+The executable rules and constraints are recorded in `docs/design/ART_DIRECTION_v0.1.md`.
+Generated boards remain concept references rather than shippable sprites or textures.
+
 ### 2026-08-01 — Primary direction becomes an original story-driven RPG
 
 The primary future product is an original, Chinese-first, single-player 2D cultivation RPG.
