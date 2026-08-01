@@ -1,0 +1,49 @@
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Logs, reports, and caches
+*.log
+coverage/
+coverage-e2e/
+playwright-report/
+test-results/
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# JavaScript / TypeScript
+node_modules/
+.next/
+.nuxt/
+dist/
+*.tsbuildinfo
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Rust
+target/
+
+# Go
+vendor/
+
+# Swift / Xcode
+.build/
+DerivedData/
+*.xcuserstate

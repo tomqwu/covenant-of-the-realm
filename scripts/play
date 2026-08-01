@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+mkdir -p "$repo_dir/mud/server/logs"
+cd "$repo_dir/mud"
+
+uv run --project .. evennia migrate --noinput
+uv run --project .. python ../scripts/bootstrap_account.py
+uv run --project .. evennia start
+
+printf '%s\n' \
+  "Covenant of the Realm is running:" \
+  "  Web client: http://127.0.0.1:4001/webclient/" \
+  "  Telnet:     127.0.0.1:4000" \
+  "Run 'make stop' when finished."

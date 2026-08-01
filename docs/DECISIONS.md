@@ -4,6 +4,26 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-01 — Repository workflow
+
+Implementation work proceeds on `codex/` feature branches. The complete relevant
+local test suite must pass before commit and push; GitHub Actions must pass on the
+pull request before merge to `main`. Direct implementation commits to `main` are
+not part of the normal workflow.
+
+### 2026-08-01 — Vertical-slice implementation
+
+Use Evennia 6.0 on Python 3.13 for the first server-authoritative multiplayer slice. It
+provides persistent accounts, characters, rooms, commands, Telnet, and a WebSocket web
+client without committing the project to distributed infrastructure prematurely. The
+slice uses SQLite for disposable local development and CI; PostgreSQL remains required
+before persistent public operation. Gameplay rules remain isolated from transport and
+display prose so they can be tested deterministically.
+
+The existing single-player journey implementation is retained under
+`prototypes/journey/` as an accessibility, PWA, and narrative interaction study. It is
+not the multiplayer MUD architecture and does not define cultivation canon.
+
 ### 2026-07-31 — Product category
 
 The project is a complete, original, multiplayer online cultivation MUD with a persistent world, deep history, and full game framework.
@@ -25,10 +45,6 @@ These are working names pending formal clearance.
 The player-facing design must be recognizably and comprehensively cultivation-based. The initial covenant framework is optional deep metaphysics, not a replacement for cultivation systems.
 
 ## Proposed, not yet confirmed
-
-### Technical stack
-
-Use Evennia/Python, PostgreSQL, and WebSocket/PWA for the first prototype, beginning as a modular monolith.
 
 ### Content structure
 
