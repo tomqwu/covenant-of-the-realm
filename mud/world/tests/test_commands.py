@@ -32,7 +32,7 @@ class CultivationCommandTests(EvenniaCommandTest):
     def test_forage_rejects_wrong_site_then_gathers_once(self):
         self.call(CmdForage(), "", "此地没有可采集的月芽草")
         self.room1.db.resource = "moonleaf"
-        self.call(CmdForage(), "", "你采得一株月芽草")
+        self.call(CmdForage(), "", "你俯身拨开水雾，采得一株月芽草")
         self.assertEqual(load_state(self.char1).moonleaf, 1)
         self.assertEqual(len(self.char1.db.cultivation_events), 1)
         self.call(CmdForage(), "", "你已采过此处本轮生长的灵草")
@@ -49,7 +49,7 @@ class CultivationCommandTests(EvenniaCommandTest):
         self.assertEqual(len(self.char1.db.cultivation_events), 2)
 
     def test_cultivate_reports_non_breakthrough_progress(self):
-        self.call(CmdCultivate(), "", "你炼化灵气，修为增至 1")
+        self.call(CmdCultivate(), "", "你引泉息入脉，灵气积累增至 1")
 
     def test_prepare_requires_spring_and_broadcasts_success(self):
         self.room1.db.zone_id = "zhahe-crossing"
@@ -59,14 +59,14 @@ class CultivationCommandTests(EvenniaCommandTest):
         self.assertEqual(self.room1.db.pending_ritual["leader_id"], self.char1.id)
 
     def test_witness_handles_missing_corrupt_self_moved_and_absent_rituals(self):
-        self.call(CmdWitness(), "", "此处没有待见证的阵式")
+        self.call(CmdWitness(), "", "此处没有等待见证的阵式")
 
         self.room1.db.pending_ritual = {"leader_id": self.char1.id}
-        self.call(CmdWitness(), "", "阵式记录已损坏")
+        self.call(CmdWitness(), "", "阵式脉络已经紊乱")
         self.assertIsNone(self.room1.db.pending_ritual)
 
         self.room1.db.pending_ritual = 7
-        self.call(CmdWitness(), "", "阵式记录已损坏")
+        self.call(CmdWitness(), "", "阵式脉络已经紊乱")
         self.assertIsNone(self.room1.db.pending_ritual)
 
         self.room1.db.pending_ritual = {
@@ -91,7 +91,7 @@ class CultivationCommandTests(EvenniaCommandTest):
         self.call(
             CmdWitness(),
             "",
-            "Char与Char2共振灵脉",
+            "Char与Char2共同点亮石灯",
             caller=self.char2,
             receiver=self.char2,
         )

@@ -72,15 +72,15 @@ class Client:
 
 
 def create_and_connect(client: Client, username: str) -> None:
-    client.expect("connect <username>")
-    client.command(f"create {username} {PASSWORD}", "Is this what you intended")
-    client.command("yes", "A new account")
-    client.command(f"connect {username} {PASSWORD}", f"You become {username}")
+    client.expect("登录 <账号名>")
+    client.command(f"注册 {username} {PASSWORD}", "确认创建账号")
+    client.command("是", "创建成功")
+    client.command(f"登录 {username} {PASSWORD}", f"你进入山河，化身为 {username}")
 
 
 def connect_existing(client: Client, username: str) -> None:
-    client.expect("connect <username>")
-    client.command(f"connect {username} {PASSWORD}", f"You become {username}")
+    client.expect("登录 <账号名>")
+    client.command(f"登录 {username} {PASSWORD}", f"你进入山河，化身为 {username}")
 
 
 def main() -> None:
@@ -93,29 +93,29 @@ def main() -> None:
         create_and_connect(leader, leader_name)
         create_and_connect(witness, witness_name)
 
-        leader.command("east", "Moonleaf Terrace")
-        leader.command("forage", "You gather one moonleaf herb")
-        leader.command("west", "Zhahe Crossing")
-        leader.command("north", "Hidden Spring")
-        witness.command("north", "Hidden Spring")
+        leader.command("东", "月芽田")
+        leader.command("采药", "采得一株月芽草")
+        leader.command("西", "照禾渡口")
+        leader.command("北", "藏泉石室")
+        witness.command("北", "藏泉石室")
 
-        leader.command("cultivate", "progress is now 2")
-        leader.command("prepare", "prepares a resonance formation")
-        witness.command("witness", "both cultivators gain two qi and one insight")
-        leader.command("status", "引息境一层")
+        leader.command("修炼", "灵气积累增至 2")
+        leader.command("布阵", "布下共鸣阵")
+        witness.command("见证", "各得两缕灵气与一点悟性")
+        leader.command("修为", "引息境一层")
 
-        witness.command("cultivate", "enters 引息境一层")
-        witness.command("status", "Lifespan: 88")
+        witness.command("修炼", "踏入引息境一层")
+        witness.command("修为", "寿元：88")
 
         leader.close()
         leader = Client()
         connect_existing(leader, leader_name)
-        leader.command("status", "Lifespan: 88")
+        leader.command("修为", "寿元：88")
     finally:
         leader.close()
         witness.close()
 
-    print("Two-player Telnet E2E passed: gather, cultivate, cooperate, advance, persist.")
+    print("中文双人端到端流程通过：采药、修炼、协作、突破、重连持久化。")
 
 
 if __name__ == "__main__":

@@ -44,7 +44,7 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["B", "C4", "E", "F", "I", "N", "PERF", "RUF", "SIM", "UP"]
-allowed-confusables = ["，"]
+allowed-confusables = ["，", "：", "？", "／", "；"]
 
 [tool.ruff.lint.per-file-ignores]
 "mud/server/conf/settings.py" = ["F403"]

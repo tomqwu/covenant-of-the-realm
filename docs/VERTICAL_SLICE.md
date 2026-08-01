@@ -4,30 +4,30 @@
 
 Can two people enter one original cultivation world, understand a short xianxia progression loop, make server-validated progress together, and see a persistent consequence within ten minutes?
 
-The implemented slice answers that question with 照禾县 / Zhahe County: a river crossing, a cultivated moonleaf terrace, and a hidden spiritual spring.
+The implemented slice answers that question with 照禾县: 照禾渡口, 月芽田, and 藏泉石室. All ordinary player-facing prose is Chinese-first.
 
 ## Complete loop
 
 | Step | Player intent | Server input | Success and persistence | Safe failure |
 | --- | --- | --- | --- | --- |
-| Gather | `forage` at the terrace | character, authored resource, per-site history | +1 moonleaf and `resource_gathered` event | wrong site or repeat grants nothing |
-| Refine | `cultivate` at the spring | character and authored ambient qi | +1 qi, plus +1 and herb consumption when held | thin local qi grants nothing |
-| Prepare | `prepare` at the spring | authenticated leader and stable room | pending room formation | wrong site grants nothing |
-| Cooperate | another character uses `witness` | leader, witness, same room, pending formation | both gain 2 qi and 1 insight; event appended to both | self, moved, missing, corrupt, or absent-leader cases grant nothing |
+| Gather | `采药` at the terrace | character, authored resource, per-site history | +1 moonleaf and `resource_gathered` event | wrong site or repeat grants nothing |
+| Refine | `修炼` at the spring | character and authored ambient qi | +1 qi, plus +1 and herb consumption when held | thin local qi grants nothing |
+| Prepare | `布阵` at the spring | authenticated leader and stable room | pending room formation | wrong site grants nothing |
+| Cooperate | another character uses `见证` | leader, witness, same room, pending formation | both gain 2 qi and 1 insight; event appended to both | self, moved, missing, corrupt, or absent-leader cases grant nothing |
 | Advance | automatic after a gain reaches 3 qi | validated character state | realm becomes 引息境一层, 3 qi consumed, +1 insight, +8 lifespan, audit event | malformed stored state raises instead of silently repairing rewards |
 
 The cooperative rite is not cosmetic: a second authenticated character is necessary, both receive durable state, and the leader can cross the realm threshold because of it.
 
 ## Commands
 
-- `path` / `指引` — show the route.
-- `status` / `状态` / `修为` — show cultivation state.
-- `forage` / `gather` / `采药` — gather the local authored herb once.
-- `cultivate` / `meditate` / `修炼` — refine authored ambient qi.
-- `prepare` / `布阵` — bind a formation to the hidden spring.
-- `witness` / `见证` — complete another present player's formation.
+- `指引` (`path`) — show the route.
+- `修为` (`状态`, `status`) — show cultivation state.
+- `采药` (`forage`, `gather`) — gather the local authored herb once.
+- `修炼` (`cultivate`, `meditate`) — refine authored ambient qi.
+- `布阵` (`prepare`) — bind a formation to the hidden spring.
+- `见证` (`witness`) — complete another present player's formation.
 
-Movement uses `east`, `west`, `north`, and `south`, with Chinese aliases.
+Movement uses `东`, `西`, `北`, and `南`. English movement and gameplay commands remain compatibility aliases, not the default player experience.
 
 ## Abuse and consistency boundaries
 
