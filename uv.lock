@@ -146,7 +146,7 @@ requires-dist = [{ name = "evennia", specifier = "==6.0.0" }]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "coverage", extras = ["toml"], specifier = ">=7.10,<8" },
+    { name = "coverage", extras = ["toml"], specifier = ">=7.15.2,<8" },
     { name = "pytest", specifier = ">=8.4,<10" },
     { name = "ruff", specifier = ">=0.12,<1" },
 ]

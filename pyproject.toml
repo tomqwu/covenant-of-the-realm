@@ -10,7 +10,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "coverage[toml]>=7.10,<8",
+  "coverage[toml]>=7.15.2,<8",
   "pytest>=8.4,<10",
   "ruff>=0.12,<1",
 ]
