@@ -22,7 +22,7 @@
 
 ## Next increments
 
-- [ ] Configure the dynamic Actions badge when a GitHub remote is added.
+- [x] Configure the dynamic Actions badge after adding the GitHub remote.
 - [ ] Choose the repository license, vulnerability-reporting contact, and
   hosting target before public release; follow `docs/RELEASE_CHECKLIST.md`.
 - [ ] Run external playtesting and record comprehension/friction findings.

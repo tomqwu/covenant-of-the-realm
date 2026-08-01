@@ -1,6 +1,6 @@
 # Current state
 
-Last updated: 2026-07-31
+Last updated: 2026-08-01
 
 ## Outcome
 
@@ -36,7 +36,8 @@ not open the source `index.html` through `file://`.
   activation stay inert until their requirement passes.
 - Explicit opt-in ambience with persistent volume/mute, Save-Data-aware offline
   installation, no constructor-time preload, visibility/conflict cancellation,
-  and no automatic resume.
+  cached `206 Partial Content` byte ranges, an operable stop control while the
+  browser decodes, and no automatic resume.
 - Validated versioned backup, latest-selection-wins staging, explicit restore,
   atomic best-effort rollback, browser eviction-protection request, and
   consecutive two-action clearing of all four player records. A denied
@@ -87,6 +88,7 @@ not open the source `index.html` through `file://`.
   generated-shell discovery accepts both HTML quote styles, attribute case, and
   ordinary spacing without admitting cross-origin references;
   fetch interception is limited to same-origin GETs inside that exact scope;
+  cached media ranges are sliced into standards-compliant partial responses;
   runtime refresh writes are best-effort; navigation preload does not duplicate
   the network request; client claim precedes best-effort activation cleanup, so
   cache enumeration failure or delay cannot prolong old-tab interactivity;
@@ -112,8 +114,8 @@ not open the source `index.html` through `file://`.
 
 ## Quality baseline
 
-- Unit suite: **121 tests**, exact **100%** statements, branches, functions, and
-  lines (1,173 / 869 / 230 / 1,041 at the latest full run) across every game,
+- Unit suite: **122 tests**, exact **100%** statements, branches, functions, and
+  lines (1,176 / 869 / 230 / 1,044 at the latest full run) across every game,
   UI, and PWA adapter production module. A filesystem/report comparison rejects
   omitted or newly out-of-scope production modules; browser composition and
   Worker boundaries are covered by production integration evidence.
@@ -129,8 +131,8 @@ not open the source `index.html` through `file://`.
   journey if any uncaught browser runtime exception was recorded. S03 also
   requires a clean console/network, no cookies/session/IndexedDB, exactly four
   player records, and ten query-free static cache keys.
-- Production artifact: 11 files / 958,607 bytes total, including one
-  70,068-byte JS bundle, one 18,732-byte stylesheet, 620,433-byte landscape,
+- Production artifact: 11 files / 959,988 bytes total, including one
+  70,092-byte JS bundle, one 18,732-byte stylesheet, 620,433-byte landscape,
   and 180,156-byte optional audio, all within enforced raw-byte budgets.
 - Documentation: 55 Markdown files with repository-local links checked.
 - Locked dependency audit: zero known vulnerabilities and no outdated direct
@@ -179,8 +181,6 @@ dialog to every narrative choice as a substitute for observed usability data.
 
 ## Blockers
 
-- No GitHub remote exists, so the dynamic Actions badge cannot be configured.
-  The workflow and locally verified badges are ready.
 - Public release also needs owner choices for licensing, a private vulnerability
   contact, and a final HTTPS host with verified security and cache headers. The
   exact non-simulatable gates are in

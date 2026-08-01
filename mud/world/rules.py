@@ -37,6 +37,7 @@ class Cultivator:
     insight: int = 0
     karma: int = 0
     lifespan: int = 80
+    trial_complete: bool = False
 
     def __post_init__(self) -> None:
         if self.realm not in REALMS:
@@ -50,6 +51,10 @@ class Cultivator:
             or self.lifespan <= 0
         ):
             raise ValueError("lifespan must be a positive integer")
+        if not isinstance(self.trial_complete, bool):
+            raise ValueError("trial completion must be a boolean")
+        if self.realm == BREATH_REALM and self.qi >= BREAKTHROUGH_QI:
+            raise ValueError("breath-realm qi exceeds the vertical-slice cap")
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any] | None) -> Cultivator:
@@ -57,10 +62,22 @@ class Cultivator:
 
         if value is None:
             return cls()
-        required = {"realm", "qi", "moonleaf", "insight", "karma", "lifespan"}
-        if not isinstance(value, Mapping) or set(value) != required:
+        legacy_fields = {"realm", "qi", "moonleaf", "insight", "karma", "lifespan"}
+        current_fields = legacy_fields | {"trial_complete"}
+        if not isinstance(value, Mapping):
             raise ValueError("stored cultivation state has an invalid shape")
-        return cls(**{field: value[field] for field in required})
+        stored_fields = set(value)
+        if stored_fields != legacy_fields and stored_fields != current_fields:
+            raise ValueError("stored cultivation state has an invalid shape")
+        stored = {field: value[field] for field in legacy_fields}
+        stored["trial_complete"] = value.get("trial_complete", False)
+        # Versions before the onboarding cap allowed post-breakthrough qi to grow
+        # forever. Clamp that legacy-only overflow to the largest reachable remainder.
+        if stored_fields == legacy_fields and stored["realm"] == BREATH_REALM:
+            qi = stored["qi"]
+            if isinstance(qi, int) and not isinstance(qi, bool):
+                stored["qi"] = min(qi, BREAKTHROUGH_QI - 1)
+        return cls(**stored)
 
     def to_dict(self) -> dict[str, int | str]:
         """Return the JSON-safe representation stored by the server adapter."""
@@ -152,6 +169,8 @@ def cultivate(state: Cultivator, *, actor_id: int, ambient_qi: int) -> Outcome:
 
     if not isinstance(ambient_qi, int) or isinstance(ambient_qi, bool) or ambient_qi < 0:
         raise ValueError("ambient qi must be a non-negative integer")
+    if state.realm == BREATH_REALM:
+        raise RuleViolationError("realm_complete")
     if ambient_qi < 2:
         raise RuleViolationError("thin_qi")
 
@@ -175,11 +194,27 @@ def cultivate(state: Cultivator, *, actor_id: int, ambient_qi: int) -> Outcome:
     return Outcome(updated, tuple(events))
 
 
-def prepare_ritual(*, leader_id: int, room_id: str, zone: str | None) -> Ritual:
+def prepare_ritual(
+    *,
+    leader_id: int,
+    room_id: str,
+    zone: str | None,
+    leader: Cultivator,
+    pending: Ritual | None = None,
+) -> Ritual:
     """Open a cooperative formation only at the authored spring site."""
 
     if zone != SPRING_ZONE:
         raise RuleViolationError("wrong_ritual_site")
+    if leader.trial_complete:
+        raise RuleViolationError("trial_complete")
+    if pending is not None:
+        code = (
+            "ritual_pending"
+            if pending.leader_id == leader_id and pending.room_id == room_id
+            else "ritual_occupied"
+        )
+        raise RuleViolationError(code)
     return Ritual(leader_id=leader_id, room_id=room_id)
 
 
@@ -201,13 +236,22 @@ def complete_ritual(
     if not leader_present:
         raise RuleViolationError("leader_absent")
 
-    leader_updated = replace(leader, qi=leader.qi + 2, insight=leader.insight + 1)
-    witness_updated = replace(witness, qi=witness.qi + 2, insight=witness.insight + 1)
+    if leader.trial_complete and witness.trial_complete:
+        raise RuleViolationError("trial_complete")
+
+    leader_updated, leader_qi, leader_insight = _formation_reward(leader)
+    witness_updated, witness_qi, witness_insight = _formation_reward(witness)
     events: list[RuleEvent] = [
         RuleEvent(
             kind="formation_completed",
             actor_ids=(ritual.leader_id, witness_id),
-            data=(("qi_each", 2), ("insight_each", 1), ("room", room_id)),
+            data=(
+                ("leader_qi", leader_qi),
+                ("witness_qi", witness_qi),
+                ("leader_insight", leader_insight),
+                ("witness_insight", witness_insight),
+                ("room", room_id),
+            ),
             permanent=True,
         )
     ]
@@ -218,6 +262,24 @@ def complete_ritual(
     if witness_advancement:
         events.append(witness_advancement)
     return CooperativeOutcome(leader_updated, witness_updated, tuple(events))
+
+
+def _formation_reward(state: Cultivator) -> tuple[Cultivator, int, int]:
+    """Grant the cooperative onboarding reward once, without post-realm overflow."""
+
+    if state.trial_complete:
+        return state, 0, 0
+    qi_gain = 2 if state.realm == MORTAL_REALM else 0
+    return (
+        replace(
+            state,
+            qi=state.qi + qi_gain,
+            insight=state.insight + 1,
+            trial_complete=True,
+        ),
+        qi_gain,
+        1,
+    )
 
 
 def _advance(state: Cultivator, actor_id: int) -> tuple[Cultivator, RuleEvent | None]:

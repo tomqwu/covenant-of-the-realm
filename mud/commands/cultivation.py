@@ -23,15 +23,24 @@ ERROR_MESSAGES = {
     "no_resource": "此地没有可采集的月芽草。",
     "already_foraged": "你已采过此处本轮生长的灵草。",
     "thin_qi": "此地灵气太薄，无法完成引息。",
+    "realm_complete": "你已踏入引息境，此处浅泉已不能令修为继续增长。",
     "wrong_ritual_site": "共鸣阵只能在藏泉灵脉布置。",
     "self_witness": "布阵者不能为自己见证。",
     "ritual_moved": "阵式与当前灵脉不再相合。",
     "leader_absent": "布阵者已不在此处，阵式自行消散。",
+    "trial_complete": "你已完成照禾县引息试炼，可为尚未完成的同道见证。",
+    "ritual_pending": "你的共鸣阵已经布好，正在等待另一位同道见证。",
+    "ritual_occupied": "此处已有共鸣阵，请先见证或等待阵式消散。",
 }
 
 
 def load_state(character: Any) -> Cultivator:
-    return Cultivator.from_mapping(character.db.cultivation)
+    stored = character.db.cultivation
+    state = Cultivator.from_mapping(stored)
+    normalized = state.to_dict()
+    if stored is not None and dict(stored) != normalized:
+        character.db.cultivation = normalized
+    return state
 
 
 def persist(character: Any, state: Cultivator, events: Iterable[RuleEvent]) -> None:
@@ -45,6 +54,18 @@ def explain_error(character: Any, error: RuleViolationError) -> None:
     character.msg(ERROR_MESSAGES[error.code])
 
 
+def is_active_character(character: Any, *, current_caller: Any = None) -> bool:
+    """Return whether a room character is actively controlled by a client."""
+
+    return bool(
+        character
+        and (
+            character == current_caller
+            or (hasattr(character, "sessions") and character.sessions.count())
+        )
+    )
+
+
 class CmdCultivationStatus(Command):
     """查看境界与修行资源。用法：修为"""
 
@@ -55,11 +76,17 @@ class CmdCultivationStatus(Command):
 
     def func(self) -> None:
         state = load_state(self.caller)
+        qi_status = (
+            f"{state.qi}/3"
+            if state.realm == "凡身"
+            else f"{state.qi} · 当前境界余蕴"
+        )
+        trial_status = "已完成" if state.trial_complete else "待完成"
         self.caller.msg(
             f"|w{self.caller.key}|n · {state.realm}\n"
-            f"灵气：{state.qi}/{3 if state.realm == '凡身' else '∞'} · "
+            f"灵气：{qi_status} · "
             f"月芽草：{state.moonleaf} · 悟性：{state.insight}\n"
-            f"因果：{state.karma} · 寿元：{state.lifespan}\n"
+            f"因果：{state.karma} · 寿元：{state.lifespan} · 共鸣试炼：{trial_status}\n"
             f"{command_link('查看', '查看地点与可选行动')}"
         )
 
@@ -134,11 +161,29 @@ class CmdPrepareRitual(Command):
 
     def func(self) -> None:
         location = self.caller.location
+        pending = None
+        if location.db.pending_ritual:
+            try:
+                pending = Ritual.from_mapping(location.db.pending_ritual)
+            except ValueError:
+                location.db.pending_ritual = None
+            else:
+                pending_leader = next(
+                    (obj for obj in location.contents if obj.id == pending.leader_id), None
+                )
+                if not is_active_character(
+                    pending_leader,
+                    current_caller=self.caller,
+                ):
+                    location.db.pending_ritual = None
+                    pending = None
         try:
             ritual = prepare_ritual(
                 leader_id=self.caller.id,
                 room_id=str(location.db.zone_id or location.id),
                 zone=location.db.zone_id,
+                leader=load_state(self.caller),
+                pending=pending,
             )
         except RuleViolationError as error:
             explain_error(self.caller, error)
@@ -171,26 +216,48 @@ class CmdWitness(Command):
             self.caller.msg("阵式脉络已经紊乱，未生效便自行消散。")
             return
         leader = next((obj for obj in location.contents if obj.id == ritual.leader_id), None)
+        leader_before = load_state(leader) if leader else Cultivator()
+        witness_before = load_state(self.caller)
         try:
             outcome = complete_ritual(
                 ritual,
                 witness_id=self.caller.id,
                 room_id=str(location.db.zone_id or location.id),
-                leader_present=leader is not None,
-                leader=load_state(leader) if leader else Cultivator(),
-                witness=load_state(self.caller),
+                leader_present=is_active_character(leader, current_caller=self.caller),
+                leader=leader_before,
+                witness=witness_before,
             )
         except RuleViolationError as error:
-            if error.code in {"leader_absent", "ritual_moved"}:
+            if error.code in {"leader_absent", "ritual_moved", "trial_complete"}:
                 location.db.pending_ritual = None
             explain_error(self.caller, error)
             return
         persist(leader, outcome.leader, outcome.events)
         persist(self.caller, outcome.witness, outcome.events)
         location.db.pending_ritual = None
+        if (
+            not leader_before.trial_complete
+            and not witness_before.trial_complete
+            and leader_before.realm == "凡身"
+            and witness_before.realm == "凡身"
+        ):
+            reward = "二人各得两缕灵气与一点悟性。"
+        else:
+            rewards = []
+            for character, before in (
+                (leader, leader_before),
+                (self.caller, witness_before),
+            ):
+                if before.trial_complete:
+                    rewards.append(f"{character.key}护阵相助")
+                elif before.realm == "凡身":
+                    rewards.append(f"{character.key}得到两缕灵气与一点悟性")
+                else:
+                    rewards.append(f"{character.key}完成共鸣并增加一点悟性")
+            reward = "；".join(rewards) + "。"
         location.msg_contents(
             f"{leader.key}与{self.caller.key}共同点亮石灯，灵脉随阵共振；"
-            f"二人各得两缕灵气与一点悟性。{command_link('修为', '查看修为')}"
+            f"{reward}{command_link('修为', '查看修为')}"
         )
 
 

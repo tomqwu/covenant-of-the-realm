@@ -7,7 +7,7 @@ Rooms are simple containers that has no location of their own.
 
 from collections.abc import Mapping
 
-from commands.links import command_choices, command_link
+from commands.links import command_link
 from evennia.objects.objects import DefaultRoom
 
 from .objects import ObjectParent
@@ -56,13 +56,33 @@ class Room(ObjectParent, DefaultRoom):
         """显示随地点变化、可点击执行的中文行动。"""
 
         zone_id = self.db.zone_id
+        cultivation = looker.db.cultivation
+        realm = cultivation.get("realm") if isinstance(cultivation, Mapping) else None
+        trial_complete = (
+            cultivation.get("trial_complete", False)
+            if isinstance(cultivation, Mapping)
+            else False
+        )
+        selectable: list[str] = []
+        notes: list[str] = []
         if zone_id == "moonleaf-terrace":
-            local_actions = ["采药"]
+            site_id = str(self.db.zone_id or self.id)
+            if site_id in set(looker.db.foraged_sites or []):
+                notes.append("灵草已采")
+            else:
+                selectable.append("采药")
         elif zone_id == "hidden-spring":
-            local_actions = ["修炼"]
+            if realm != "引息境一层":
+                selectable.append("修炼")
             ritual = self.db.pending_ritual
             leader_id = ritual.get("leader_id") if isinstance(ritual, Mapping) else None
-            local_actions.append("见证" if leader_id and leader_id != looker.id else "布阵")
-        else:
-            local_actions = []
-        return f"|w可选行动：|n {command_choices(*local_actions, '指引', '修为')}"
+            if leader_id and leader_id != looker.id:
+                selectable.append("见证")
+            elif leader_id == looker.id:
+                notes.append("等待见证")
+            elif not trial_complete:
+                selectable.append("布阵")
+        selectable.extend(("指引", "修为"))
+        actions = [command_link(action) for action in selectable]
+        actions.extend(notes)
+        return f"|w可选行动：|n {' · '.join(actions)}"

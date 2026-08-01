@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 import pytest
 
 from mud.world.rules import (
@@ -29,6 +27,7 @@ def test_default_state_round_trips() -> None:
         "insight": 0,
         "karma": 0,
         "lifespan": 80,
+        "trial_complete": False,
     }
     assert Cultivator.from_mapping(None) == state
     assert Cultivator.from_mapping(state.to_dict()) == state
@@ -45,6 +44,7 @@ def test_default_state_round_trips() -> None:
         ("lifespan", 0, "positive integer"),
         ("lifespan", True, "positive integer"),
         ("lifespan", 1.5, "positive integer"),
+        ("trial_complete", 1, "must be a boolean"),
     ],
 )
 def test_state_rejects_invalid_values(field: str, value: object, message: str) -> None:
@@ -59,6 +59,26 @@ def test_stored_state_requires_exact_shape() -> None:
         Cultivator.from_mapping({"realm": MORTAL_REALM})
     with pytest.raises(ValueError, match="invalid shape"):
         Cultivator.from_mapping(7)
+
+
+def test_stored_legacy_state_migrates_post_breakthrough_overflow() -> None:
+    legacy = Cultivator().to_dict()
+    legacy.pop("trial_complete")
+    assert Cultivator.from_mapping(legacy) == Cultivator()
+
+    legacy.update({"realm": BREATH_REALM, "qi": 35, "lifespan": 88})
+    assert Cultivator.from_mapping(legacy) == Cultivator(
+        realm=BREATH_REALM, qi=2, lifespan=88
+    )
+
+    legacy["qi"] = True
+    with pytest.raises(ValueError, match="non-negative integers"):
+        Cultivator.from_mapping(legacy)
+
+
+def test_current_state_rejects_breath_realm_overflow() -> None:
+    with pytest.raises(ValueError, match="vertical-slice cap"):
+        Cultivator(realm=BREATH_REALM, qi=3, lifespan=88)
 
 
 def test_rule_violation_exposes_stable_code() -> None:
@@ -157,19 +177,53 @@ def test_cultivate_with_herb_can_break_through() -> None:
     assert outcome.events[-1].permanent is True
 
 
-def test_cultivate_after_breakthrough_accumulates_qi_without_advancing_again() -> None:
-    state = Cultivator(realm=BREATH_REALM, qi=4, moonleaf=1, insight=2, lifespan=88)
-    outcome = cultivate(state, actor_id=9, ambient_qi=3)
-    assert outcome.state == replace(state, qi=6, moonleaf=0)
-    assert [event.kind for event in outcome.events] == ["qi_refined"]
+def test_cultivate_after_breakthrough_is_bounded() -> None:
+    state = Cultivator(realm=BREATH_REALM, qi=2, moonleaf=1, insight=2, lifespan=88)
+    with pytest.raises(RuleViolationError, match="realm_complete"):
+        cultivate(state, actor_id=9, ambient_qi=0)
 
 
 def test_prepare_ritual_requires_the_hidden_spring() -> None:
     with pytest.raises(RuleViolationError, match="wrong_ritual_site"):
-        prepare_ritual(leader_id=3, room_id="crossing", zone="zhahe-crossing")
-    assert prepare_ritual(leader_id=3, room_id="spring", zone="hidden-spring") == Ritual(
-        3, "spring"
-    )
+        prepare_ritual(
+            leader_id=3,
+            room_id="crossing",
+            zone="zhahe-crossing",
+            leader=Cultivator(),
+        )
+    assert prepare_ritual(
+        leader_id=3,
+        room_id="spring",
+        zone="hidden-spring",
+        leader=Cultivator(),
+    ) == Ritual(3, "spring")
+
+
+def test_prepare_ritual_is_idempotent_and_cannot_repeat_completed_trial() -> None:
+    pending = Ritual(3, "spring")
+    with pytest.raises(RuleViolationError, match="ritual_pending"):
+        prepare_ritual(
+            leader_id=3,
+            room_id="spring",
+            zone="hidden-spring",
+            leader=Cultivator(),
+            pending=pending,
+        )
+    with pytest.raises(RuleViolationError, match="ritual_occupied"):
+        prepare_ritual(
+            leader_id=4,
+            room_id="spring",
+            zone="hidden-spring",
+            leader=Cultivator(),
+            pending=pending,
+        )
+    with pytest.raises(RuleViolationError, match="trial_complete"):
+        prepare_ritual(
+            leader_id=3,
+            room_id="spring",
+            zone="hidden-spring",
+            leader=Cultivator(trial_complete=True),
+        )
 
 
 def test_complete_ritual_rejects_self_moved_and_absent_leader() -> None:
@@ -183,6 +237,15 @@ def test_complete_ritual_rejects_self_moved_and_absent_leader() -> None:
             leader_present=True,
             leader=state,
             witness=state,
+        )
+    with pytest.raises(RuleViolationError, match="trial_complete"):
+        complete_ritual(
+            Ritual(3, "spring"),
+            witness_id=4,
+            room_id="spring",
+            leader_present=True,
+            leader=Cultivator(trial_complete=True),
+            witness=Cultivator(trial_complete=True),
         )
     with pytest.raises(RuleViolationError, match="ritual_moved"):
         complete_ritual(
@@ -204,7 +267,7 @@ def test_complete_ritual_rejects_self_moved_and_absent_leader() -> None:
         )
 
 
-def test_complete_ritual_rewards_both_without_forcing_breakthrough() -> None:
+def test_complete_ritual_finishes_breath_realm_trial_without_qi_overflow() -> None:
     outcome = complete_ritual(
         Ritual(3, "spring"),
         witness_id=4,
@@ -213,8 +276,12 @@ def test_complete_ritual_rewards_both_without_forcing_breakthrough() -> None:
         leader=Cultivator(realm=BREATH_REALM, qi=1, lifespan=88),
         witness=Cultivator(realm=BREATH_REALM, qi=2, lifespan=88),
     )
-    assert outcome.leader == Cultivator(realm=BREATH_REALM, qi=3, insight=1, lifespan=88)
-    assert outcome.witness == Cultivator(realm=BREATH_REALM, qi=4, insight=1, lifespan=88)
+    assert outcome.leader == Cultivator(
+        realm=BREATH_REALM, qi=1, insight=1, lifespan=88, trial_complete=True
+    )
+    assert outcome.witness == Cultivator(
+        realm=BREATH_REALM, qi=2, insight=1, lifespan=88, trial_complete=True
+    )
     assert [event.kind for event in outcome.events] == ["formation_completed"]
 
 
@@ -227,10 +294,47 @@ def test_complete_ritual_can_advance_each_mortal() -> None:
         leader=Cultivator(qi=1),
         witness=Cultivator(qi=2),
     )
-    assert outcome.leader == Cultivator(realm=BREATH_REALM, insight=2, lifespan=88)
-    assert outcome.witness == Cultivator(realm=BREATH_REALM, qi=1, insight=2, lifespan=88)
+    assert outcome.leader == Cultivator(
+        realm=BREATH_REALM, insight=2, lifespan=88, trial_complete=True
+    )
+    assert outcome.witness == Cultivator(
+        realm=BREATH_REALM, qi=1, insight=2, lifespan=88, trial_complete=True
+    )
     assert [event.kind for event in outcome.events] == [
         "formation_completed",
         "realm_advanced",
         "realm_advanced",
     ]
+
+
+def test_completed_player_can_mentor_without_repeating_rewards() -> None:
+    mentor = Cultivator(
+        realm=BREATH_REALM,
+        qi=1,
+        insight=2,
+        lifespan=88,
+        trial_complete=True,
+    )
+    outcome = complete_ritual(
+        Ritual(3, "spring"),
+        witness_id=4,
+        room_id="spring",
+        leader_present=True,
+        leader=mentor,
+        witness=Cultivator(qi=1),
+    )
+    assert outcome.leader == mentor
+    assert outcome.witness == Cultivator(
+        realm=BREATH_REALM, insight=2, lifespan=88, trial_complete=True
+    )
+    assert [event.kind for event in outcome.events] == [
+        "formation_completed",
+        "realm_advanced",
+    ]
+    assert dict(outcome.events[0].data) == {
+        "leader_qi": 0,
+        "witness_qi": 2,
+        "leader_insight": 0,
+        "witness_insight": 1,
+        "room": "spring",
+    }

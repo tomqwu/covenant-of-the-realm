@@ -2,6 +2,7 @@
 
 from commands.chinese import (
     CmdChineseGameHelp,
+    CmdChineseNoMatch,
     CmdChineseSay,
     CmdChineseUnloggedinHelp,
     CmdChineseUnloggedinLook,
@@ -19,6 +20,8 @@ from commands.links import command_choices, command_link
 from evennia.utils.ansi import strip_mxp
 from evennia.utils.test_resources import EvenniaCommandTest
 from server.conf.connection_screens import CONNECTION_SCREEN
+
+from world.rules import BREATH_REALM, Cultivator
 
 
 class ChineseExperienceTests(EvenniaCommandTest):
@@ -50,10 +53,17 @@ class ChineseExperienceTests(EvenniaCommandTest):
                 command_link(unsafe_value)
 
     def test_room_footer_offers_contextual_selectable_actions(self):
+        self.char1.db.cultivation = Cultivator().to_dict()
+        self.char1.db.foraged_sites = []
         self.room1.db.zone_id = "moonleaf-terrace"
         terrace_footer = self.room1.get_display_footer(self.char1)
         self.assertIn("|lc采药|lt采药|le", terrace_footer)
         self.assertIn("|lc修为|lt修为|le", terrace_footer)
+
+        self.char1.db.foraged_sites = ["moonleaf-terrace"]
+        harvested_footer = self.room1.get_display_footer(self.char1)
+        self.assertNotIn("|lc采药|lt采药|le", harvested_footer)
+        self.assertIn("灵草已采", harvested_footer)
 
         self.room1.db.zone_id = "hidden-spring"
         self.room1.db.pending_ritual = {"leader_id": self.char2.id}
@@ -61,6 +71,30 @@ class ChineseExperienceTests(EvenniaCommandTest):
         self.assertIn("|lc修炼|lt修炼|le", spring_footer)
         self.assertIn("|lc见证|lt见证|le", spring_footer)
         self.assertNotIn("|lc布阵|lt布阵|le", spring_footer)
+
+        self.room1.db.pending_ritual = {"leader_id": self.char1.id}
+        waiting_footer = self.room1.get_display_footer(self.char1)
+        self.assertIn("等待见证", waiting_footer)
+        self.assertNotIn("|lc布阵|lt布阵|le", waiting_footer)
+
+        self.room1.db.pending_ritual = None
+        self.char1.db.cultivation = Cultivator(
+            realm=BREATH_REALM, lifespan=88, trial_complete=True
+        ).to_dict()
+        completed_footer = self.room1.get_display_footer(self.char1)
+        self.assertNotIn("|lc修炼|lt修炼|le", completed_footer)
+        self.assertNotIn("|lc布阵|lt布阵|le", completed_footer)
+
+    def test_stale_direction_link_recovers_with_current_exit(self):
+        self.exit.key = "西"
+        response = self.call(CmdChineseNoMatch(), "北", None)
+        self.assertIn("此处不能向『北』前行", response)
+        self.assertIn("西", response)
+
+    def test_unknown_non_direction_still_links_to_help(self):
+        response = self.call(CmdChineseNoMatch(), "御剑", None)
+        self.assertIn("无法识别指令『御剑』", response)
+        self.assertIn("点击帮助查看可用命令", response)
 
     def test_login_help_is_chinese(self):
         self.call(CmdChineseUnloggedinHelp(), "", "登录前可用命令")
