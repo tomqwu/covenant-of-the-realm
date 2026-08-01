@@ -205,6 +205,27 @@ class CmdChineseNoMatch(Command):
     locks = "cmd:all()"
 
     def func(self) -> None:
+        direction = self.args.strip().lower()
+        if direction in {
+            "东",
+            "西",
+            "南",
+            "北",
+            "east",
+            "west",
+            "south",
+            "north",
+            "e",
+            "w",
+            "s",
+            "n",
+        }:
+            location = getattr(self.caller, "location", None)
+            if location:
+                exits = location.get_display_exits(self.caller)
+                route = exits or "|w出口：|n 此处无路可走"
+                self.caller.msg(f"此处不能向『{self.args}』前行。\n{route}")
+                return
         self.caller.msg(
             f"无法识别指令『{self.args}』。点击{command_link('帮助')}查看可用命令。"
         )

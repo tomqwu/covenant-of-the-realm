@@ -4,6 +4,15 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-01 — Finite and idempotent onboarding progression
+
+The 照禾县 vertical slice ends at `引息境一层`; it does not imply an infinite local
+progression system. After reaching that realm, the shallow spring no longer grants qi through
+`修炼`. Gathering and formation rewards are idempotent, completed steps disappear from the
+action list, and each character receives the formation reward only once. A completed character
+may still witness another player's formation as a mentor without receiving repeated resources.
+Legacy post-breakthrough qi overflow is capped during state migration.
+
 ### 2026-08-01 — Chinese-first player experience
 
 All ordinary player-facing login, room, movement, chat, help, cultivation, and status

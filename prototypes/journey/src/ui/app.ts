@@ -936,9 +936,15 @@ export const mountGame = (root: HTMLElement, options: AppOptions): MountedGame =
       syncAmbientControls();
       if (options.prepareAmbientAudio) await options.prepareAmbientAudio();
       if (destroyed || playVersion !== audioPlayVersion) return;
-      await options.ambientAudio!.play();
-      if (destroyed || playVersion !== audioPlayVersion) return;
+      const playback = options.ambientAudio!.play();
+      // Some browsers leave the media play promise pending while an offline
+      // byte-range response is being decoded. Keep the control operable so the
+      // player can stop immediately; a later rejection still restores failure.
       audioPlaying = true;
+      audioPending = false;
+      syncAmbientControls();
+      await playback;
+      if (destroyed || playVersion !== audioPlayVersion) return;
       audioStatus = "idle";
     } catch {
       if (destroyed || playVersion !== audioPlayVersion) return;

@@ -71,6 +71,7 @@ thresholds in [`DECISION_PATTERN_RESEARCH.md`](DECISION_PATTERN_RESEARCH.md).
 - [x] Pause active and pending ambience when the page becomes hidden without auto-resume.
 - [x] Download the completed journey as a local, replayable UTF-8 text artifact.
 - [x] Defer optional offline audio when the browser explicitly requests reduced data.
+- [x] Serve cached offline audio byte ranges as `206 Partial Content` responses.
 - [x] Remove failed-update partial caches while preserving the active offline build.
 - [x] Canonicalize the initial route before play and persist consumed shared-route ownership before reload can resurrect an unrelated save.
 - [x] Recover from local download setup failure with honest status and complete selectable journey/backup artifacts.

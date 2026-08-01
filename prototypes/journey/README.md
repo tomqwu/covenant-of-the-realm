@@ -1,5 +1,6 @@
 # 山河有契 · 行旅之契
 
+[![Checks](https://github.com/tomqwu/covenant-of-the-realm/actions/workflows/check.yml/badge.svg)](https://github.com/tomqwu/covenant-of-the-realm/actions/workflows/check.yml)
 ![Unit coverage](badges/unit-coverage.svg)
 ![Critical E2E journeys](badges/e2e-journeys.svg)
 
@@ -72,7 +73,7 @@ and cache-update contract.
 
 Backup files stay on the player's device and are strictly validated before the separate restore action is enabled. Browser data begins best-effort; the game checks and requests automatic-eviction protection without overstating it. See [local backup and restore](docs/BACKUP.md) and [storage durability research](docs/STORAGE_DURABILITY_RESEARCH.md).
 
-The badges are repository-local because no GitHub remote is configured yet. `npm run badges:check` requires each SVG's accessible label, title, and visible numeric claim to match the generated unit report plus the documented/automated E2E matrix exactly. The full execution total comes from Playwright's resolved project/test list, so project filters cannot silently make the published claim stale. Once a remote exists, add its dynamic Actions badge without replacing these evidence badges.
+The dynamic Actions badge links to the repository's complete workflow; the two repository-local evidence badges remain independently verifiable. `npm run badges:check` requires each SVG's accessible label, title, and visible numeric claim to match the generated unit report plus the documented/automated E2E matrix exactly. The full execution total comes from Playwright's resolved project/test list, so project filters cannot silently make the published claim stale.
 
 ## Engineering loop
 

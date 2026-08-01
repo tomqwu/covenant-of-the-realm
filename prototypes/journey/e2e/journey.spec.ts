@@ -864,8 +864,29 @@ test("J29 · reduced-data install defers optional audio until player opt-in", as
 
   await context.setOffline(true);
   await page.reload();
+  const cachedRange = await page.evaluate(async () => {
+    const response = await fetch(new URL("assets/mountain-wind.ogg", document.baseURI), {
+      headers: { Range: "bytes=0-1023" },
+    });
+    return {
+      bytes: (await response.arrayBuffer()).byteLength,
+      contentRange: response.headers.get("content-range"),
+      status: response.status,
+    };
+  });
+  expect(cachedRange).toEqual({
+    bytes: 1024,
+    contentRange: expect.stringMatching(/^bytes 0-1023\/\d+$/),
+    status: 206,
+  });
   await page.locator(".preferences summary").click();
+  const offlinePlayback = page.waitForResponse((response) =>
+    response.url().endsWith("/assets/mountain-wind.ogg") &&
+    response.request().headers()["range"] === "bytes=0-" &&
+    response.status() === 206,
+  );
   await page.getByRole("button", { name: "开启环境音" }).click();
+  await (await offlinePlayback).finished();
   await expect(page.getByRole("button", { name: "关闭环境音" })).toHaveAttribute(
     "aria-pressed",
     "true",

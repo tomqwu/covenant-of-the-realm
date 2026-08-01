@@ -45,7 +45,7 @@ before resolving their configured browser-project executions.
 | J26 | Storage durability | The composition root checks browser eviction protection without requesting it, requests it exactly once from a player action, and recognizes the granted state after reload |
 | J27 | Background ambience | A hidden document pauses opted-in ambience, remains silent when visible again, and restarts only from another player action |
 | J28 | Journey text export | A completed journey downloads under a seed/ending/UTC name as UTF-8 text containing all five decisions, authored aftermath, and a validated exact-route link |
-| J29 | Reduced-data install | A Save-Data installation omits optional audio while retaining the core shell; explicit online playback caches the loop and enables it after an offline reload |
+| J29 | Reduced-data install | A Save-Data installation omits optional audio while retaining the core shell; explicit online playback caches the loop, cached range requests return `206 Partial Content`, and playback remains operable after an offline reload |
 | J30 | Canonical intro ownership | A fresh intro reloads from its exact canonical URL without recreating cleared local data; a consumed shared-route flag immediately replaces an unrelated save so another reload cannot resurrect it |
 | J31 | Export failure recovery | With local Blob URL creation denied, backup export reveals valid selectable JSON and a complete journey retains its selectable exact-route summary instead of falsely claiming a download |
 | J32 | Cached-page ownership | A persisted page restore with unchanged owned records stays playable; drift in any local player record opens the same focused, inert stale-session guard before another write |

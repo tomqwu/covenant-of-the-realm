@@ -78,6 +78,9 @@ verification.
   request is issued only by explicit player action. A miss explicitly
   revalidates the stable audio URL before it becomes offline-ready, preventing a
   prior HTTP-cache entry from crossing release identities.
+- Offline media requests commonly include an HTTP byte range. The worker slices
+  the cached complete audio response and returns `206 Partial Content` with
+  `Content-Range`, so Chromium can decode the opted-in loop without a network.
 - The production build injects a deterministic digest of the final generated
   entry document into the `sw.js` body. That document already carries the
   content-hashed JavaScript/stylesheet names and a digest of all `public/`

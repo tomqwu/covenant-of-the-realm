@@ -1219,6 +1219,25 @@ describe("browser application", () => {
     expect(root.querySelector('[data-action="audio"]')?.getAttribute("aria-pressed")).toBe("false");
   });
 
+  it("keeps a pending browser playback request stoppable", async () => {
+    const root = rootElement();
+    const audio = fakeAudio(() => new Promise<void>(() => undefined));
+    const game = mountGame(root, {
+      storage: memoryStorage(),
+      seed: 12,
+      ambientAudio: audio,
+    });
+
+    click(root, '[data-action="audio"]');
+    await vi.waitFor(() => expect(game.isAmbientPlaying()).toBe(true));
+    const stop = root.querySelector<HTMLButtonElement>('[data-action="audio"]')!;
+    expect(stop.textContent).toContain("关闭");
+    expect(stop.disabled).toBe(false);
+    click(root, '[data-action="audio"]');
+    expect(game.isAmbientPlaying()).toBe(false);
+    expect(audio.pause).toHaveBeenCalledOnce();
+  });
+
   it("prepares optional ambience once before playback and handles preparation failure", async () => {
     let resolvePreparation!: () => void;
     const prepareAmbientAudio = vi.fn(
@@ -1293,7 +1312,7 @@ describe("browser application", () => {
     expect(audio.pause).toHaveBeenCalledTimes(pausesAfterDestroy);
   });
 
-  it("cancels a pending ambience start when the page becomes hidden", async () => {
+  it("cancels an unresolved ambience start when the page becomes hidden", async () => {
     let resolvePlay!: () => void;
     const visibility = fakeVisibility();
     const audio = fakeAudio(() => new Promise<void>((resolve) => { resolvePlay = resolve; }));
@@ -1306,7 +1325,8 @@ describe("browser application", () => {
     });
 
     click(root, '[data-action="audio"]');
-    expect(root.querySelector<HTMLButtonElement>('[data-action="audio"]')?.disabled).toBe(true);
+    expect(root.querySelector<HTMLButtonElement>('[data-action="audio"]')?.disabled).toBe(false);
+    expect(root.querySelector('[data-action="audio"]')?.textContent).toContain("关闭");
     visibility.setHidden(true);
     expect(root.querySelector<HTMLButtonElement>('[data-action="audio"]')?.disabled).toBe(false);
     expect(root.querySelector(".ambient__status")?.textContent).toContain("切换页面时已暂停");
@@ -1369,9 +1389,8 @@ describe("browser application", () => {
     const root = rootElement();
     const game = mountGame(root, { storage: memoryStorage(), seed: 13, ambientAudio: audio });
     click(root, '[data-action="audio"]');
-    expect(root.querySelector<HTMLButtonElement>('[data-action="audio"]')?.disabled).toBe(true);
-    expect(root.querySelector('[data-action="audio"]')?.textContent).toContain("正在开启");
-    click(root, '[data-action="audio"]');
+    expect(root.querySelector<HTMLButtonElement>('[data-action="audio"]')?.disabled).toBe(false);
+    expect(root.querySelector('[data-action="audio"]')?.textContent).toContain("关闭");
     expect(audio.play).toHaveBeenCalledOnce();
     game.destroy();
     resolvePlay();

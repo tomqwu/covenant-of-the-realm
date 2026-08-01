@@ -37,6 +37,46 @@ const cacheResponse = async (cache, request, response) => {
   return response;
 };
 
+const rangedResponse = async (request, response) => {
+  const rangeHeader = request.headers.get("range");
+  if (!rangeHeader || response.status !== 200) return response;
+
+  const bytes = await response.arrayBuffer();
+  const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader);
+  if (!match) return response;
+
+  const total = bytes.byteLength;
+  const suffixLength = match[1] === "" ? Number(match[2]) : null;
+  const start = suffixLength === null
+    ? Number(match[1])
+    : Math.max(0, total - suffixLength);
+  const requestedEnd = suffixLength === null && match[2] !== "" ? Number(match[2]) : total - 1;
+  const end = Math.min(requestedEnd, total - 1);
+  if (
+    total === 0 ||
+    !Number.isSafeInteger(start) ||
+    !Number.isSafeInteger(end) ||
+    start < 0 ||
+    start > end ||
+    start >= total
+  ) {
+    return new Response(null, {
+      status: 416,
+      headers: { "Content-Range": `bytes */${total}` },
+    });
+  }
+
+  const headers = new Headers(response.headers);
+  headers.set("Accept-Ranges", "bytes");
+  headers.set("Content-Length", String(end - start + 1));
+  headers.set("Content-Range", `bytes ${start}-${end}/${total}`);
+  return new Response(bytes.slice(start, end + 1), {
+    status: 206,
+    statusText: "Partial Content",
+    headers,
+  });
+};
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
@@ -123,9 +163,10 @@ const networkFirst = async (request, preloadResponse) => {
 const cacheFirst = async (request, reloadOnMiss = false) => {
   const cache = await currentCache().catch(() => null);
   const cached = await cache?.match(request).catch(() => undefined);
-  if (cached) return cached;
+  if (cached) return rangedResponse(request, cached);
   const response = await fetch(request, reloadOnMiss ? { cache: "reload" } : undefined);
-  return cache ? cacheResponse(cache, request, response) : response;
+  const resolved = cache ? await cacheResponse(cache, request, response) : response;
+  return rangedResponse(request, resolved);
 };
 
 self.addEventListener("fetch", (event) => {
