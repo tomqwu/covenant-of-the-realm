@@ -41,3 +41,9 @@ coverage/
 *.db
 logs/
 tmp/
+.static/
+*.pid
+
+# Local test output
+test-results/
+playwright-report/

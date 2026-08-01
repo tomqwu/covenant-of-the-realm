@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+node scripts/check-runtime.mjs
+
+detected=0
+
+if [[ -f package.json ]]; then
+  detected=1
+  if [[ -f pnpm-lock.yaml ]]; then
+    corepack pnpm install --frozen-lockfile
+  elif [[ -f yarn.lock ]]; then
+    corepack yarn install --immutable || corepack yarn install --frozen-lockfile
+  elif [[ -f bun.lock || -f bun.lockb ]]; then
+    bun install --frozen-lockfile
+  elif [[ -f package-lock.json || -f npm-shrinkwrap.json ]]; then
+    npm ci
+  else
+    npm install
+  fi
+  if node -e 'const p=require("./package.json"); process.exit(p.devDependencies?.["@playwright/test"] ? 0 : 1)'; then
+    if [[ "${PLAYWRIGHT_WITH_DEPS:-0}" == "1" ]]; then
+      npx playwright install --with-deps chromium firefox webkit
+    else
+      npx playwright install chromium firefox webkit
+    fi
+  fi
+fi
+
+if [[ -f pyproject.toml || -f requirements.txt ]]; then
+  detected=1
+  if [[ -f uv.lock ]]; then
+    uv sync --frozen
+  elif [[ -f poetry.lock ]]; then
+    poetry install
+  elif [[ -f requirements.txt ]]; then
+    python3 -m pip install -r requirements.txt
+  else
+    printf '%s\n' 'Python manifest found. Add a lock file or documented setup command.' >&2
+    exit 1
+  fi
+fi
+
+if [[ -f Cargo.toml ]]; then
+  detected=1
+  cargo fetch --locked
+fi
+
+if [[ -f go.mod ]]; then
+  detected=1
+  go mod download
+fi
+
+if [[ -f Package.swift ]]; then
+  detected=1
+  swift package resolve
+fi
+
+if [[ "$detected" -eq 0 ]]; then
+  printf '%s\n' 'No supported runtime manifest found; nothing to install.'
+fi

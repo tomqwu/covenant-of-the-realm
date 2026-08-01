@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">山河有契 seal</title>
+  <rect width="512" height="512" rx="112" fill="#eee5d1"/>
+  <path d="M52 346c66-48 108-111 155-198 22 70 45 111 72 145 42-55 72-107 104-174 17 79 42 149 77 211-111-31-270-26-408 16Z" fill="#596d58" opacity=".9"/>
+  <path d="M58 363c95-32 194-36 296-11 42 10 72 11 101 4" fill="none" stroke="#20251f" stroke-width="22" stroke-linecap="round"/>
+  <rect x="192" y="193" width="128" height="128" rx="8" fill="#a33c2c" transform="rotate(-3 256 257)"/>
+  <path d="M226 229h60M233 253l44 37M279 253l-46 37" fill="none" stroke="#eee5d1" stroke-width="15" stroke-linecap="square"/>
+</svg>

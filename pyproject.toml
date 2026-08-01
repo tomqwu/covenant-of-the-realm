@@ -1,0 +1,50 @@
+[project]
+name = "covenant-of-the-realm"
+version = "0.1.0"
+description = "Server-authoritative multiplayer cultivation MUD"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "evennia==6.0.0",
+]
+
+[dependency-groups]
+dev = [
+  "coverage[toml]>=7.10,<8",
+  "pytest>=8.4,<10",
+  "ruff>=0.12,<1",
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["mud/world"]
+omit = [
+  "mud/world/bootstrap.py",
+  "mud/world/help_entries.py",
+  "mud/world/prototypes.py",
+  "mud/world/tests/*",
+]
+
+[tool.coverage.report]
+fail_under = 99
+show_missing = true
+skip_covered = true
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "if __name__ == .__main__.:",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["B", "C4", "E", "F", "I", "N", "PERF", "RUF", "SIM", "UP"]
+allowed-confusables = ["，"]
+
+[tool.ruff.lint.per-file-ignores]
+"mud/server/conf/settings.py" = ["F403"]

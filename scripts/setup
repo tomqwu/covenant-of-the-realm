@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+cd "$repo_dir"
+uv sync --locked --all-groups
+
+mkdir -p "$repo_dir/mud/server/logs"
+cd "$repo_dir/mud"
+uv run --project .. evennia migrate --noinput
+uv run --project .. python ../scripts/bootstrap_account.py
+
+printf '%s\n' "Setup complete. Run 'make play' and open http://127.0.0.1:4001/webclient/."

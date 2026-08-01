@@ -1,0 +1,182 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+node scripts/check-runtime.mjs
+
+mode="${1:-all}"
+if [[ "$mode" != "all" && "$mode" != "lint" && "$mode" != "test" ]]; then
+  printf 'usage: %s [all|lint|test]\n' "$0" >&2
+  exit 2
+fi
+
+section() {
+  printf '\n==> %s\n' "$1"
+}
+
+has_package_script() {
+  node -e 'const p=require("./package.json"); process.exit(p.scripts && p.scripts[process.argv[1]] ? 0 : 1)' "$1"
+}
+
+run_package_script() {
+  local script="$1"
+  if [[ -f pnpm-lock.yaml ]]; then
+    corepack pnpm run "$script"
+  elif [[ -f yarn.lock ]]; then
+    corepack yarn run "$script"
+  elif [[ -f bun.lock || -f bun.lockb ]]; then
+    bun run "$script"
+  else
+    npm run "$script"
+  fi
+}
+
+run_python() {
+  if [[ -f uv.lock ]]; then
+    uv run "$@"
+  elif [[ -f poetry.lock ]]; then
+    poetry run "$@"
+  else
+    "$@"
+  fi
+}
+
+section 'Repository hygiene'
+git diff --check -- .
+git diff --cached --check -- .
+
+text_failed=0
+while IFS= read -r -d '' file; do
+  [[ -f "$file" ]] || continue
+  if LC_ALL=C grep -Iq . "$file" || [[ ! -s "$file" ]]; then
+    if LC_ALL=C grep -nE '[[:blank:]]+$' "$file"; then
+      printf 'Trailing whitespace found in %s\n' "$file" >&2
+      text_failed=1
+    fi
+    if [[ -s "$file" ]] && [[ "$(tail -c 1 "$file" | wc -l | tr -d ' ')" -eq 0 ]]; then
+      printf 'Missing final newline: %s\n' "$file" >&2
+      text_failed=1
+    fi
+  fi
+done < <(git ls-files --cached --others --exclude-standard -z)
+[[ "$text_failed" -eq 0 ]] || exit 1
+
+for script in scripts/*; do
+  [[ -f "$script" ]] || continue
+  if head -n 1 "$script" | grep -q 'bash'; then
+    bash -n "$script"
+  fi
+done
+
+detected=0
+
+if [[ -f package.json ]]; then
+  detected=1
+  section 'JavaScript / TypeScript'
+  js_lint_checks=0
+  if [[ "$mode" != "test" ]]; then
+    for script in format:check lint typecheck; do
+      if has_package_script "$script"; then
+        run_package_script "$script"
+        js_lint_checks=$((js_lint_checks + 1))
+      fi
+    done
+    if [[ "$js_lint_checks" -eq 0 ]]; then
+      printf '%s\n' 'package.json must define at least one of: format:check, lint, typecheck.' >&2
+      exit 1
+    fi
+  fi
+  if [[ "$mode" != "lint" ]]; then
+    if has_package_script test; then
+      run_package_script test
+    else
+      printf '%s\n' 'package.json must define a test script.' >&2
+      exit 1
+    fi
+  fi
+  if [[ "$mode" == "all" ]] && has_package_script build; then
+    run_package_script build
+  fi
+  if [[ "$mode" == "all" ]] && has_package_script state:check; then
+    run_package_script state:check
+  fi
+fi
+
+if [[ -f pyproject.toml || -f requirements.txt ]]; then
+  detected=1
+  section 'Python'
+  python_lint_checks=0
+  if [[ "$mode" != "test" ]]; then
+    if [[ -f pyproject.toml ]] && grep -Eq '^\[tool\.ruff([].]|$)' pyproject.toml; then
+      run_python ruff format --check .
+      run_python ruff check .
+      python_lint_checks=$((python_lint_checks + 1))
+    fi
+    if [[ -f pyproject.toml ]] && grep -Eq '^\[tool\.(mypy|pyright)([]]|$)' pyproject.toml; then
+      if grep -Eq '^\[tool\.mypy([]]|$)' pyproject.toml; then
+        run_python mypy .
+      else
+        run_python pyright
+      fi
+      python_lint_checks=$((python_lint_checks + 1))
+    fi
+    if [[ "$python_lint_checks" -eq 0 ]]; then
+      printf '%s\n' 'Python projects must configure Ruff, mypy, or pyright in pyproject.toml.' >&2
+      exit 1
+    fi
+  fi
+  if [[ "$mode" != "lint" ]]; then
+    if [[ -d tests ]] || { [[ -f pyproject.toml ]] && grep -Eq '^\[tool\.pytest([]\.]|$)' pyproject.toml; }; then
+      run_python pytest
+    else
+      printf '%s\n' 'Python projects must provide tests/ or configure pytest.' >&2
+      exit 1
+    fi
+  fi
+fi
+
+if [[ -f Cargo.toml ]]; then
+  detected=1
+  section 'Rust'
+  if [[ "$mode" != "test" ]]; then
+    cargo fmt --all --check
+    cargo clippy --all-targets --all-features -- -D warnings
+  fi
+  if [[ "$mode" != "lint" ]]; then
+    cargo test --all-features --locked
+  fi
+fi
+
+if [[ -f go.mod ]]; then
+  detected=1
+  section 'Go'
+  if [[ "$mode" != "test" ]]; then
+    unformatted="$(gofmt -l .)"
+    if [[ -n "$unformatted" ]]; then
+      printf 'Files need gofmt:\n%s\n' "$unformatted" >&2
+      exit 1
+    fi
+    go vet ./...
+  fi
+  if [[ "$mode" != "lint" ]]; then
+    go test ./...
+  fi
+fi
+
+if [[ -f Package.swift ]]; then
+  detected=1
+  section 'Swift'
+  if [[ "$mode" != "test" ]]; then
+    swift build
+  fi
+  if [[ "$mode" != "lint" ]]; then
+    swift test
+  fi
+fi
+
+if [[ "$detected" -eq 0 ]]; then
+  printf '%s\n' 'No supported runtime manifest found; repository checks only.'
+fi
+
+printf '\n%s\n' 'All requested checks passed.'

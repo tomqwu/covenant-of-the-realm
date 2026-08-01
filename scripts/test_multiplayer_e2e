@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+mud_dir="$repo_dir/mud"
+server_started=0
+server_ready=0
+
+cleanup() {
+  if [[ "$server_started" -eq 1 ]]; then
+    cd "$mud_dir"
+    uv run --project .. evennia stop
+  fi
+}
+trap cleanup EXIT
+
+mkdir -p "$mud_dir/server/logs"
+cd "$mud_dir"
+uv run --project .. evennia migrate --noinput
+uv run --project .. python ../scripts/bootstrap_account.py
+COVENANT_CREATION_THROTTLE_LIMIT=100 uv run --project .. evennia start
+server_started=1
+
+for _ in {1..40}; do
+  if curl --fail --silent --output /dev/null http://127.0.0.1:4001/webclient/; then
+    server_ready=1
+    break
+  fi
+  sleep 0.25
+done
+if [[ "$server_ready" -ne 1 ]]; then
+  printf '%s\n' "Evennia web client did not become ready." >&2
+  exit 1
+fi
+
+cd "$repo_dir"
+uv run python scripts/e2e_telnet.py

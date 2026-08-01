@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; base-uri 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'self' ws://127.0.0.1:* ws://localhost:*; worker-src 'self'; manifest-src 'self'; form-action 'none'; frame-src 'none'"
+    />
+    <meta
+      name="description"
+      content="《山河有契：行旅之契》——一段由选择写成的山河旅程。"
+    />
+    <meta name="theme-color" content="#eee5d1" />
+    <link
+      rel="preload"
+      href="./assets/journey-scroll.jpg"
+      as="image"
+      type="image/jpeg"
+      fetchpriority="high"
+    />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/app-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icons/app-icon-maskable-512.png" />
+    <title>行旅之契 · 山河有契</title>
+  </head>
+  <body>
+    <noscript>
+      <main class="no-script">
+        <p class="eyebrow">山河有契 · 行旅之契</p>
+        <h1>需要启用 JavaScript 才能开始行旅</h1>
+        <p>这段本地浏览器游戏需要 JavaScript 运行选择与存档。启用后重新载入即可继续。</p>
+        <p lang="en"><strong>JavaScript is required to begin.</strong> This local browser game uses it for choices and saves. Enable it, then reload this page.</p>
+      </main>
+    </noscript>
+    <div id="app"></div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

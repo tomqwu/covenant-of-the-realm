@@ -1,0 +1,50 @@
+{
+  "id": "./",
+  "name": "山河有契：行旅之契",
+  "name_localized": {
+    "en": "Mountains & Rivers: Covenant of the Road"
+  },
+  "short_name": "山河有契",
+  "short_name_localized": {
+    "en": "Covenant Road"
+  },
+  "description": "一段由选择写成的山河旅程。",
+  "description_localized": {
+    "en": "A journey through mountains and rivers, written by your choices."
+  },
+  "dir": "ltr",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eee5d1",
+  "theme_color": "#eee5d1",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "./icons/app-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/app-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/app-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

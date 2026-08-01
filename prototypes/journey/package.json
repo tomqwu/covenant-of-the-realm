@@ -1,0 +1,39 @@
+{
+  "name": "shan-he-you-qi",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "play": "npm run build && vite preview --host 127.0.0.1 --open",
+    "build": "tsc -b && vite build && node scripts/check-build.mjs && node scripts/check-build-reproducibility.mjs",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "tsc -b --pretty false",
+    "docs:check": "node scripts/check-doc-links.mjs",
+    "content:audit": "node scripts/audit-session-length.mjs",
+    "assets:check": "node scripts/check-public-asset-revision.mjs",
+    "ui-copy:check": "node scripts/check-ui-copy.mjs",
+    "test-definitions:check": "node scripts/check-test-definitions.mjs",
+    "workflow:check": "node scripts/check-workflow-pins.mjs",
+    "lint": "npm run docs:check && npm run workflow:check && npm run test-definitions:check && npm run content:audit && npm run assets:check && npm run ui-copy:check",
+    "test": "npm run test:unit && npm run test:e2e && npm run badges:check",
+    "test:unit": "vitest run --coverage && node scripts/check-coverage-scope.mjs",
+    "test:unit:watch": "vitest",
+    "test:e2e": "env -u NO_COLOR playwright test",
+    "test:e2e:headed": "env -u NO_COLOR playwright test --headed",
+    "badges:check": "node scripts/check-badges.mjs",
+    "state:check": "node scripts/check-state-metrics.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.62.1",
+    "@vitest/coverage-v8": "^4.1.10",
+    "happy-dom": "^20.11.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.0",
+    "vitest": "^4.1.10"
+  }
+}
