@@ -20,7 +20,7 @@ needed on the Evennia side.
 
 MSSPTable = {
     # Required fields
-    "NAME": "Mygame",  # usually the same as SERVERNAME
+    "NAME": "山河有契",  # usually the same as SERVERNAME
     # Generic
     "CRAWL DELAY": "-1",  # limit how often crawler may update the listing. -1 for no limit
     "HOSTNAME": "",  # telnet hostname
@@ -30,18 +30,18 @@ MSSPTable = {
     "CREATED": "",  # year MUD was created
     "ICON": "",  # url to icon 32x32 or larger; <32kb.
     "IP": "",  # current or new IP address
-    "LANGUAGE": "",  # name of language used, e.g. English
+    "LANGUAGE": "Chinese",  # name of language used, e.g. English
     "LOCATION": "",  # full English name of server country
     "MINIMUM AGE": "0",  # set to 0 if not applicable
     "WEBSITE": "",  # http:// address to your game website
     # Categorisation
     "FAMILY": "Evennia",
-    "GENRE": "None",  # Adult, Fantasy, Historical, Horror, Modern, None, or Science Fiction
+    "GENRE": "Fantasy",  # Adult, Fantasy, Historical, Horror, Modern, None, or Science Fiction
     # Gameplay: Adventure, Educational, Hack and Slash, None,
     # Player versus Player, Player versus Environment,
     # Roleplaying, Simulation, Social or Strategy
-    "GAMEPLAY": "",
-    "STATUS": "Open Beta",  # Allowed: Alpha, Closed Beta, Open Beta, Live
+    "GAMEPLAY": "Roleplaying",
+    "STATUS": "Alpha",  # Allowed: Alpha, Closed Beta, Open Beta, Live
     "GAMESYSTEM": "Custom",  # D&D, d20 System, World of Darkness, etc. Use Custom if homebrew
     # Subgenre: LASG, Medieval Fantasy, World War II, Frankenstein,
     # Cyberpunk, Dragonlance, etc. Or None if not applicable.
@@ -51,7 +51,7 @@ MSSPTable = {
     "HELPFILES": "0",
     "MOBILES": "0",
     "OBJECTS": "0",
-    "ROOMS": "0",  # use 0 if room-less
+    "ROOMS": "3",  # use 0 if room-less
     "CLASSES": "0",  # use 0 if class-less
     "LEVELS": "0",  # use 0 if level-less
     "RACES": "0",  # use 0 if race-less
@@ -89,13 +89,13 @@ MSSPTable = {
     # Game  (set to 1 or 0, or one of the given alternatives)
     "ADULT MATERIAL": "0",
     "MULTICLASSING": "0",
-    "NEWBIE FRIENDLY": "0",
+    "NEWBIE FRIENDLY": "1",
     "PLAYER CITIES": "0",
     "PLAYER CLANS": "0",
     "PLAYER CRAFTING": "0",
     "PLAYER GUILDS": "0",
     "EQUIPMENT SYSTEM": "None",  # "None", "Level", "Skill", "Both"
-    "MULTIPLAYING": "None",  # "None", "Restricted", "Full"
+    "MULTIPLAYING": "Full",  # "None", "Restricted", "Full"
     "PLAYERKILLING": "None",  # "None", "Restricted", "Full"
     "QUEST SYSTEM": "None",  # "None", "Immortal Run", "Automated", "Integrated"
     "ROLEPLAYING": "None",  # "None", "Accepted", "Encouraged", "Enforced"

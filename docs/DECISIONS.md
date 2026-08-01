@@ -4,6 +4,13 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-01 — Chinese-first player experience
+
+All ordinary player-facing login, room, movement, chat, help, cultivation, and status
+text uses Simplified Chinese. Chinese command names are the documented/default path;
+English command names remain compatibility aliases. A runtime language switch is not
+part of this vertical slice.
+
 ### 2026-08-01 — Repository workflow
 
 Implementation work proceeds on `codex/` feature branches. The complete relevant

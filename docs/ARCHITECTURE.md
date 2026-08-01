@@ -22,7 +22,7 @@ SQLite is disposable infrastructure for local development and CI. PostgreSQL is 
 
 `mud/world/rules.py` is the domain boundary. It accepts explicit stored state plus authored inputs, validates them, and returns immutable new state and facts. It imports no Evennia, database, network, clock, or random source. Consequently, identical inputs always produce identical outputs.
 
-`mud/commands/cultivation.py` is an adapter. It resolves the authenticated character and current room, calls the domain rule, persists the result, appends audit facts, and renders bilingual prose. Browser and Telnet clients send intentions such as `cultivate`; they never send resource deltas, realm changes, or reward values.
+`mud/commands/cultivation.py` is an adapter. It resolves the authenticated character and current room, calls the domain rule, persists the result, appends audit facts, and renders Chinese player-facing prose. Browser and Telnet clients send intentions such as `修炼` (with `cultivate` retained as a compatibility alias); they never send resource deltas, realm changes, or reward values.
 
 ## Persistence
 

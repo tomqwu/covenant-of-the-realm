@@ -5,8 +5,8 @@
 | Boundary | Gate | Current result |
 | --- | --- | --- |
 | Deterministic cultivation rules | pytest + branch coverage, minimum 99% | 35 tests; 100% statements and branches |
-| Evennia commands and world bootstrap | Evennia isolated database harness | 8 integration tests passing |
-| Multiplayer release path | real server, two real Telnet clients | gather → cultivate → cooperate → advance → read persisted state |
+| Evennia commands and world bootstrap | Evennia isolated database harness | command, localization, and bootstrap integration tests passing |
+| Multiplayer release path | real server, two real Telnet clients | 中文注册 → 登录 → 采药 → 修炼 → 协作 → 突破 → 重连持久化 |
 | Browser journey prototype | Vitest and Playwright | 100% unit metrics; 53 Playwright executions passing |
 
 The percentage badge describes the deterministic production rules, not transport code. Adapter behavior is checked at Evennia's real command/database boundary, and transport composition is checked against a live server. This separation keeps the numeric claim honest while still exercising the runtime layers where they actually operate.

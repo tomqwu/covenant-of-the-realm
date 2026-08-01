@@ -35,8 +35,8 @@ from evennia.settings_default import *
 ######################################################################
 
 # This is the name of your game. Make it catchy!
-SERVERNAME = "Covenant of the Realm"
-GAME_SLOGAN = "山河有契 · A persistent cultivation world"
+SERVERNAME = "山河有契"
+GAME_SLOGAN = "一方持续生长的多人修仙世界"
 
 # The first slice uses the durable Evennia account/character model. Guest accounts
 # would be deleted on disconnect and are therefore intentionally disabled.

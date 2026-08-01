@@ -15,7 +15,19 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 """
 
 from evennia import default_cmds
+from evennia.commands.default import unloggedin
 
+from commands.chinese import (
+    CmdChineseConnect,
+    CmdChineseCreate,
+    CmdChineseGameHelp,
+    CmdChineseLook,
+    CmdChineseNoMatch,
+    CmdChineseQuit,
+    CmdChineseSay,
+    CmdChineseUnloggedinHelp,
+    CmdChineseUnloggedinLook,
+)
 from commands.cultivation import (
     CmdCultivate,
     CmdCultivationStatus,
@@ -40,6 +52,10 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         Populates the cmdset
         """
         super().at_cmdset_creation()
+        self.add(CmdChineseLook())
+        self.add(CmdChineseSay())
+        self.add(CmdChineseGameHelp())
+        self.add(CmdChineseNoMatch())
         self.add(CmdCultivationStatus())
         self.add(CmdForage())
         self.add(CmdCultivate())
@@ -63,9 +79,6 @@ class AccountCmdSet(default_cmds.AccountCmdSet):
         Populates the cmdset
         """
         super().at_cmdset_creation()
-        #
-        # any commands you add below will overload the default ones.
-        #
 
 
 class UnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
@@ -77,13 +90,17 @@ class UnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
     key = "DefaultUnloggedin"
 
     def at_cmdset_creation(self):
-        """
-        Populates the cmdset
-        """
-        super().at_cmdset_creation()
-        #
-        # any commands you add below will overload the default ones.
-        #
+        """Populate the login screen with Chinese-first commands."""
+
+        self.add(CmdChineseConnect())
+        self.add(CmdChineseCreate())
+        self.add(CmdChineseQuit())
+        self.add(CmdChineseUnloggedinLook())
+        self.add(CmdChineseUnloggedinHelp())
+        self.add(CmdChineseNoMatch())
+        self.add(unloggedin.CmdUnconnectedEncoding())
+        self.add(unloggedin.CmdUnconnectedScreenreader())
+        self.add(unloggedin.CmdUnconnectedInfo())
 
 
 class SessionCmdSet(default_cmds.SessionCmdSet):

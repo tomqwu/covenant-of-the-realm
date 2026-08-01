@@ -30,7 +30,9 @@ def at_server_start():
     This is called every time the server starts up, regardless of
     how it was shut down.
     """
-    pass
+    from world.bootstrap import build_vertical_slice
+
+    build_vertical_slice()
 
 
 def at_server_stop():
