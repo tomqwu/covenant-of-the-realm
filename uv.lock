@@ -142,7 +142,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "evennia", specifier = "==6.0.0" }]
+requires-dist = [{ name = "evennia", specifier = "==6.1.0" }]
 
 [package.metadata.requires-dev]
 dev = [
@@ -277,7 +277,7 @@ wheels = [
 
 [[package]]
 name = "evennia"
-version = "6.0.0"
+version = "6.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anything" },
@@ -302,9 +302,9 @@ dependencies = [
     { name = "tzdata" },
     { name = "uritemplate" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d6/45/4d8cb74f9d3c301ab339cfceb61a83f3d747eb50149862dfcaea834509aa/evennia-6.0.0.tar.gz", hash = "sha256:842d962687beadcf4b470c46f86cc04a1c7a842c6967dd077edf8bb86d932ab3", size = 2192254, upload-time = "2026-02-18T06:39:05.813Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ce/dc/f8927f2e5d0f11b638e87fb07e41dfa0fa97329b2f34d48ed34d05f2ff73/evennia-6.1.0.tar.gz", hash = "sha256:01fe228d0460c5d482424e9cd8ab1b8e1216ed5b8a29097b105d9a70a6362c29", size = 2234279, upload-time = "2026-07-05T07:06:46.148Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/77/1c70627d5161f2b24ce37ee757f5bae702abc282cd956d395427b257049f/evennia-6.0.0-py3-none-any.whl", hash = "sha256:78a86f7a4d13cf188abfc790609d3c778ccf9dad6223bfb0a0a69b5402fbc67a", size = 2558327, upload-time = "2026-02-18T06:39:03.552Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/e2/62e430f6c094b849bd9802e9b0bc3dd1954e8a62f83752493a30be438104/evennia-6.1.0-py3-none-any.whl", hash = "sha256:de7ee2a778c4d08fe25f3ff3522313021874377792435faee9db8d11560e58a7", size = 2601881, upload-time = "2026-07-05T07:06:43.948Z" },
 ]
 
 [[package]]
@@ -584,11 +584,11 @@ wheels = [
 
 [[package]]
 name = "simpleeval"
-version = "1.0.3"
+version = "1.0.5"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ff/6f/15be211749430f52f2c8f0c69158a6fc961c03aac93fa28d44d1a6f5ebc7/simpleeval-1.0.3.tar.gz", hash = "sha256:67bbf246040ac3b57c29cf048657b9cf31d4e7b9d6659684daa08ca8f1e45829", size = 24358, upload-time = "2024-11-02T10:29:46.912Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/ea/42430694f12bfb20ac00f1c4ae0e489ef23b302ea6abe6266934bb749bf6/simpleeval-1.0.5.tar.gz", hash = "sha256:b6b7933fffe13a345ada9917f8579c72e7b8afcfb7f7759b18fdd068aaa60486", size = 40853, upload-time = "2026-03-13T09:22:49.449Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/e9/e58082fbb8cecbb6fb4133033c40cc50c248b1a331582be3a0f39138d65b/simpleeval-1.0.3-py3-none-any.whl", hash = "sha256:e3bdbb8c82c26297c9a153902d0fd1858a6c3774bf53ff4f134788c3f2035c38", size = 15762, upload-time = "2024-11-02T10:29:45.706Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/9c/43d7a2845fdf72f21572a0d7c33076cb69c2c73db9a297a5bfc6b87ebb54/simpleeval-1.0.5-py3-none-any.whl", hash = "sha256:c0de42a9f7849b7bc8c51338295341126f103a2a86beceffebafd9388e3cdfce", size = 18608, upload-time = "2026-03-13T09:22:47.875Z" },
 ]
 
 [[package]]
