@@ -15,3 +15,16 @@ runtime drawing, and Godot's default theme/font behavior. It commits no third-pa
 music, map, sound, or plugin. Godot 4.7.1 is an external MIT-licensed development/runtime
 dependency resolved separately from the repository; its official Linux build is checksum-pinned
 by `scripts/setup_rpg`.
+
+## 2026-08-01 · RPG style-exploration concept boards
+
+The three images under `docs/concepts/style-exploration/` were generated with Codex's built-in
+OpenAI ImageGen workflow from project-authored prompts. No input images, external game assets,
+novel illustrations, artist works, or third-party style references were supplied to the model.
+The prompt summaries and originality constraints are recorded beside the images in
+`docs/concepts/style-exploration/PROMPTS.md`.
+
+These boards are internal visual-development candidates, not production sprites, textures,
+marketing art, or evidence of clearance. Before public or commercial use, review the applicable
+OpenAI terms, complete similarity and trademark checks, and replace or explicitly approve each
+asset through the project's final art pipeline.
