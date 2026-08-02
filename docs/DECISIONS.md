@@ -112,6 +112,14 @@ The player-facing design must be recognizably and comprehensively cultivation-ba
 
 ## Proposed, not yet confirmed
 
+### 56 px working character scale
+
+Use 56 px as the functional graybox height for ordinary player and companion sprites at the
+1152×648 reference viewport. The 48/56/64 comparison keeps 56 px as the best current balance
+between identity, world scale, road width, and collision margin. Revalidate this before promotion
+to a final production rule after real Sprite Sheets, movement speed, collision boxes, camera zoom,
+and controller play are present.
+
 ### Unity CLI engine evaluation
 
 Unity CLI `1.0.0-beta.3` and Unity `6000.3.21f1` (6.3 LTS, ARM64) were installed

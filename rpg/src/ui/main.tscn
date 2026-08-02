@@ -1,7 +1,45 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/ui/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://src/ui/map_canvas.gd" id="2_map"]
+
+[sub_resource type="StyleBoxFlat" id="StyleMap"]
+bg_color = Color(0.286, 0.424, 0.38, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.153, 0.192, 0.18, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="StyleHud"]
+bg_color = Color(0.153, 0.192, 0.18, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.556, 0.733, 0.514, 0.72)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[sub_resource type="StyleBoxFlat" id="StylePaper"]
+bg_color = Color(0.949, 0.902, 0.796, 0.97)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.498, 0.518, 0.427, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+shadow_color = Color(0.08, 0.12, 0.11, 0.24)
+shadow_size = 7
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -19,99 +57,180 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.035, 0.047, 0.055, 1)
+color = Color(0.153, 0.192, 0.18, 1)
 
-[node name="Margin" type="MarginContainer" parent="."]
+[node name="MapFrame" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 28.0
-offset_top = 24.0
-offset_right = -28.0
-offset_bottom = -24.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleMap")
 
-[node name="Columns" type="HBoxContainer" parent="Margin"]
-layout_mode = 2
-theme_override_constants/separation = 24
-
-[node name="MapFrame" type="PanelContainer" parent="Margin/Columns"]
-custom_minimum_size = Vector2(650, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="MapCanvas" type="Control" parent="Margin/Columns/MapFrame"]
+[node name="MapCanvas" type="Control" parent="MapFrame"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("2_map")
 
-[node name="MarkerHelp" type="Label" parent="Margin/Columns/MapFrame"]
+[node name="ChapterHud" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 28.0
+offset_right = 426.0
+offset_bottom = 105.0
+theme_override_styles/panel = SubResource("StyleHud")
+
+[node name="HudMargin" type="MarginContainer" parent="ChapterHud"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 10
+
+[node name="HudText" type="VBoxContainer" parent="ChapterHud/HudMargin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="ChapterLabel" type="Label" parent="ChapterHud/HudMargin/HudText"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.894, 0.765, 0.431, 1)
+theme_override_font_sizes/font_size = 17
+
+[node name="ObjectiveLabel" type="Label" parent="ChapterHud/HudMargin/HudText"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.949, 0.902, 0.796, 1)
+theme_override_font_sizes/font_size = 14
+
+[node name="StatusHud" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -460.0
+offset_top = 28.0
+offset_right = -28.0
+offset_bottom = 78.0
+grow_horizontal = 0
+theme_override_styles/panel = SubResource("StyleHud")
+
+[node name="StatusMargin" type="MarginContainer" parent="StatusHud"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 10
+
+[node name="StatusLabel" type="Label" parent="StatusHud/StatusMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.949, 0.902, 0.796, 1)
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 2
+vertical_alignment = 1
+autowrap_mode = 2
+
+[node name="ScaleNote" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -264.0
+offset_top = -218.0
+offset_right = -36.0
+offset_bottom = -194.0
+grow_horizontal = 0
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.949, 0.902, 0.796, 0.82)
+theme_override_font_sizes/font_size = 12
+text = "56 px 角色基准 · 功能性美术灰盒"
+horizontal_alignment = 2
+
+[node name="StoryPanel" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 18.0
-offset_top = -48.0
-offset_right = -18.0
-offset_bottom = -18.0
+offset_left = 24.0
+offset_top = -194.0
+offset_right = -24.0
+offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 0
-text = "● 当前位置　·　原创地图灰盒"
+theme_override_styles/panel = SubResource("StylePaper")
 
-[node name="StoryPanel" type="PanelContainer" parent="Margin/Columns"]
-custom_minimum_size = Vector2(390, 0)
+[node name="StoryMargin" type="MarginContainer" parent="StoryPanel"]
 layout_mode = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 16
 
-[node name="StoryMargin" type="MarginContainer" parent="Margin/Columns/StoryPanel"]
+[node name="StoryRow" type="HBoxContainer" parent="StoryPanel/StoryMargin"]
 layout_mode = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 24
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 24
+theme_override_constants/separation = 22
 
-[node name="Story" type="VBoxContainer" parent="Margin/Columns/StoryPanel/StoryMargin"]
+[node name="StoryText" type="VBoxContainer" parent="StoryPanel/StoryMargin/StoryRow"]
 layout_mode = 2
-theme_override_constants/separation = 14
+size_flags_horizontal = 3
+theme_override_constants/separation = 7
 
-[node name="ChapterLabel" type="Label" parent="Margin/Columns/StoryPanel/StoryMargin/Story"]
+[node name="LocationLabel" type="Label" parent="StoryPanel/StoryMargin/StoryRow/StoryText"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.72, 0.66, 0.48, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.153, 0.192, 0.18, 1)
+theme_override_font_sizes/font_size = 27
 
-[node name="LocationLabel" type="Label" parent="Margin/Columns/StoryPanel/StoryMargin/Story"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 30
-
-[node name="DescriptionLabel" type="Label" parent="Margin/Columns/StoryPanel/StoryMargin/Story"]
+[node name="DescriptionLabel" type="Label" parent="StoryPanel/StoryMargin/StoryRow/StoryText"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.216, 0.286, 0.275, 1)
+theme_override_font_sizes/font_size = 16
 text = "读取中……"
 autowrap_mode = 2
 
-[node name="StatusLabel" type="Label" parent="Margin/Columns/StoryPanel/StoryMargin/Story"]
+[node name="EventLabel" type="Label" parent="StoryPanel/StoryMargin/StoryRow/StoryText"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 45)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.72, 0.82, 0.72, 1)
+theme_override_colors/font_color = Color(0.475, 0.286, 0.184, 1)
+theme_override_font_sizes/font_size = 14
 autowrap_mode = 2
 
-[node name="Rule" type="HSeparator" parent="Margin/Columns/StoryPanel/StoryMargin/Story"]
+[node name="Rule" type="VSeparator" parent="StoryPanel/StoryMargin/StoryRow"]
 layout_mode = 2
 
-[node name="EventLabel" type="Label" parent="Margin/Columns/StoryPanel/StoryMargin/Story"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 80)
+[node name="ActionColumn" type="VBoxContainer" parent="StoryPanel/StoryMargin/StoryRow"]
+custom_minimum_size = Vector2(270, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.82, 0.78, 0.67, 1)
-autowrap_mode = 2
+theme_override_constants/separation = 7
 
-[node name="Actions" type="VBoxContainer" parent="Margin/Columns/StoryPanel/StoryMargin/Story"]
+[node name="ActionTitle" type="Label" parent="StoryPanel/StoryMargin/StoryRow/ActionColumn"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.153, 0.192, 0.18, 1)
+theme_override_font_sizes/font_size = 14
+text = "可选行动"
+
+[node name="Actions" type="VBoxContainer" parent="StoryPanel/StoryMargin/StoryRow/ActionColumn"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 8
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="InputHint" type="Label" parent="StoryPanel/StoryMargin/StoryRow/ActionColumn"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.286, 0.424, 0.38, 0.9)
+theme_override_font_sizes/font_size = 12
+text = "鼠标点击 · Tab 选择 · Enter 确认"
+horizontal_alignment = 2

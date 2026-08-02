@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup setup-rpg setup-prototype play play-rpg stop prototype lint docs-check rpg-content-check test test-unit test-rpg test-integration test-multiplayer-e2e check check-mud check-rpg check-prototype
+.PHONY: help setup setup-rpg setup-prototype play play-rpg capture-rpg-ui stop prototype lint docs-check rpg-content-check test test-unit test-rpg test-integration test-multiplayer-e2e check check-mud check-rpg check-prototype
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-24s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -19,6 +19,9 @@ play: ## Start the multiplayer server on loopback ports 4000-4002
 
 play-rpg: ## Open the original single-player RPG graybox
 	@./scripts/godot --path rpg
+
+capture-rpg-ui: ## Rebuild the RPG scale test and four UI reference screenshots
+	@./scripts/godot --path rpg --script res://tools/capture_ui.gd
 
 stop: ## Stop the local multiplayer server
 	@cd mud && uv run --project .. evennia stop

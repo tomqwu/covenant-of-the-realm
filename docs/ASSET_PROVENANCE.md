@@ -54,3 +54,15 @@ The prompt record is stored in `docs/concepts/art-direction-v2-bright/PROMPTS.md
 are internal concept references rather than cuttable production or marketing art. Final sprites,
 tiles, portraits, textures, and promotional assets require separate authorship, similarity review,
 license review, in-engine readability validation, and a new provenance entry.
+
+## 2026-08-01 · Godot functional-art UI screenshots
+
+The five PNG files under `docs/concepts/gameplay-ui-v1/` are direct screenshots of the project's
+Godot 4.7.1 functional-art graybox. The scene is drawn at runtime from project-authored GDScript,
+validated original story content, Godot's default font behavior, and the project's v0.2 palette.
+No generated concept image, external image, font, sound, map, UI kit, or plugin is embedded in
+these screenshots.
+
+The screenshots can be rebuilt with `make capture-rpg-ui`. They document layout, scale, input,
+and readability decisions; the runtime-drawn shapes are placeholders rather than final sprites,
+tiles, portraits, textures, or promotional art.

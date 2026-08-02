@@ -95,3 +95,5 @@
 
 第二轮明亮概念基线见
 [art-direction-v2-bright](../concepts/art-direction-v2-bright/README.md)。
+实际 Godot 镜头、角色比例和中文 UI 验证见
+[功能性美术灰盒 v1](../concepts/gameplay-ui-v1/README.md)。

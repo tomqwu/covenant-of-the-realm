@@ -15,6 +15,7 @@ func _run() -> void:
 	_test_gathering_and_gate()
 	_test_combat_paths()
 	_test_breakthrough_and_completion()
+	await _test_visual_scale_scene()
 	await _test_scene_smoke()
 	if failures.is_empty():
 		print("RPG tests passed: %d assertions." % assertions)
@@ -83,6 +84,16 @@ func _test_breakthrough_and_completion() -> void:
 	_expect_false(state.choose("breakthrough")["ok"], "突破不能重复")
 
 
+func _test_visual_scale_scene() -> void:
+	var scene: PackedScene = load("res://tools/scale_test.tscn")
+	var instance := scene.instantiate()
+	root.add_child(instance)
+	await process_frame
+	_expect_equal(instance.recommended_actor_height_px(), 56.0, "比例测试锁定 56 px 工作基准")
+	instance.queue_free()
+	await process_frame
+
+
 func _test_scene_smoke() -> void:
 	var scene: PackedScene = load("res://src/ui/main.tscn")
 	var instance := scene.instantiate()
@@ -90,6 +101,10 @@ func _test_scene_smoke() -> void:
 	await process_frame
 	_expect_equal(instance.get_node("%LocationLabel").text, "照禾渡口", "主场景读取内容")
 	_expect_equal(instance.get_node("%Actions").get_child_count(), 2, "主场景渲染可选行动")
+	_expect_equal(instance.get_node("%MapCanvas").actor_height_px(), 56.0, "角色使用 56 px 生产基准")
+	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "riverbank", "初始地图使用渡口画面")
+	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("护脉灵草"), "探索目标进入抬头信息")
+	_expect_equal(instance.get_node("%Actions").get_child(0).custom_minimum_size.y, 48.0, "行动按钮保持可点击高度")
 
 	await _press_action(instance, "查看月芽田")
 	_expect_true(instance.get_node("%EventLabel").text.contains("只取一株"), "场景呈现采集结果")
@@ -98,8 +113,11 @@ func _test_scene_smoke() -> void:
 	await _press_action(instance, "进入藏泉山道")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉山道", "场景进入战斗")
 	_expect_equal(instance.get_node("%Actions").get_child_count(), 3, "战斗显示三种行动")
+	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "battle", "战斗切换山道画面")
+	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("甲缝"), "战斗目标提示弱点与退路")
 
 	await _press_action(instance, "镇岩符")
+	_expect_true(instance.get_node("%StatusLabel").text.contains("回合 2"), "战斗状态呈现回合信息")
 	await _press_action(instance, "引气术")
 	await _press_action(instance, "引气术")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉石室", "胜利进入泉室")
@@ -107,6 +125,7 @@ func _test_scene_smoke() -> void:
 	await _press_action(instance, "静心引息")
 	_expect_equal(instance.get_node("%LocationLabel").text, "第一息", "场景完成章节")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("引息境一层"), "场景显示突破境界")
+	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "complete", "结算切换明亮突破画面")
 	instance.queue_free()
 	await process_frame
 
