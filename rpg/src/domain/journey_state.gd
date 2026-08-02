@@ -8,6 +8,7 @@ const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
 const INSPECT_PATH_MARKER := "inspect_path_marker"
 const APPROACH_ENEMY := "approach_enemy"
+const BYPASS_ENEMY := "bypass_enemy"
 const RETURN_TO_FERRY := "return_to_ferry"
 const USE_ART := "use_art"
 const USE_TALISMAN := "use_talisman"
@@ -59,7 +60,7 @@ func available_actions() -> PackedStringArray:
 			actions.append(ENTER_SPRING)
 			return actions
 		Phase.MOUNTAIN_PATH:
-			return PackedStringArray([INSPECT_PATH_MARKER, APPROACH_ENEMY, RETURN_TO_FERRY])
+			return PackedStringArray([INSPECT_PATH_MARKER, APPROACH_ENEMY, BYPASS_ENEMY, RETURN_TO_FERRY])
 		Phase.BATTLE:
 			var battle_actions := PackedStringArray([USE_ART])
 			if talismans > 0:
@@ -87,6 +88,10 @@ func choose(action_id: String) -> Dictionary:
 			if action_id == APPROACH_ENEMY:
 				phase = Phase.BATTLE
 				return _result(true, ["battle_started"])
+			if action_id == BYPASS_ENEMY:
+				enemy_hp = 0
+				phase = Phase.SPRING
+				return _result(true, ["enemy_bypassed"])
 			if action_id == RETURN_TO_FERRY:
 				phase = Phase.RIVERBANK
 				return _result(true, ["returned_to_ferry"])

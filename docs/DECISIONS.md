@@ -4,6 +4,14 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Mountain-path warning has three recoverable routes
+
+The visible rock-beast warning supports three player-authored outcomes before the spring chamber:
+approach and fight, inspect/retreat and return later, or follow the upper creek edge to bypass the
+encounter. The bypass reaches the spring without consuming health, talismans, deployables, support,
+or combat rounds; the direct route retains the deterministic battle. Replay E2E covers the bypass
+separately from the primary combat route so neither can silently become cosmetic or mandatory.
+
 ### 2026-08-02 — Explorable mountain-path transition and retreat semantics
 
 Entering the spring gate now transitions from `zhaohe_ferry` to the independently saved

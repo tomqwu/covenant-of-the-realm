@@ -42,6 +42,11 @@
           "possible_targets": ["battle"]
         },
         {
+          "id": "bypass_enemy",
+          "label": "沿溪上缘绕行",
+          "possible_targets": ["spring"]
+        },
+        {
           "id": "return_to_ferry",
           "label": "沿石阶返回渡口",
           "possible_targets": ["riverbank"]
@@ -131,6 +136,7 @@
     "path_marker_inspected": "石标背面刻着旧猎户的箭记：逆溪三步可避开第一轮冲撞。",
     "returned_to_ferry": "你与砚青沿石阶回到渡口，山道中的动静并未追来。",
     "battle_started": "你循着碎甲声靠近，岩甲兽踏碎石屑逼来。战斗开始。",
+    "enemy_bypassed": "你照着箭记逆溪而上，从岩甲兽嗅觉之外的高石缘进入泉室。符箓与气血都未损耗。",
     "art_hit": "你引出一缕泉息，击中岩甲兽的甲缝。",
     "talisman_hit": "镇岩符贴上甲壳，灵纹骤然收紧。",
     "no_talisman": "镇岩符已经用尽。",

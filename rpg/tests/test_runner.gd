@@ -265,6 +265,18 @@ func _test_gathering_and_gate() -> void:
 	_expect_true(state.choose("approach_enemy")["ok"], "接近敌人才进入战斗")
 	_expect_equal(state.phase_id(), "battle", "战斗阶段")
 
+	var bypass = JourneyStateScript.new()
+	bypass.choose("talk_to_companion")
+	bypass.choose("gather_moonleaf")
+	bypass.choose("enter_spring")
+	var bypassed: Dictionary = bypass.choose("bypass_enemy")
+	_expect_true(bypassed["ok"], "山道提供不战斗绕行")
+	_expect_equal(bypass.phase_id(), "spring", "绕行直接进入泉室")
+	_expect_equal(bypassed["snapshot"]["player_hp"], 12, "绕行不损失气血")
+	_expect_equal(bypassed["snapshot"]["talismans"], 1, "绕行不消耗符箓")
+	_expect_equal(bypassed["snapshot"]["round"], 1, "绕行不推进战斗回合")
+	_expect_true(bypassed["events"].has("enemy_bypassed"), "绕行返回独立语义事件")
+
 
 func _test_combat_paths() -> void:
 	var state = _battle_state()
