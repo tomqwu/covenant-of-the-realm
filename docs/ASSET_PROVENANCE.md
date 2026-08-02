@@ -42,3 +42,15 @@ are recorded in `docs/concepts/art-direction-v1/PROMPTS.md`. They are internal c
 not cuttable production art, marketing art, or evidence of clearance. Final sprites, tiles,
 portraits, textures, and promotional assets must be separately authored, reviewed for similarity,
 and entered in this provenance record before release.
+
+## 2026-08-01 · RPG art-direction v2 bright concept baseline
+
+The five images under `docs/concepts/art-direction-v2-bright/` were created with Codex's built-in
+OpenAI ImageGen workflow as non-destructive lighting, palette, and mood edits. Each image used
+only its matching project-owned/generated v1 concept image as an edit target. No external novel
+illustration, game screenshot, artist work, stock asset, or third-party visual reference was used.
+
+The prompt record is stored in `docs/concepts/art-direction-v2-bright/PROMPTS.md`. These outputs
+are internal concept references rather than cuttable production or marketing art. Final sprites,
+tiles, portraits, textures, and promotional assets require separate authorship, similarity review,
+license review, in-engine readability validation, and a new provenance entry.

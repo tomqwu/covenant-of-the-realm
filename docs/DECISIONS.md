@@ -4,6 +4,17 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-01 — Brighter and more optimistic visual tone
+
+Refine the confirmed hybrid art direction toward clear daylight, fresh air, visible water,
+livelier vegetation, warmer paper, and more approachable character affect. Preserve cool contact
+shadows, material wear, tactical readability, and the ability for caves and conflict to become
+dark. Bright does not mean neon, childish, uniformly cheerful, or without danger.
+
+`docs/design/ART_DIRECTION_v0.2.md` supersedes v0.1 for palette, lighting, and emotional tone.
+The medium split remains unchanged: pixel gameplay, painted narrative art, and rare layered
+breakthrough or secret-realm scenes.
+
 ### 2026-08-01 — Hybrid pixel, painted, and layered art direction
 
 Use the `像素行旅` direction for ordinary maps, characters, combat, and interaction

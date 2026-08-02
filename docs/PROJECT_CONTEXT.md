@@ -14,6 +14,11 @@ Godot 4.7.1 is the chosen engine for the first 90-minute vertical slice. The Eve
 Journey PWA remain playable research prototypes and regression suites; they no longer define
 the primary client architecture.
 
+The confirmed visual direction uses bright, hand-authored pixel art for ordinary play, warm
+painted-paper portraiture for narrative expression, and rare layered-paper scenes for
+breakthroughs and major secret-realm reveals. The active lighting and palette contract is
+`docs/design/ART_DIRECTION_v0.2.md`.
+
 The content remains original. The user has not established a production license for any
 external novel IP, so no protected characters, names, prose, locations, treasures, or plot
 combinations may enter this public repository. If formal adaptation rights are obtained later,
@@ -135,7 +140,6 @@ Expand the executable RPG graybox into a complete 90-minute original chapter:
 Do not assume answers without recording them:
 
 - primary launch market and languages;
-- final 2D pixel, hand-painted, or 2.5D visual direction;
 - monetization or fully open-source/non-commercial operation;
 - PC-only first release versus mobile and console ports;
 - degree of main-story branching;
