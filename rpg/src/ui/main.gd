@@ -12,7 +12,7 @@ const SaveGameScript := preload("res://src/domain/save_game.gd")
 @onready var description_label: Label = %DescriptionLabel
 @onready var status_label: Label = %StatusLabel
 @onready var event_label: Label = %EventLabel
-@onready var actions: VBoxContainer = %Actions
+@onready var actions: GridContainer = %Actions
 @onready var input_hint: Label = %InputHint
 @onready var title_overlay: Control = %TitleOverlay
 @onready var title_status: Label = %TitleStatus
@@ -110,14 +110,15 @@ func _render(event_ids: Array) -> void:
 func _status_text(snapshot: Dictionary) -> String:
 	var herb := "有" if snapshot["gathered_moonleaf"] else "无"
 	if snapshot["phase"] == "battle":
-		return "%s　气血 %d/12　岩甲兽 %d/9　镇岩符 %d　回合 %d" % [
+		return "%s　气血 %d/12　岩甲兽 %d/9　镇岩符 %d　援护 %d　回合 %d" % [
 			snapshot["realm"],
 			snapshot["player_hp"],
 			snapshot["enemy_hp"],
 			snapshot["talismans"],
+			snapshot["companion_supports"],
 			snapshot["round"],
 		]
-	return "%s　月芽草：%s　同行：砚青" % [snapshot["realm"], herb]
+	return "%s　气血 %d/12　月芽草：%s　同行：砚青" % [snapshot["realm"], snapshot["player_hp"], herb]
 
 
 func _objective_text(phase_id: String) -> String:
@@ -156,6 +157,7 @@ func _build_actions(node: Dictionary) -> void:
 		var button := Button.new()
 		button.text = action["label"]
 		button.custom_minimum_size = Vector2(0, 48)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.focus_mode = Control.FOCUS_NONE if journey.phase_id() == "riverbank" else Control.FOCUS_ALL
 		_style_action_button(button)
 		button.pressed.connect(_on_action.bind(action["id"]))
@@ -167,6 +169,7 @@ func _build_actions(node: Dictionary) -> void:
 		guidance.text = "附近暂无可交互目标"
 		guidance.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		guidance.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		guidance.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		guidance.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		guidance.add_theme_color_override("font_color", Color("5f674f"))
 		actions.add_child(guidance)
@@ -273,7 +276,14 @@ func continue_game() -> bool:
 	autosave_elapsed = 0.0
 	title_overlay.hide()
 	pause_overlay.hide()
-	_render(["save_loaded_backup"] if loaded["recovered_from_backup"] else ["save_loaded"])
+	var load_event := "save_loaded"
+	if loaded["recovered_from_backup"]:
+		load_event = "save_loaded_backup"
+	elif loaded["migrated_from_version"] > 0:
+		load_event = "save_migrated"
+	_render([load_event])
+	if loaded["migrated_from_version"] > 0:
+		_save_game()
 	return true
 
 

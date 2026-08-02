@@ -24,6 +24,18 @@ invariants before restoring, reject unknown versions without modifying memory, a
 last-known-good backup while promoting a verified temporary file. Starting a new game is the
 explicit operation that replaces an existing or unreadable local save.
 
+Schema changes use explicit forward migrations. Save v2 adds companion-support and setback
+state; v1 files are migrated in memory, validated, then rewritten only after the player chooses
+to continue.
+
+### 2026-08-01 — Recoverable first-combat failure
+
+The first combat teaches preparation without creating a hard fail state. The player may retreat
+along the marked route at any time; the enemy recovers, spent consumables remain spent, and a
+setback is recorded. If player health reaches zero, the chapter companion rescues the player to
+the ferry with a playable health floor. Companion first aid is an explicit once-per-attempt
+action, not an invisible damage modifier.
+
 ### 2026-08-01 — Brighter and more optimistic visual tone
 
 Refine the confirmed hybrid art direction toward clear daylight, fresh air, visible water,

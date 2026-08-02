@@ -40,6 +40,16 @@
           "id": "guard",
           "label": "守势调息",
           "possible_targets": ["battle"]
+        },
+        {
+          "id": "companion_support",
+          "label": "请砚青援护",
+          "possible_targets": ["battle"]
+        },
+        {
+          "id": "retreat",
+          "label": "撤回照禾渡口",
+          "possible_targets": ["riverbank"]
         }
       ]
     },
@@ -79,12 +89,17 @@
     "guarded": "你收束气息稳住经脉，砚青替你看住岩甲兽的冲势。",
     "enemy_hit": "岩甲兽撞来，你受到伤害。",
     "enemy_glanced": "守势卸去了大半冲击。",
+    "companion_supported": "砚青扬开护脉药雾，替你稳住伤势与岩甲兽的冲势。",
+    "no_companion_support": "砚青的护脉药已经用尽，本场战斗无法再次援护。",
+    "retreated": "你与砚青沿预留的石标撤回渡口。岩甲兽重新缩回完整甲势。",
+    "companion_rescue": "你气血耗尽前，砚青将你拖离山道。休整后仍可再次进山。",
     "battle_won": "岩甲兽退入山缝，通往泉室的道路已经打开。",
     "breakthrough": "月芽草化开寒意，你完成第一次引息，踏入引息境一层。",
     "review": "渡口、月芽田与藏泉连成了你的第一段修行记忆。",
     "nothing_nearby": "附近没有可以交互的事物。沿石路寻找金色圆环。",
     "save_loaded": "旅程已从本地存档恢复。",
     "save_loaded_backup": "主存档不可用，旅程已从安全备份恢复。",
+    "save_migrated": "旧版存档已安全迁移，并按新版规则继续旅程。",
     "invalid_action": "此刻无法执行这个行动。"
   }
 }

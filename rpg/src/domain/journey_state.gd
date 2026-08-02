@@ -8,6 +8,8 @@ const ENTER_SPRING := "enter_spring"
 const USE_ART := "use_art"
 const USE_TALISMAN := "use_talisman"
 const GUARD := "guard"
+const COMPANION_SUPPORT := "companion_support"
+const RETREAT := "retreat"
 const BREAKTHROUGH := "breakthrough"
 const REVIEW_JOURNEY := "review_journey"
 
@@ -18,6 +20,8 @@ var enemy_hp := 9
 var talismans := 1
 var round_number := 1
 var realm := "凡身"
+var companion_supports := 1
+var setbacks := 0
 
 
 func phase_id() -> String:
@@ -40,7 +44,14 @@ func available_actions() -> PackedStringArray:
 				actions.insert(0, GATHER_MOONLEAF)
 			return actions
 		Phase.BATTLE:
-			return PackedStringArray([USE_ART, USE_TALISMAN, GUARD])
+			var battle_actions := PackedStringArray([USE_ART])
+			if talismans > 0:
+				battle_actions.append(USE_TALISMAN)
+			battle_actions.append(GUARD)
+			if companion_supports > 0:
+				battle_actions.append(COMPANION_SUPPORT)
+			battle_actions.append(RETREAT)
+			return battle_actions
 		Phase.SPRING:
 			return PackedStringArray([BREAKTHROUGH])
 		_:
@@ -74,11 +85,23 @@ func snapshot() -> Dictionary:
 		"talismans": talismans,
 		"round": round_number,
 		"realm": realm,
+		"companion_supports": companion_supports,
+		"setbacks": setbacks,
 	}
 
 
 func restore(snapshot_data: Dictionary) -> bool:
-	var required_keys := ["phase", "gathered_moonleaf", "player_hp", "enemy_hp", "talismans", "round", "realm"]
+	var required_keys := [
+		"phase",
+		"gathered_moonleaf",
+		"player_hp",
+		"enemy_hp",
+		"talismans",
+		"round",
+		"realm",
+		"companion_supports",
+		"setbacks",
+	]
 	for key in required_keys:
 		if not snapshot_data.has(key):
 			return false
@@ -95,6 +118,10 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if not _integer_in_range(snapshot_data["talismans"], 0, 1):
 		return false
 	if not _integer_in_range(snapshot_data["round"], 1, 100):
+		return false
+	if not _integer_in_range(snapshot_data["companion_supports"], 0, 1):
+		return false
+	if not _integer_in_range(snapshot_data["setbacks"], 0, 99):
 		return false
 
 	var next_phase: Phase
@@ -116,6 +143,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	var next_talismans := int(snapshot_data["talismans"])
 	var next_round := int(snapshot_data["round"])
 	var next_realm: String = snapshot_data["realm"]
+	var next_companion_supports := int(snapshot_data["companion_supports"])
+	var next_setbacks := int(snapshot_data["setbacks"])
 	if not _valid_phase_invariants(
 		next_phase,
 		next_gathered,
@@ -123,7 +152,9 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_enemy_hp,
 		next_talismans,
 		next_round,
-		next_realm
+		next_realm,
+		next_companion_supports,
+		next_setbacks
 	):
 		return false
 
@@ -134,6 +165,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	talismans = next_talismans
 	round_number = next_round
 	realm = next_realm
+	companion_supports = next_companion_supports
+	setbacks = next_setbacks
 	return true
 
 
@@ -167,6 +200,21 @@ func _choose_battle(action_id: String) -> Dictionary:
 		GUARD:
 			guard_amount = 2
 			events.append("guarded")
+		COMPANION_SUPPORT:
+			if companion_supports <= 0:
+				return _result(false, ["no_companion_support"])
+			companion_supports -= 1
+			player_hp = mini(12, player_hp + 3)
+			guard_amount = 2
+			events.append("companion_supported")
+		RETREAT:
+			setbacks += 1
+			phase = Phase.RIVERBANK
+			player_hp = mini(12, player_hp + 3)
+			enemy_hp = 9
+			round_number = 1
+			companion_supports = 1
+			return _result(true, ["retreated"])
 		_:
 			return _result(false, ["invalid_action"])
 
@@ -178,6 +226,15 @@ func _choose_battle(action_id: String) -> Dictionary:
 	var damage: int = maxi(0, 3 - guard_amount)
 	player_hp = maxi(0, player_hp - damage)
 	events.append("enemy_glanced" if guard_amount > 0 else "enemy_hit")
+	if player_hp <= 0:
+		setbacks += 1
+		phase = Phase.RIVERBANK
+		player_hp = 8
+		enemy_hp = 9
+		round_number = 1
+		companion_supports = 1
+		events.append("companion_rescue")
+		return _result(true, events)
 	round_number += 1
 	return _result(true, events)
 
@@ -200,12 +257,14 @@ func _valid_phase_invariants(
 	next_enemy_hp: int,
 	next_talismans: int,
 	next_round: int,
-	next_realm: String
+	next_realm: String,
+	next_companion_supports: int,
+	next_setbacks: int
 ) -> bool:
 	if next_phase == Phase.RIVERBANK:
-		return next_realm == "凡身" and next_player_hp == 12 and next_enemy_hp == 9 and next_talismans == 1 and next_round == 1
+		return next_realm == "凡身" and next_player_hp > 0 and next_enemy_hp == 9 and next_round == 1 and next_companion_supports == 1
 	if next_phase == Phase.BATTLE:
 		return next_realm == "凡身" and next_gathered and next_enemy_hp > 0
 	if next_phase == Phase.SPRING:
 		return next_realm == "凡身" and next_gathered and next_enemy_hp == 0
-	return next_realm == "引息境一层" and not next_gathered and next_enemy_hp == 0
+	return next_realm == "引息境一层" and not next_gathered and next_enemy_hp == 0 and next_setbacks >= 0

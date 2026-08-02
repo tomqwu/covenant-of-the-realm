@@ -21,6 +21,7 @@ func _run() -> void:
 	_test_versioned_save()
 	_test_gathering_and_gate()
 	_test_combat_paths()
+	_test_companion_retreat_and_rescue()
 	_test_breakthrough_and_completion()
 	await _test_visual_scale_scene()
 	await _test_scene_smoke()
@@ -100,13 +101,30 @@ func _test_versioned_save() -> void:
 	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
 	var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(loaded["ok"], "版本化存档读取成功")
-	_expect_equal(loaded["data"]["save_version"], 1.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["save_version"], 2.0, "存档声明当前版本")
 	var restored_journey = JourneyStateScript.new()
 	var restored_exploration = ExplorationStateScript.new()
 	_expect_true(restored_journey.restore(loaded["data"]["journey"]), "读取的规则快照通过业务校验")
 	_expect_true(restored_exploration.restore(loaded["data"]["exploration"]), "读取的探索快照通过碰撞校验")
 	_expect_equal(restored_journey.snapshot(), journey.snapshot(), "磁盘往返保留规则状态")
 	_expect_true(restored_exploration.player_position.is_equal_approx(exploration.player_position), "磁盘往返保留玩家位置")
+
+	var legacy_journey: Dictionary = journey.snapshot().duplicate(true)
+	legacy_journey.erase("companion_supports")
+	legacy_journey.erase("setbacks")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 1,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": legacy_journey,
+		"exploration": exploration.snapshot(),
+	}))
+	var migrated: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated["ok"], "v1 存档可迁移到当前版本")
+	_expect_equal(migrated["migrated_from_version"], 1, "迁移结果声明来源版本")
+	_expect_equal(migrated["data"]["save_version"], 2, "迁移后的内存快照升级为 v2")
+	_expect_equal(migrated["data"]["journey"]["companion_supports"], 1, "迁移补入同伴援护资源")
+	_expect_equal(migrated["data"]["journey"]["setbacks"], 0, "迁移补入挫败计数")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "迁移后可写回新版存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -161,6 +179,38 @@ func _test_combat_paths() -> void:
 	_expect_equal(victory["snapshot"]["enemy_hp"], 0, "伤害不会低于零")
 	_expect_equal(state.phase_id(), "spring", "胜利进入泉室")
 	_expect_true(victory["events"].has("battle_won"), "胜利事件只在结束时返回")
+
+
+func _test_companion_retreat_and_rescue() -> void:
+	var supported = _battle_state()
+	supported.choose("use_art")
+	var support: Dictionary = supported.choose("companion_support")
+	_expect_true(support["ok"], "战斗中可以请求篇章同伴援护")
+	_expect_equal(support["snapshot"]["player_hp"], 11, "援护治疗并抵消大半当回合伤害")
+	_expect_equal(support["snapshot"]["companion_supports"], 0, "援护资源每场只能使用一次")
+	_expect_false(supported.available_actions().has("companion_support"), "用尽的援护从玩家选项隐藏")
+	var no_support: Dictionary = supported.choose("companion_support")
+	_expect_false(no_support["ok"], "同一场战斗不能重复获得援护")
+	_expect_equal(no_support["snapshot"]["player_hp"], 11, "无效援护不会触发敌方攻击")
+
+	var retreated = _battle_state()
+	retreated.choose("use_talisman")
+	var retreat: Dictionary = retreated.choose("retreat")
+	_expect_true(retreat["ok"], "战斗中可以主动撤退")
+	_expect_equal(retreated.phase_id(), "riverbank", "撤退返回照禾渡口")
+	_expect_equal(retreat["snapshot"]["enemy_hp"], 9, "撤退后敌人恢复完整甲势")
+	_expect_equal(retreat["snapshot"]["talismans"], 0, "撤退不会返还已消耗符箓")
+	_expect_equal(retreat["snapshot"]["setbacks"], 1, "撤退记录一次挫败")
+	_expect_true(retreated.choose("enter_spring")["ok"], "撤退后可从山门再次挑战")
+
+	var rescued = _battle_state()
+	var final_guard: Dictionary = {}
+	for turn in range(12):
+		final_guard = rescued.choose("guard")
+	_expect_equal(rescued.phase_id(), "riverbank", "气血耗尽不会形成死档")
+	_expect_true(final_guard["events"].has("companion_rescue"), "气血耗尽触发同伴救援")
+	_expect_equal(final_guard["snapshot"]["player_hp"], 8, "救援后恢复到可继续状态")
+	_expect_equal(final_guard["snapshot"]["setbacks"], 1, "救援记录一次挫败")
 
 
 func _test_breakthrough_and_completion() -> void:
@@ -238,12 +288,21 @@ func _test_scene_smoke() -> void:
 	_expect_equal(_action_button_count(instance), 1, "走到山门后显示进入行动")
 	await _press_action(instance, "进入藏泉山道")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉山道", "场景进入战斗")
-	_expect_equal(instance.get_node("%Actions").get_child_count(), 3, "战斗显示三种行动")
+	_expect_equal(_action_button_count(instance), 5, "战斗显示术式、符箓、守势、援护与撤退")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "battle", "战斗切换山道画面")
 	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("甲缝"), "战斗目标提示弱点与退路")
+	await _press_action(instance, "撤回照禾渡口")
+	_expect_equal(instance.get_node("%LocationLabel").text, "照禾渡口", "场景撤退返回渡口")
+	_expect_true(instance.get_node("%EventLabel").text.contains("预留的石标"), "场景说明撤退路线与敌人重置")
+	_expect_equal(_action_button_count(instance), 1, "撤回山门附近可立即重新挑战")
+	await _press_action(instance, "进入藏泉山道")
+	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉山道", "场景可在撤退后再次进山")
 
+	await _press_action(instance, "请砚青援护")
+	_expect_true(instance.get_node("%EventLabel").text.contains("护脉药雾"), "场景呈现主动同伴援护")
+	_expect_true(instance.get_node("%StatusLabel").text.contains("援护 0"), "战斗状态显示援护资源用尽")
 	await _press_action(instance, "镇岩符")
-	_expect_true(instance.get_node("%StatusLabel").text.contains("回合 2"), "战斗状态呈现回合信息")
+	_expect_true(instance.get_node("%StatusLabel").text.contains("回合 3"), "战斗状态呈现回合信息")
 	await _press_action(instance, "引气术")
 	await _press_action(instance, "引气术")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉石室", "胜利进入泉室")
@@ -274,7 +333,7 @@ func _test_scene_smoke() -> void:
 
 
 func _press_action(instance: Node, label: String) -> void:
-	var action_list: VBoxContainer = instance.get_node("%Actions")
+	var action_list: GridContainer = instance.get_node("%Actions")
 	for child in action_list.get_children():
 		if child is Button and child.text == label:
 			child.pressed.emit()

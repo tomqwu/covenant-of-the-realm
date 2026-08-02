@@ -1,7 +1,7 @@
 extends RefCounted
 class_name SaveGame
 
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 const STORY_ID := "zhaohe_first_breath"
 const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 
@@ -87,7 +87,8 @@ static func _read_single(path: String) -> Dictionary:
 static func _validate(payload: Dictionary) -> Dictionary:
 	if not payload.has("save_version") or typeof(payload["save_version"]) not in [TYPE_INT, TYPE_FLOAT]:
 		return _result(false, {}, "missing_version")
-	if float(payload["save_version"]) != float(SAVE_VERSION):
+	var version := float(payload["save_version"])
+	if version != floorf(version):
 		return _result(false, {}, "unsupported_version")
 	if payload.get("story_id") != STORY_ID:
 		return _result(false, {}, "wrong_story")
@@ -95,6 +96,16 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		return _result(false, {}, "invalid_journey")
 	if typeof(payload.get("exploration")) != TYPE_DICTIONARY:
 		return _result(false, {}, "invalid_exploration")
+	if int(version) == 1:
+		var migrated := payload.duplicate(true)
+		migrated["save_version"] = SAVE_VERSION
+		migrated["journey"]["companion_supports"] = 1
+		migrated["journey"]["setbacks"] = 0
+		var migration_result := _result(true, migrated, "")
+		migration_result["migrated_from_version"] = 1
+		return migration_result
+	if int(version) != SAVE_VERSION:
+		return _result(false, {}, "unsupported_version")
 	return _result(true, payload, "")
 
 
@@ -104,6 +115,7 @@ static func _result(ok: bool, data: Dictionary, reason: String) -> Dictionary:
 		"data": data,
 		"reason": reason,
 		"recovered_from_backup": false,
+		"migrated_from_version": 0,
 	}
 
 
