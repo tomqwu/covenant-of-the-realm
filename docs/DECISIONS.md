@@ -79,6 +79,18 @@ migrate to an idle dialogue and infer the conservative briefing response only wh
 already completed that mandatory quest beat. The loader validates dialogue structure, current
 content bounds, and its consistency with journey progress before replacing live state.
 
+Save v7 adds a stable enemy profile ID. V1–v6 files migrate to the rock-armor juvenile profile;
+inactive legacy phases normalize that profile to full health, while an in-progress old battle keeps
+its earned damage. Current files with an unknown enemy ID are rejected before domain restoration.
+
+### 2026-08-02 — Enemy profiles share one deterministic resolver
+
+岩甲兽幼体、泉苔寄壳 and 失衡石傀 differ through data: maximum health, a two-intent damage
+cycle, one weakness action, bonus damage, name, and short description. The journey state stores
+only the selected stable ID and mutable battle values. Player actions, guard, lamp, companion,
+retreat, rescue, and victory continue through one resolver; the UI reads the same profile and next
+round index to announce intent before input. Frame timing never selects or advances an intent.
+
 ### 2026-08-02 — Resumable dialogue owns presentation progress
 
 Long-form dialogue advances in a small domain state rather than mutating the story node on every

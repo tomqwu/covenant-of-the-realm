@@ -1,6 +1,8 @@
 extends RefCounted
 class_name JourneyState
 
+const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
+
 enum Phase { RIVERBANK, MOUNTAIN_PATH, BATTLE, SPRING, COMPLETE }
 
 const GATHER_MOONLEAF := "gather_moonleaf"
@@ -8,6 +10,8 @@ const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
 const INSPECT_PATH_MARKER := "inspect_path_marker"
 const APPROACH_ENEMY := "approach_enemy"
+const APPROACH_MOSS_SHELL := "approach_moss_shell"
+const APPROACH_STONE_PUPPET := "approach_stone_puppet"
 const BYPASS_ENEMY := "bypass_enemy"
 const RETURN_TO_FERRY := "return_to_ferry"
 const USE_ART := "use_art"
@@ -29,7 +33,8 @@ var phase := Phase.RIVERBANK
 var gathered_moonleaf := false
 var talked_to_companion := false
 var player_hp := 12
-var enemy_hp := 9
+var enemy_id := EnemyCatalogScript.DEFAULT_ENEMY_ID
+var enemy_hp := EnemyCatalogScript.max_hp(enemy_id)
 var talismans := 1
 var round_number := 1
 var realm := "凡身"
@@ -65,7 +70,14 @@ func available_actions() -> PackedStringArray:
 			actions.append(ENTER_SPRING)
 			return actions
 		Phase.MOUNTAIN_PATH:
-			return PackedStringArray([INSPECT_PATH_MARKER, APPROACH_ENEMY, BYPASS_ENEMY, RETURN_TO_FERRY])
+			return PackedStringArray([
+				INSPECT_PATH_MARKER,
+				APPROACH_ENEMY,
+				APPROACH_MOSS_SHELL,
+				APPROACH_STONE_PUPPET,
+				BYPASS_ENEMY,
+				RETURN_TO_FERRY,
+			])
 		Phase.BATTLE:
 			var battle_actions := PackedStringArray([USE_ART])
 			if talismans > 0:
@@ -90,9 +102,13 @@ func choose(action_id: String) -> Dictionary:
 		Phase.MOUNTAIN_PATH:
 			if action_id == INSPECT_PATH_MARKER:
 				return _result(true, ["path_marker_inspected"])
-			if action_id == APPROACH_ENEMY:
+			var encounter_id := _enemy_for_approach_action(action_id)
+			if not encounter_id.is_empty():
+				enemy_id = encounter_id
+				enemy_hp = EnemyCatalogScript.max_hp(enemy_id)
+				round_number = 1
 				phase = Phase.BATTLE
-				return _result(true, ["battle_started"])
+				return _result(true, ["battle_started_%s" % enemy_id])
 			if action_id == BYPASS_ENEMY:
 				enemy_hp = 0
 				phase = Phase.SPRING
@@ -125,6 +141,7 @@ func snapshot() -> Dictionary:
 		"gathered_moonleaf": gathered_moonleaf,
 		"talked_to_companion": talked_to_companion,
 		"player_hp": player_hp,
+		"enemy_id": enemy_id,
 		"enemy_hp": enemy_hp,
 		"talismans": talismans,
 		"round": round_number,
@@ -143,6 +160,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		"gathered_moonleaf",
 		"talked_to_companion",
 		"player_hp",
+		"enemy_id",
 		"enemy_hp",
 		"talismans",
 		"round",
@@ -166,9 +184,11 @@ func restore(snapshot_data: Dictionary) -> bool:
 		return false
 	if typeof(snapshot_data["briefing_response"]) != TYPE_STRING:
 		return false
+	if not EnemyCatalogScript.supports(snapshot_data["enemy_id"]):
+		return false
 	if not _integer_in_range(snapshot_data["player_hp"], 0, 12):
 		return false
-	if not _integer_in_range(snapshot_data["enemy_hp"], 0, 9):
+	if not _integer_in_range(snapshot_data["enemy_hp"], 0, EnemyCatalogScript.max_hp(snapshot_data["enemy_id"])):
 		return false
 	if not _integer_in_range(snapshot_data["talismans"], 0, 1):
 		return false
@@ -201,6 +221,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	var next_gathered: bool = snapshot_data["gathered_moonleaf"]
 	var next_talked: bool = snapshot_data["talked_to_companion"]
 	var next_player_hp := int(snapshot_data["player_hp"])
+	var next_enemy_id: String = snapshot_data["enemy_id"]
 	var next_enemy_hp := int(snapshot_data["enemy_hp"])
 	var next_talismans := int(snapshot_data["talismans"])
 	var next_round := int(snapshot_data["round"])
@@ -215,6 +236,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_gathered,
 		next_talked,
 		next_player_hp,
+		next_enemy_id,
 		next_enemy_hp,
 		next_talismans,
 		next_round,
@@ -231,6 +253,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	gathered_moonleaf = next_gathered
 	talked_to_companion = next_talked
 	player_hp = next_player_hp
+	enemy_id = next_enemy_id
 	enemy_hp = next_enemy_hp
 	talismans = next_talismans
 	round_number = next_round
@@ -266,16 +289,17 @@ func _choose_battle(action_id: String) -> Dictionary:
 	var guard_amount := 0
 	match action_id:
 		USE_ART:
-			enemy_hp = max(0, enemy_hp - 3)
+			enemy_hp = max(0, enemy_hp - EnemyCatalogScript.player_damage(enemy_id, action_id))
 			events.append("art_hit")
 		USE_TALISMAN:
 			if talismans <= 0:
 				return _result(false, ["no_talisman"])
 			talismans -= 1
-			enemy_hp = max(0, enemy_hp - 5)
+			enemy_hp = max(0, enemy_hp - EnemyCatalogScript.player_damage(enemy_id, action_id))
 			events.append("talisman_hit")
 		GUARD:
 			guard_amount = 2
+			enemy_hp = max(0, enemy_hp - EnemyCatalogScript.player_damage(enemy_id, action_id))
 			events.append("guarded")
 		COMPANION_SUPPORT:
 			if companion_supports <= 0:
@@ -294,7 +318,7 @@ func _choose_battle(action_id: String) -> Dictionary:
 			setbacks += 1
 			phase = Phase.MOUNTAIN_PATH
 			player_hp = mini(12, player_hp + 3)
-			enemy_hp = 9
+			enemy_hp = EnemyCatalogScript.max_hp(enemy_id)
 			round_number = 1
 			companion_supports = 1
 			spring_lamps = 1
@@ -302,6 +326,8 @@ func _choose_battle(action_id: String) -> Dictionary:
 			return _result(true, ["retreated"])
 		_:
 			return _result(false, ["invalid_action"])
+	if action_id in [USE_ART, USE_TALISMAN, GUARD] and EnemyCatalogScript.exposes_weakness(enemy_id, action_id):
+		events.append("weakness_exposed")
 
 	if enemy_hp <= 0:
 		phase = Phase.SPRING
@@ -312,14 +338,15 @@ func _choose_battle(action_id: String) -> Dictionary:
 		lamp_turns -= 1
 		events.append("spring_lamp_absorbed")
 
-	var damage: int = maxi(0, 3 - guard_amount)
+	var intent := current_enemy_intent()
+	var damage: int = maxi(0, int(intent.get("damage", 0)) - guard_amount)
 	player_hp = maxi(0, player_hp - damage)
 	events.append("enemy_glanced" if guard_amount > 0 else "enemy_hit")
 	if player_hp <= 0:
 		setbacks += 1
 		phase = Phase.RIVERBANK
 		player_hp = 8
-		enemy_hp = 9
+		enemy_hp = EnemyCatalogScript.max_hp(enemy_id)
 		round_number = 1
 		companion_supports = 1
 		spring_lamps = 1
@@ -344,12 +371,21 @@ func complete_companion_briefing(response_id: String) -> Dictionary:
 	return _result(true, ["companion_briefing", "briefing_%s" % response_id])
 
 
+func current_enemy_profile() -> Dictionary:
+	return EnemyCatalogScript.profile(enemy_id)
+
+
+func current_enemy_intent() -> Dictionary:
+	return EnemyCatalogScript.intent(enemy_id, round_number)
+
+
 func _reset_chapter() -> void:
 	phase = Phase.RIVERBANK
 	gathered_moonleaf = false
 	talked_to_companion = false
 	player_hp = 12
-	enemy_hp = 9
+	enemy_id = EnemyCatalogScript.DEFAULT_ENEMY_ID
+	enemy_hp = EnemyCatalogScript.max_hp(enemy_id)
 	talismans = 1
 	round_number = 1
 	realm = "凡身"
@@ -372,6 +408,7 @@ func _valid_phase_invariants(
 	next_gathered: bool,
 	next_talked: bool,
 	next_player_hp: int,
+	next_enemy_id: String,
 	next_enemy_hp: int,
 	next_talismans: int,
 	next_round: int,
@@ -386,12 +423,24 @@ func _valid_phase_invariants(
 		return false
 	if next_talked != (next_briefing_response != RESPONSE_UNANSWERED):
 		return false
+	var next_enemy_max := EnemyCatalogScript.max_hp(next_enemy_id)
 	if next_phase == Phase.RIVERBANK:
-		return next_realm == "凡身" and next_player_hp > 0 and next_enemy_hp == 9 and next_round == 1 and next_companion_supports == 1 and next_spring_lamps == 1 and next_lamp_turns == 0
+		return next_realm == "凡身" and next_player_hp > 0 and next_enemy_hp == next_enemy_max and next_round == 1 and next_companion_supports == 1 and next_spring_lamps == 1 and next_lamp_turns == 0
 	if next_phase == Phase.MOUNTAIN_PATH:
-		return next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp == 9 and next_round == 1 and next_lamp_turns == 0
+		return next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp == next_enemy_max and next_round == 1 and next_lamp_turns == 0
 	if next_phase == Phase.BATTLE:
 		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp > 0 and (next_lamp_turns == 0 or next_spring_lamps == 0)
 	if next_phase == Phase.SPRING:
 		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp == 0
 	return next_realm == "引息境一层" and not next_gathered and next_enemy_hp == 0 and next_setbacks >= 0
+
+
+func _enemy_for_approach_action(action_id: String) -> String:
+	match action_id:
+		APPROACH_ENEMY:
+			return EnemyCatalogScript.ROCK_ARMOR_YOUNG
+		APPROACH_MOSS_SHELL:
+			return EnemyCatalogScript.SPRING_MOSS_SHELL
+		APPROACH_STONE_PUPPET:
+			return EnemyCatalogScript.UNBALANCED_STONE_PUPPET
+	return ""

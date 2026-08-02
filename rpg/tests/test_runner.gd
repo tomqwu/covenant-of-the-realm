@@ -5,6 +5,7 @@ const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
+const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
 const TEST_SAVE_PATH := "user://automated-test-save.json"
 const TEST_SCENE_SAVE_PATH := "user://automated-scene-save.json"
 const TEST_SETTINGS_PATH := "user://automated-test-settings.json"
@@ -20,6 +21,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_initial_state()
+	_test_enemy_catalog()
 	_test_exploration_rules()
 	_test_state_restore()
 	_test_dialogue_state()
@@ -27,6 +29,7 @@ func _run() -> void:
 	_test_settings_store()
 	_test_gathering_and_gate()
 	_test_combat_paths()
+	_test_enemy_profile_combat()
 	_test_companion_retreat_and_rescue()
 	_test_breakthrough_and_completion()
 	await _test_visual_scale_scene()
@@ -48,6 +51,26 @@ func _test_initial_state() -> void:
 	_expect_true(state.available_actions().has("gather_moonleaf"), "初始可采集")
 	_expect_true(state.available_actions().has("enter_spring"), "初始可尝试进山")
 	_expect_false(state.choose("unknown")["ok"], "未知行动不改变状态")
+
+
+func _test_enemy_catalog() -> void:
+	_expect_equal(EnemyCatalogScript.ENEMY_IDS.size(), 3, "山道配置三种原创普通敌人")
+	_expect_true(EnemyCatalogScript.supports("rock_armor_young"), "稳定敌人标识可识别")
+	_expect_false(EnemyCatalogScript.supports(3), "非文本敌人标识被拒绝")
+	var rock: Dictionary = EnemyCatalogScript.profile("rock_armor_young")
+	_expect_equal(rock["name"], "岩甲兽幼体", "岩甲幼兽配置中文名称")
+	_expect_equal(rock["max_hp"], 12, "岩甲幼兽生命值由配置提供")
+	_expect_equal(EnemyCatalogScript.intent("rock_armor_young", 1)["name"], "试探冲撞", "第一回合意图稳定")
+	_expect_equal(EnemyCatalogScript.intent("rock_armor_young", 2)["damage"], 4, "第二回合意图伤害稳定")
+	_expect_equal(EnemyCatalogScript.intent("rock_armor_young", 3)["name"], "试探冲撞", "意图序列确定性循环")
+	_expect_equal(EnemyCatalogScript.intent("missing", 1), {}, "未知敌人没有伪造意图")
+	_expect_equal(EnemyCatalogScript.intent("rock_armor_young", 0), {}, "无效回合没有意图")
+	_expect_equal(EnemyCatalogScript.player_damage("rock_armor_young", "use_talisman"), 6, "符压命中岩甲弱点增加一点伤害")
+	_expect_equal(EnemyCatalogScript.player_damage("spring_moss_shell", "use_art"), 4, "泉息命中泉苔弱点增加一点伤害")
+	_expect_equal(EnemyCatalogScript.player_damage("unbalanced_stone_puppet", "guard"), 2, "守势借力令失衡石傀受创")
+	_expect_equal(EnemyCatalogScript.player_damage("missing", "unknown"), 0, "未知组合不产生伤害")
+	_expect_true(EnemyCatalogScript.exposes_weakness("spring_moss_shell", "use_art"), "配置可判断材质相克")
+	_expect_false(EnemyCatalogScript.exposes_weakness("spring_moss_shell", "guard"), "非弱点行动不误报相克")
 
 
 func _test_exploration_rules() -> void:
@@ -78,7 +101,13 @@ func _test_exploration_rules() -> void:
 	_expect_equal(state.snapshot().keys(), ["map_id", "player_x", "player_y"], "探索快照只含稳定地图标识与坐标")
 	_expect_true(state.restore({"map_id": "cangquan_path", "player_x": 0.73, "player_y": 0.34}), "山道坐标按山道碰撞而非渡口建筑恢复")
 	_expect_equal(state.map_id, "cangquan_path", "恢复后切换稳定地图标识")
-	_expect_equal(state.interaction_action(true, true), "approach_enemy", "山道敌人预警区提供接近行动")
+	_expect_equal(state.interaction_action(true, true), "approach_enemy", "岩甲幼兽有独立接近行动")
+	_expect_true(state.restore({"map_id": "cangquan_path", "player_x": 0.56, "player_y": 0.48}), "泉苔寄壳坐标可达")
+	_expect_equal(state.interaction_action(true, true), "approach_moss_shell", "泉苔寄壳有独立接近行动")
+	_expect_true(state.restore({"map_id": "cangquan_path", "player_x": 0.64, "player_y": 0.44}), "旧石标撤退点可达")
+	_expect_equal(state.interaction_action(true, true), "", "撤退安全点不落在任一敌人交互半径内")
+	_expect_true(state.restore({"map_id": "cangquan_path", "player_x": 0.80, "player_y": 0.25}), "失衡石傀坐标可达")
+	_expect_equal(state.interaction_action(true, true), "approach_stone_puppet", "失衡石傀有独立接近行动")
 
 
 func _test_state_restore() -> void:
@@ -137,7 +166,8 @@ func _test_versioned_save() -> void:
 	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
 	var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(loaded["ok"], "版本化存档读取成功")
-	_expect_equal(loaded["data"]["save_version"], 6.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["save_version"], 7.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["journey"]["enemy_id"], "rock_armor_young", "新版存档声明稳定敌人标识")
 	_expect_equal(loaded["data"]["exploration"]["map_id"], "zhaohe_ferry", "新版存档声明稳定地图标识")
 	var restored_dialogue = DialogueStateScript.new()
 	_expect_true(restored_dialogue.restore(loaded["data"]["dialogue"]), "新版存档包含可恢复的空闲对话状态")
@@ -167,7 +197,8 @@ func _test_versioned_save() -> void:
 	var migrated: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated["ok"], "v1 存档可迁移到当前版本")
 	_expect_equal(migrated["migrated_from_version"], 1, "迁移结果声明来源版本")
-	_expect_equal(migrated["data"]["save_version"], 6, "迁移后的内存快照升级为 v6")
+	_expect_equal(migrated["data"]["save_version"], 7, "迁移后的内存快照升级为 v7")
+	_expect_equal(migrated["data"]["journey"]["enemy_id"], "rock_armor_young", "旧版迁移补入默认敌人标识")
 	_expect_equal(migrated["data"]["exploration"]["map_id"], "zhaohe_ferry", "v1 迁移补入照禾渡口地图标识")
 	_expect_equal(migrated["data"]["journey"]["companion_supports"], 1, "迁移补入同伴援护资源")
 	_expect_equal(migrated["data"]["journey"]["setbacks"], 0, "迁移补入挫败计数")
@@ -220,6 +251,7 @@ func _test_versioned_save() -> void:
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v4 迁移后可写回新版存档")
 	var version_five_journey: Dictionary = journey.snapshot().duplicate(true)
 	version_five_journey.erase("briefing_response")
+	version_five_journey.erase("enemy_id")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 5,
 		"story_id": SaveGameScript.STORY_ID,
@@ -231,6 +263,20 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v5["migrated_from_version"], 5, "v5 迁移声明来源版本")
 	_expect_equal(migrated_v5["data"]["dialogue"], DialogueStateScript.default_snapshot(), "v5 迁移补入空闲对话状态")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v5 迁移后可写回新版存档")
+	var version_six_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_six_journey.erase("enemy_id")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 6,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": version_six_journey,
+		"exploration": exploration.snapshot(),
+		"dialogue": DialogueStateScript.default_snapshot(),
+	}))
+	var migrated_v6: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v6["ok"], "v6 对话存档可迁移到敌人感知版本")
+	_expect_equal(migrated_v6["migrated_from_version"], 6, "v6 迁移声明来源版本")
+	_expect_equal(migrated_v6["data"]["journey"]["enemy_id"], "rock_armor_young", "v6 迁移补入默认敌人标识")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v6 迁移后可写回新版存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -251,7 +297,7 @@ func _test_versioned_save() -> void:
 	var unknown_map_exploration := exploration.snapshot().duplicate(true)
 	unknown_map_exploration["map_id"] = "unreleased_secret_realm"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 6,
+		"save_version": 7,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": unknown_map_exploration,
@@ -259,13 +305,23 @@ func _test_versioned_save() -> void:
 	}))
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_map", "未知地图不会恢复到错误场景")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 6,
+		"save_version": 7,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": exploration.snapshot(),
 		"dialogue": {"active": true, "dialogue_id": "missing", "line_index": 0},
 	}))
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_dialogue", "未知对话标识不会进入界面层")
+	var unknown_enemy_journey: Dictionary = journey.snapshot().duplicate(true)
+	unknown_enemy_journey["enemy_id"] = "unreleased_enemy"
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 7,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": unknown_enemy_journey,
+		"exploration": exploration.snapshot(),
+		"dialogue": DialogueStateScript.default_snapshot(),
+	}))
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_enemy", "未知敌人标识不会进入规则层")
 	_write_test_file(TEST_SAVE_PATH, "{broken")
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_json", "损坏 JSON 被安全拒绝")
 	SaveGameScript.remove(TEST_SAVE_PATH)
@@ -340,17 +396,43 @@ func _test_combat_paths() -> void:
 	_expect_true(guarded["events"].has("enemy_glanced"), "守势返回减伤事件")
 
 	var talisman: Dictionary = state.choose("use_talisman")
-	_expect_equal(talisman["snapshot"]["enemy_hp"], 4, "符箓造成五点伤害")
+	_expect_equal(talisman["snapshot"]["enemy_hp"], 6, "符箓命中岩甲弱点造成六点伤害")
+	_expect_true(talisman["events"].has("weakness_exposed"), "材质相克返回独立语义事件")
 	_expect_equal(talisman["snapshot"]["talismans"], 0, "符箓被消耗")
 	_expect_false(state.choose("use_talisman")["ok"], "空符箓不会结算敌方攻击")
 	_expect_false(state.choose("invalid")["ok"], "战斗拒绝未知行动")
 
 	var victory: Dictionary = state.choose("use_art")
-	_expect_equal(victory["snapshot"]["enemy_hp"], 1, "术式造成三点伤害")
+	_expect_equal(victory["snapshot"]["enemy_hp"], 3, "术式造成三点伤害")
 	victory = state.choose("use_art")
 	_expect_equal(victory["snapshot"]["enemy_hp"], 0, "伤害不会低于零")
 	_expect_equal(state.phase_id(), "spring", "胜利进入泉室")
 	_expect_true(victory["events"].has("battle_won"), "胜利事件只在结束时返回")
+
+
+func _test_enemy_profile_combat() -> void:
+	var moss = _battle_state("approach_moss_shell")
+	_expect_equal(moss.enemy_id, "spring_moss_shell", "泉苔接近行动选择对应配置")
+	_expect_equal(moss.enemy_hp, 8, "泉苔使用独立生命上限")
+	_expect_equal(moss.current_enemy_intent()["name"], "吸潮蓄壳", "泉苔显示第一回合意图")
+	var moss_hit: Dictionary = moss.choose("use_art")
+	_expect_equal(moss_hit["snapshot"]["enemy_hp"], 4, "引气术命中泉苔弱点造成四点伤害")
+	_expect_true(moss_hit["events"].has("weakness_exposed"), "泉苔相克事件可供表现层消费")
+	moss.choose("use_art")
+	_expect_equal(moss.phase_id(), "spring", "泉苔按独立配置可以稳定击败")
+
+	var puppet = _battle_state("approach_stone_puppet")
+	_expect_equal(puppet.enemy_id, "unbalanced_stone_puppet", "石傀接近行动选择对应配置")
+	_expect_equal(puppet.current_enemy_intent()["damage"], 4, "石傀预告第一回合重击")
+	var counter: Dictionary = puppet.choose("guard")
+	_expect_equal(counter["snapshot"]["enemy_hp"], 8, "守势借力对失衡石傀造成两点伤害")
+	_expect_equal(counter["snapshot"]["player_hp"], 10, "守势同时按预告伤害结算减伤")
+	_expect_true(counter["events"].has("weakness_exposed"), "石傀守势相克返回语义事件")
+	var saved_puppet: Dictionary = puppet.snapshot()
+	var restored_puppet = JourneyStateScript.new()
+	_expect_true(restored_puppet.restore(saved_puppet), "非默认敌人与回合可以从快照恢复")
+	_expect_equal(restored_puppet.enemy_id, "unbalanced_stone_puppet", "恢复保持稳定敌人标识")
+	_expect_equal(restored_puppet.current_enemy_intent()["name"], "踏地回正", "恢复保持由回合推导的下一意图")
 
 
 func _test_companion_retreat_and_rescue() -> void:
@@ -362,7 +444,7 @@ func _test_companion_retreat_and_rescue() -> void:
 	_expect_equal(deployment["snapshot"]["player_hp"], 10, "部署回合由石灯降低一点伤害")
 	_expect_true(deployment["events"].has("spring_lamp_absorbed"), "部署返回持续效果事件")
 	var warded_guard: Dictionary = deployed.choose("guard")
-	_expect_equal(warded_guard["snapshot"]["player_hp"], 10, "守势与石灯合计免除下一次冲击")
+	_expect_equal(warded_guard["snapshot"]["player_hp"], 9, "守势与石灯削弱预告的四点重击")
 	_expect_equal(warded_guard["snapshot"]["lamp_turns"], 0, "石灯持续次数耗尽")
 	_expect_false(deployed.available_actions().has("deploy_spring_lamp"), "已占用的部署槽从行动隐藏")
 	_expect_false(deployed.choose("deploy_spring_lamp")["ok"], "同一挑战不能重复部署石灯")
@@ -371,19 +453,19 @@ func _test_companion_retreat_and_rescue() -> void:
 	supported.choose("use_art")
 	var support: Dictionary = supported.choose("companion_support")
 	_expect_true(support["ok"], "战斗中可以请求篇章同伴援护")
-	_expect_equal(support["snapshot"]["player_hp"], 11, "援护治疗并抵消大半当回合伤害")
+	_expect_equal(support["snapshot"]["player_hp"], 10, "援护治疗并抵消大半当回合重击")
 	_expect_equal(support["snapshot"]["companion_supports"], 0, "援护资源每场只能使用一次")
 	_expect_false(supported.available_actions().has("companion_support"), "用尽的援护从玩家选项隐藏")
 	var no_support: Dictionary = supported.choose("companion_support")
 	_expect_false(no_support["ok"], "同一场战斗不能重复获得援护")
-	_expect_equal(no_support["snapshot"]["player_hp"], 11, "无效援护不会触发敌方攻击")
+	_expect_equal(no_support["snapshot"]["player_hp"], 10, "无效援护不会触发敌方攻击")
 
 	var retreated = _battle_state()
 	retreated.choose("use_talisman")
 	var retreat: Dictionary = retreated.choose("retreat")
 	_expect_true(retreat["ok"], "战斗中可以主动撤退")
 	_expect_equal(retreated.phase_id(), "mountain_path", "撤退返回山道旧石标")
-	_expect_equal(retreat["snapshot"]["enemy_hp"], 9, "撤退后敌人恢复完整甲势")
+	_expect_equal(retreat["snapshot"]["enemy_hp"], 12, "撤退后敌人恢复完整甲势")
 	_expect_equal(retreat["snapshot"]["talismans"], 0, "撤退不会返还已消耗符箓")
 	_expect_equal(retreat["snapshot"]["setbacks"], 1, "撤退记录一次挫败")
 	_expect_equal(retreat["snapshot"]["spring_lamps"], 1, "撤退后下一次挑战可重新布灯")
@@ -393,6 +475,8 @@ func _test_companion_retreat_and_rescue() -> void:
 	var final_guard: Dictionary = {}
 	for turn in range(12):
 		final_guard = rescued.choose("guard")
+		if rescued.phase_id() == "riverbank":
+			break
 	_expect_equal(rescued.phase_id(), "riverbank", "气血耗尽不会形成死档")
 	_expect_true(final_guard["events"].has("companion_rescue"), "气血耗尽触发同伴救援")
 	_expect_equal(final_guard["snapshot"]["player_hp"], 8, "救援后恢复到可继续状态")
@@ -574,19 +658,20 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%EventLabel").text.contains("旧猎户的箭记"), "山道可选调查返回原创环境线索")
 	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.73, "player_y": 0.34}), "场景测试移动到敌人预警区")
 	instance._render([])
-	await _press_action(instance, "接近碎甲声")
+	await _press_action(instance, "接近岩甲幼兽")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉山道", "场景进入战斗")
 	_expect_false(ferry_ground.visible, "离开渡口后隐藏渡口 TileMapLayer")
 	_expect_equal(_action_button_count(instance), 6, "战斗显示术式、符箓、守势、援护、石灯与撤退")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "battle", "战斗切换山道画面")
-	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("甲缝"), "战斗目标提示弱点与退路")
+	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("试探冲撞"), "战斗目标预告下一项敌方意图")
+	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("甲缝"), "战斗目标提示材质弱点")
 	await _press_action(instance, "撤到旧石标")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉山道", "场景撤退返回山道")
 	_expect_true(instance.get_node("%EventLabel").text.contains("旧石标"), "场景说明撤退路线与敌人重置")
 	_expect_equal(instance.exploration.player_position, ExplorationStateScript.PATH_RETREAT_POSITION, "撤退落在山道安全位置")
 	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.73, "player_y": 0.34}), "撤退后回到敌人预警区")
 	instance._render([])
-	await _press_action(instance, "接近碎甲声")
+	await _press_action(instance, "接近岩甲幼兽")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉山道", "场景可在撤退后再次进山")
 	await _press_action(instance, "布置引泉石灯")
 	_expect_true(instance.get_node("%EventLabel").text.contains("青白泉光"), "场景呈现战术部署物")
@@ -699,12 +784,12 @@ func _write_test_file(path: String, contents: String) -> void:
 	file.close()
 
 
-func _battle_state():
+func _battle_state(approach_action: String = "approach_enemy"):
 	var state = JourneyStateScript.new()
 	state.choose("talk_to_companion")
 	state.choose("gather_moonleaf")
 	state.choose("enter_spring")
-	state.choose("approach_enemy")
+	state.choose(approach_action)
 	return state
 
 

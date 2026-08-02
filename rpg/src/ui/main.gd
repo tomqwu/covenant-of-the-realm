@@ -154,7 +154,8 @@ func _render(event_ids: Array) -> void:
 		snapshot["phase"],
 		snapshot["gathered_moonleaf"],
 		snapshot["talked_to_companion"],
-		snapshot["lamp_turns"]
+		snapshot["lamp_turns"],
+		snapshot["enemy_id"]
 	)
 	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"])
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
@@ -165,10 +166,13 @@ func _render(event_ids: Array) -> void:
 func _status_text(snapshot: Dictionary) -> String:
 	var herb := "有" if snapshot["gathered_moonleaf"] else "无"
 	if snapshot["phase"] == "battle":
-		return "%s　气血 %d/12　岩甲兽 %d/9　符 %d　援护 %d　石灯 %d　回合 %d" % [
+		var profile := journey.current_enemy_profile()
+		return "%s　气血 %d/12　%s %d/%d　符 %d　援护 %d　石灯 %d　回合 %d" % [
 			snapshot["realm"],
 			snapshot["player_hp"],
+			profile.get("name", "未知灵物"),
 			snapshot["enemy_hp"],
+			profile.get("max_hp", 0),
 			snapshot["talismans"],
 			snapshot["companion_supports"],
 			snapshot["spring_lamps"],
@@ -186,7 +190,13 @@ func _objective_text(snapshot: Dictionary) -> String:
 				return "当前目标　前往月芽田准备护脉灵草"
 			return "当前目标　沿石路寻找藏泉山门"
 		"battle":
-			return "当前目标　看清甲缝，留住退路"
+			var profile := journey.current_enemy_profile()
+			var intent := journey.current_enemy_intent()
+			return "下一回合　%s（%d 伤害）　材质弱点　%s" % [
+				intent.get("name", "未知"),
+				intent.get("damage", 0),
+				profile.get("weakness", "尚未识别"),
+			]
 		"mountain_path":
 			return "当前目标　沿石标探查碎甲声，随时可以折返"
 		"spring":
@@ -201,8 +211,9 @@ func _event_text(event_ids: Array) -> String:
 			return "沿路寻找发光的月芽草；金色圆环会提示可交互地点。"
 		return "选择行动。所有结果由确定性规则结算。"
 	var messages: Array[String] = []
+	var enemy_name := str(journey.current_enemy_profile().get("name", "山道灵物"))
 	for event_id in event_ids:
-		messages.append(content["messages"].get(event_id, event_id))
+		messages.append(str(content["messages"].get(event_id, event_id)).replace("{enemy}", enemy_name))
 	return "\n".join(messages)
 
 

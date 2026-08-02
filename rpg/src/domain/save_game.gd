@@ -3,8 +3,9 @@ class_name SaveGame
 
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
+const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
 
-const SAVE_VERSION := 6
+const SAVE_VERSION := 7
 const STORY_ID := "zhaohe_first_breath"
 const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 
@@ -111,6 +112,7 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["journey"]["spring_lamps"] = 1
 		migrated["journey"]["lamp_turns"] = 0
 		migrated["journey"]["briefing_response"] = _legacy_briefing_response(migrated["journey"])
+		_migrate_enemy_snapshot(migrated["journey"])
 		migrated["exploration"]["map_id"] = ExplorationStateScript.DEFAULT_MAP_ID
 		migrated["dialogue"] = DialogueStateScript.default_snapshot()
 		var migration_result := _result(true, migrated, "")
@@ -123,6 +125,7 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["journey"]["spring_lamps"] = 1
 		migrated["journey"]["lamp_turns"] = 0
 		migrated["journey"]["briefing_response"] = _legacy_briefing_response(migrated["journey"])
+		_migrate_enemy_snapshot(migrated["journey"])
 		migrated["exploration"]["map_id"] = ExplorationStateScript.DEFAULT_MAP_ID
 		migrated["dialogue"] = DialogueStateScript.default_snapshot()
 		var migration_result := _result(true, migrated, "")
@@ -134,6 +137,7 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["journey"]["spring_lamps"] = 1
 		migrated["journey"]["lamp_turns"] = 0
 		migrated["journey"]["briefing_response"] = _legacy_briefing_response(migrated["journey"])
+		_migrate_enemy_snapshot(migrated["journey"])
 		migrated["exploration"]["map_id"] = ExplorationStateScript.DEFAULT_MAP_ID
 		migrated["dialogue"] = DialogueStateScript.default_snapshot()
 		var migration_result := _result(true, migrated, "")
@@ -143,6 +147,7 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		var migrated := payload.duplicate(true)
 		migrated["save_version"] = SAVE_VERSION
 		migrated["journey"]["briefing_response"] = _legacy_briefing_response(migrated["journey"])
+		_migrate_enemy_snapshot(migrated["journey"])
 		migrated["exploration"]["map_id"] = ExplorationStateScript.DEFAULT_MAP_ID
 		migrated["dialogue"] = DialogueStateScript.default_snapshot()
 		var migration_result := _result(true, migrated, "")
@@ -152,14 +157,24 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		var migrated := payload.duplicate(true)
 		migrated["save_version"] = SAVE_VERSION
 		migrated["journey"]["briefing_response"] = _legacy_briefing_response(migrated["journey"])
+		_migrate_enemy_snapshot(migrated["journey"])
 		migrated["dialogue"] = DialogueStateScript.default_snapshot()
 		var migration_result := _result(true, migrated, "")
 		migration_result["migrated_from_version"] = 5
+		return migration_result
+	if int(version) == 6:
+		var migrated := payload.duplicate(true)
+		migrated["save_version"] = SAVE_VERSION
+		_migrate_enemy_snapshot(migrated["journey"])
+		var migration_result := _result(true, migrated, "")
+		migration_result["migrated_from_version"] = 6
 		return migration_result
 	if int(version) != SAVE_VERSION:
 		return _result(false, {}, "unsupported_version")
 	if not ExplorationStateScript.supports_map_id(payload["exploration"].get("map_id")):
 		return _result(false, {}, "invalid_map")
+	if not EnemyCatalogScript.supports(payload["journey"].get("enemy_id")):
+		return _result(false, {}, "invalid_enemy")
 	if typeof(payload.get("dialogue")) != TYPE_DICTIONARY:
 		return _result(false, {}, "invalid_dialogue")
 	var restored_dialogue = DialogueStateScript.new()
@@ -170,6 +185,12 @@ static func _validate(payload: Dictionary) -> Dictionary:
 
 static func _legacy_briefing_response(journey_snapshot: Dictionary) -> String:
 	return "careful" if journey_snapshot.get("talked_to_companion", false) else "unanswered"
+
+
+static func _migrate_enemy_snapshot(journey_snapshot: Dictionary) -> void:
+	journey_snapshot["enemy_id"] = EnemyCatalogScript.DEFAULT_ENEMY_ID
+	if journey_snapshot.get("phase") in ["riverbank", "mountain_path"]:
+		journey_snapshot["enemy_hp"] = EnemyCatalogScript.max_hp(EnemyCatalogScript.DEFAULT_ENEMY_ID)
 
 
 static func _result(ok: bool, data: Dictionary, reason: String) -> Dictionary:

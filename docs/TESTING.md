@@ -4,10 +4,10 @@
 
 | Boundary | Gate | Current result |
 | --- | --- | --- |
-| Deterministic cultivation rules | pytest + branch coverage, minimum 99% | 50 tests; 100% statements and branches |
-| Godot RPG rules and scenes | headless GDScript harness | 301 assertions passing, including resumable dialogue, two-map exploration, no-combat bypass, TileMapLayer, and save v6 contracts |
-| Godot RPG chapter path | independent headless E2E | 33 checks: briefing → mountain save/resume/return → investigation → retreat/battle → replay → no-combat bypass |
-| Godot keyboard/controller path | physical events + focus assertions | 18 checks: title confirm → two-map interaction → movement → pause → battle focus |
+| Deterministic cultivation rules | pytest + branch coverage, minimum 99% | 52 tests; 100% statements and branches |
+| Godot RPG rules and scenes | headless GDScript harness | 346 assertions passing, including three enemy profiles, intent UI, resumable dialogue, two-map exploration, TileMapLayer, and save v7 contracts |
+| Godot RPG chapter path | independent headless E2E | 44 checks: dialogue interruption → mountain return → retreat → non-default enemy battle save/resume → replay → no-combat bypass |
+| Godot keyboard/controller path | physical events + focus assertions | 20 checks: title/dialogue confirm → two-map interaction → movement → pause → battle focus |
 | Godot RPG package | double PCK export + boot smoke | byte-reproducible pack; headless main scene boot passing |
 | Evennia commands and world bootstrap | Evennia isolated database harness | command, localization, and bootstrap integration tests passing |
 | Multiplayer release path | real server, two real Telnet clients | 中文注册 → 登录 → 采药 → 修炼 → 协作 → 突破 → 重连持久化 |
