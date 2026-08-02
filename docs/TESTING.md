@@ -5,8 +5,8 @@
 | Boundary | Gate | Current result |
 | --- | --- | --- |
 | Deterministic cultivation rules | pytest + branch coverage, minimum 99% | 52 tests; 100% statements and branches |
-| Godot RPG rules and scenes | headless GDScript harness | 346 assertions passing, including three enemy profiles, intent UI, resumable dialogue, two-map exploration, TileMapLayer, and save v7 contracts |
-| Godot RPG chapter path | independent headless E2E | 44 checks: dialogue interruption → mountain return → retreat → non-default enemy battle save/resume → replay → no-combat bypass |
+| Godot RPG rules and scenes | headless GDScript harness | 383 assertions passing, including shared-resolver boss, two persisted combat states, three regular enemies, intent UI, dialogue, exploration, and save v8 contracts |
+| Godot RPG chapter path | independent headless E2E | 51 checks: dialogue interruption → mountain return → retreat → non-default enemy restore → boss status restore → ending → replay bypass |
 | Godot keyboard/controller path | physical events + focus assertions | 20 checks: title/dialogue confirm → two-map interaction → movement → pause → battle focus |
 | Godot RPG package | double PCK export + boot smoke | byte-reproducible pack; headless main scene boot passing |
 | Evennia commands and world bootstrap | Evennia isolated database harness | command, localization, and bootstrap integration tests passing |

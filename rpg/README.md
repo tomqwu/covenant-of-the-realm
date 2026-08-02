@@ -24,8 +24,8 @@ The development window has a 1152×648 minimum because that is the validated rea
 Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, battle confirmation,
 and pause/resume are exercised as physical input events by `make test-rpg-input`.
 
-启动后可选择新游戏或继续本机的版本化存档。当前 save v7 同时记录稳定地图标识、
-归一化坐标、对话行号与敌人标识；v1–v6 自动迁移，未知地图、无效对话或未知敌人不会被静默放进错误场景。游戏会在成功交互、战斗行动和持续
+启动后可选择新游戏或继续本机的版本化存档。当前 save v8 同时记录稳定地图标识、
+归一化坐标、对话行号、敌人标识与战斗状态；v1–v7 自动迁移，未知地图、无效对话或未知敌人不会被静默放进错误场景。游戏会在成功交互、战斗行动和持续
 移动时自动保存；按 `Esc` 或手柄 Start 可暂停、保存并返回标题。损坏或未知版本
 的存档不会被静默载入，主文件写入失败时可从安全备份恢复。
 
@@ -54,6 +54,11 @@ and pause/resume are exercised as physical input events by `make test-rpg-input`
 会在玩家行动前显示下一回合招式与伤害：镇岩符克制未闭合岩甲，引气术吹散湿苔，
 守势则能借失衡石傀的摆锤反伤。save v7 会把非默认敌人保存下来；E2E 会在泉苔
 战斗中销毁并重建场景，验证敌人和下一意图都没有改变。
+
+普通敌人退场后，岩甲兽守巢者会从泉室石门出现，但不会切换到另一套解析器。
+守住首领重击会产生两层破甲，后续攻击逐层获得额外伤害；砚青援护会产生两层
+凝息，强化后续术式或符箓。save v8 明确记录两种状态的剩余层数，完整 E2E 会在
+首领战中断并恢复后继续结算；绕行路线仍可避开普通战与首领战。
 
 开场任务采用同一套近距离交互：先在渡碑旁与砚青交谈。七句原创风险简报支持
 逐字显示、整句显示、最近四句回顾、跳到回应、两项不会锁死主线的态度选择，以及

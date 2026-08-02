@@ -4,8 +4,10 @@ class_name EnemyCatalog
 const ROCK_ARMOR_YOUNG := "rock_armor_young"
 const SPRING_MOSS_SHELL := "spring_moss_shell"
 const UNBALANCED_STONE_PUPPET := "unbalanced_stone_puppet"
+const ROCK_ARMOR_WARDEN := "rock_armor_warden"
 const DEFAULT_ENEMY_ID := ROCK_ARMOR_YOUNG
-const ENEMY_IDS := [ROCK_ARMOR_YOUNG, SPRING_MOSS_SHELL, UNBALANCED_STONE_PUPPET]
+const REGULAR_ENEMY_IDS := [ROCK_ARMOR_YOUNG, SPRING_MOSS_SHELL, UNBALANCED_STONE_PUPPET]
+const ENEMY_IDS := [ROCK_ARMOR_YOUNG, SPRING_MOSS_SHELL, UNBALANCED_STONE_PUPPET, ROCK_ARMOR_WARDEN]
 
 const PROFILES := {
 	ROCK_ARMOR_YOUNG: {
@@ -44,6 +46,19 @@ const PROFILES := {
 			{"name": "踏地回正", "damage": 2},
 		],
 	},
+	ROCK_ARMOR_WARDEN: {
+		"name": "岩甲兽守巢者",
+		"max_hp": 14,
+		"weak_action": "guard",
+		"weak_bonus": 2,
+		"weakness": "守住重击令腹甲错位",
+		"description": "守巢者从泉室石门后现身，成熟腹甲只在重击落空时错开。",
+		"intents": [
+			{"name": "压阵肩撞", "damage": 3},
+			{"name": "崩石重击", "damage": 5},
+			{"name": "回身护巢", "damage": 2},
+		],
+	},
 }
 
 
@@ -77,3 +92,7 @@ static func player_damage(enemy_id: String, action_id: String) -> int:
 
 static func exposes_weakness(enemy_id: String, action_id: String) -> bool:
 	return action_id == PROFILES.get(enemy_id, {}).get("weak_action", "")
+
+
+static func is_boss(enemy_id: String) -> bool:
+	return enemy_id == ROCK_ARMOR_WARDEN

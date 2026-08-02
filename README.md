@@ -7,7 +7,7 @@
 
 **《山河有契》**（英文工作名：**Covenant of the Realm**）正在发展为一款原创、
 中文优先、章节式的 2D 修仙剧情 RPG。Godot 可玩章节已经串联自由移动、碰撞、
-可恢复分支对话、近距离采集、三类可预判敌人、可撤退回合战斗、同伴援护、版本化存档和首次境界突破；现有多人
+可恢复分支对话、近距离采集、三类可预判敌人、守巢首领、可撤退回合战斗、同伴援护、版本化存档和首次境界突破；现有多人
 MUD 与单人 PWA 作为可运行研究原型保留。
 
 ## Play the RPG graybox
@@ -79,8 +79,8 @@ make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
 The deterministic multiplayer domain rules have an enforced 99% statement/branch minimum and
-currently reach 100%. Godot behavior is covered by 346 headless rule/scene assertions plus an
-independent 44-check chapter E2E and 20-check physical-input/focus path. The MUD adapter has
+currently reach 100%. Godot behavior is covered by 383 headless rule/scene assertions plus an
+independent 51-check chapter E2E and 20-check physical-input/focus path. The MUD adapter has
 isolated Evennia tests, and its release path
 is exercised through two real concurrent Telnet clients. The preserved browser prototype retains
 its own 100% unit result and 53-execution Playwright matrix. See [testing](docs/TESTING.md),

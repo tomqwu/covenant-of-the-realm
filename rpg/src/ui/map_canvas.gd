@@ -203,6 +203,8 @@ func _draw_battle_path() -> void:
 			_draw_moss_shell(Vector2(size.x * 0.66, size.y * 0.43))
 		"unbalanced_stone_puppet":
 			_draw_stone_puppet(Vector2(size.x * 0.66, size.y * 0.43))
+		"rock_armor_warden":
+			_draw_boss_beast(Vector2(size.x * 0.66, size.y * 0.43))
 		_:
 			_draw_beast(Vector2(size.x * 0.66, size.y * 0.43))
 	draw_line(Vector2(size.x * 0.40, size.y * 0.49), Vector2(size.x * 0.64, size.y * 0.40), SPIRIT_GOLD, 3.0)
@@ -385,6 +387,14 @@ func _draw_beast(center: Vector2) -> void:
 	draw_line(center + Vector2(-8, -35), center + Vector2(8, 10), SPIRIT_GOLD, 3.0)
 	draw_circle(center + Vector2(-13, -15), 3.0, SPIRIT_GOLD)
 	draw_circle(center + Vector2(8, -17), 3.0, SPIRIT_GOLD)
+
+
+func _draw_boss_beast(center: Vector2) -> void:
+	_draw_beast(center)
+	for offset in [Vector2(-38, -17), Vector2(4, -42), Vector2(39, -12)]:
+		draw_circle(center + offset, 20.0, COOL_SHADOW.darkened(0.12))
+	draw_arc(center + Vector2(0, 11), 42.0, 0.15, PI - 0.15, 20, WARM_RUST, 6.0)
+	draw_line(center + Vector2(-14, -43), center + Vector2(14, 8), SPIRIT_GOLD, 4.0)
 
 
 func _draw_moss_shell(center: Vector2) -> void:

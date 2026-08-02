@@ -83,6 +83,10 @@ Save v7 adds a stable enemy profile ID. V1–v6 files migrate to the rock-armor 
 inactive legacy phases normalize that profile to full health, while an in-progress old battle keeps
 its earned damage. Current files with an unknown enemy ID are rejected before domain restoration.
 
+Save v8 adds bounded remaining-turn counters for armor break and focused breath. V1–v7 files
+migrate both to zero. Non-battle snapshots cannot retain either status, and leaving battle through
+victory, retreat, rescue, bypass, or chapter reset clears them explicitly.
+
 ### 2026-08-02 — Enemy profiles share one deterministic resolver
 
 岩甲兽幼体、泉苔寄壳 and 失衡石傀 differ through data: maximum health, a two-intent damage
@@ -90,6 +94,13 @@ cycle, one weakness action, bonus damage, name, and short description. The journ
 only the selected stable ID and mutable battle values. Player actions, guard, lamp, companion,
 retreat, rescue, and victory continue through one resolver; the UI reads the same profile and next
 round index to announce intent before input. Frame timing never selects or advances an intent.
+
+The rock-armor warden is a fourth profile consumed by that resolver, not a boss-specific combat
+class. Defeating a regular profile swaps to the warden, restores only the explicitly documented
+inter-encounter resources, and preserves spent talismans. Guarding its heavy attack applies two
+armor-break charges; companion support applies two focused-breath charges. Each later offensive
+action consumes one applicable charge for one bonus damage. Both counters are snapshot state and
+are exercised by an E2E scene teardown and restore.
 
 ### 2026-08-02 — Resumable dialogue owns presentation progress
 

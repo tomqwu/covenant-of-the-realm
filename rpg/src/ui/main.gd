@@ -146,6 +146,8 @@ func _render(event_ids: Array) -> void:
 	objective_label.text = _objective_text(snapshot)
 	location_label.text = node["title"]
 	description_label.text = node["description"]
+	if snapshot["phase"] == "battle":
+		description_label.text += "\n" + str(journey.current_enemy_profile().get("description", ""))
 	if snapshot["phase"] == "complete":
 		description_label.text += "\n\n" + _chapter_summary(snapshot)
 	status_label.text = _status_text(snapshot)
@@ -167,7 +169,13 @@ func _status_text(snapshot: Dictionary) -> String:
 	var herb := "有" if snapshot["gathered_moonleaf"] else "无"
 	if snapshot["phase"] == "battle":
 		var profile := journey.current_enemy_profile()
-		return "%s　气血 %d/12　%s %d/%d　符 %d　援护 %d　石灯 %d　回合 %d" % [
+		var effects: Array[String] = []
+		if snapshot["armor_break_turns"] > 0:
+			effects.append("破甲 %d" % snapshot["armor_break_turns"])
+		if snapshot["focus_turns"] > 0:
+			effects.append("凝息 %d" % snapshot["focus_turns"])
+		var effect_text := "" if effects.is_empty() else "　状态 " + "/".join(effects)
+		return ("%s　气血 %d/12　%s %d/%d　符 %d　援护 %d　石灯 %d　回合 %d%s" % [
 			snapshot["realm"],
 			snapshot["player_hp"],
 			profile.get("name", "未知灵物"),
@@ -177,7 +185,8 @@ func _status_text(snapshot: Dictionary) -> String:
 			snapshot["companion_supports"],
 			snapshot["spring_lamps"],
 			snapshot["round"],
-		]
+			effect_text,
+		])
 	return "%s　气血 %d/12　月芽草：%s　同行：砚青" % [snapshot["realm"], snapshot["player_hp"], herb]
 
 

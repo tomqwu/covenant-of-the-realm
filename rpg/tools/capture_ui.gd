@@ -62,6 +62,13 @@ func _capture_flow() -> void:
 	instance._on_action("use_art")
 	instance._on_action("use_art")
 	await _settle()
+	await _save_frame("02-cangquan-boss.png")
+	instance._on_action("guard")
+	instance._on_action("use_art")
+	instance._on_action("companion_support")
+	instance._on_action("use_art")
+	instance._on_action("use_art")
+	await _settle()
 	await _save_frame("03-spring-chamber.png")
 
 	instance._on_action("breakthrough")

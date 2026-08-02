@@ -43,6 +43,8 @@ var spring_lamps := 1
 var lamp_turns := 0
 var setbacks := 0
 var briefing_response := RESPONSE_UNANSWERED
+var armor_break_turns := 0
+var focus_turns := 0
 
 
 func phase_id() -> String:
@@ -107,6 +109,8 @@ func choose(action_id: String) -> Dictionary:
 				enemy_id = encounter_id
 				enemy_hp = EnemyCatalogScript.max_hp(enemy_id)
 				round_number = 1
+				armor_break_turns = 0
+				focus_turns = 0
 				phase = Phase.BATTLE
 				return _result(true, ["battle_started_%s" % enemy_id])
 			if action_id == BYPASS_ENEMY:
@@ -151,6 +155,8 @@ func snapshot() -> Dictionary:
 		"lamp_turns": lamp_turns,
 		"setbacks": setbacks,
 		"briefing_response": briefing_response,
+		"armor_break_turns": armor_break_turns,
+		"focus_turns": focus_turns,
 	}
 
 
@@ -170,6 +176,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 		"lamp_turns",
 		"setbacks",
 		"briefing_response",
+		"armor_break_turns",
+		"focus_turns",
 	]
 	for key in required_keys:
 		if not snapshot_data.has(key):
@@ -202,6 +210,10 @@ func restore(snapshot_data: Dictionary) -> bool:
 		return false
 	if not _integer_in_range(snapshot_data["setbacks"], 0, 99):
 		return false
+	if not _integer_in_range(snapshot_data["armor_break_turns"], 0, 2):
+		return false
+	if not _integer_in_range(snapshot_data["focus_turns"], 0, 2):
+		return false
 
 	var next_phase: Phase
 	match snapshot_data["phase"]:
@@ -231,6 +243,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	var next_lamp_turns := int(snapshot_data["lamp_turns"])
 	var next_setbacks := int(snapshot_data["setbacks"])
 	var next_briefing_response: String = snapshot_data["briefing_response"]
+	var next_armor_break_turns := int(snapshot_data["armor_break_turns"])
+	var next_focus_turns := int(snapshot_data["focus_turns"])
 	if not _valid_phase_invariants(
 		next_phase,
 		next_gathered,
@@ -245,7 +259,9 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_spring_lamps,
 		next_lamp_turns,
 		next_setbacks,
-		next_briefing_response
+		next_briefing_response,
+		next_armor_break_turns,
+		next_focus_turns
 	):
 		return false
 
@@ -263,6 +279,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	lamp_turns = next_lamp_turns
 	setbacks = next_setbacks
 	briefing_response = next_briefing_response
+	armor_break_turns = next_armor_break_turns
+	focus_turns = next_focus_turns
 	return true
 
 
@@ -289,17 +307,17 @@ func _choose_battle(action_id: String) -> Dictionary:
 	var guard_amount := 0
 	match action_id:
 		USE_ART:
-			enemy_hp = max(0, enemy_hp - EnemyCatalogScript.player_damage(enemy_id, action_id))
+			enemy_hp = max(0, enemy_hp - _resolved_player_damage(action_id))
 			events.append("art_hit")
 		USE_TALISMAN:
 			if talismans <= 0:
 				return _result(false, ["no_talisman"])
 			talismans -= 1
-			enemy_hp = max(0, enemy_hp - EnemyCatalogScript.player_damage(enemy_id, action_id))
+			enemy_hp = max(0, enemy_hp - _resolved_player_damage(action_id))
 			events.append("talisman_hit")
 		GUARD:
 			guard_amount = 2
-			enemy_hp = max(0, enemy_hp - EnemyCatalogScript.player_damage(enemy_id, action_id))
+			enemy_hp = max(0, enemy_hp - _resolved_player_damage(action_id))
 			events.append("guarded")
 		COMPANION_SUPPORT:
 			if companion_supports <= 0:
@@ -307,6 +325,7 @@ func _choose_battle(action_id: String) -> Dictionary:
 			companion_supports -= 1
 			player_hp = mini(12, player_hp + 3)
 			guard_amount = 2
+			focus_turns = 2
 			events.append("companion_supported")
 		DEPLOY_SPRING_LAMP:
 			if spring_lamps <= 0:
@@ -323,15 +342,25 @@ func _choose_battle(action_id: String) -> Dictionary:
 			companion_supports = 1
 			spring_lamps = 1
 			lamp_turns = 0
+			armor_break_turns = 0
+			focus_turns = 0
 			return _result(true, ["retreated"])
 		_:
 			return _result(false, ["invalid_action"])
 	if action_id in [USE_ART, USE_TALISMAN, GUARD] and EnemyCatalogScript.exposes_weakness(enemy_id, action_id):
+		armor_break_turns = 2
 		events.append("weakness_exposed")
 
 	if enemy_hp <= 0:
-		phase = Phase.SPRING
-		events.append("battle_won")
+		if not EnemyCatalogScript.is_boss(enemy_id):
+			_start_boss_encounter()
+			events.append("regular_enemy_won")
+			events.append("boss_arrived")
+		else:
+			phase = Phase.SPRING
+			armor_break_turns = 0
+			focus_turns = 0
+			events.append("battle_won")
 		return _result(true, events)
 	if lamp_turns > 0:
 		guard_amount += 1
@@ -351,6 +380,8 @@ func _choose_battle(action_id: String) -> Dictionary:
 		companion_supports = 1
 		spring_lamps = 1
 		lamp_turns = 0
+		armor_break_turns = 0
+		focus_turns = 0
 		events.append("companion_rescue")
 		return _result(true, events)
 	round_number += 1
@@ -379,6 +410,30 @@ func current_enemy_intent() -> Dictionary:
 	return EnemyCatalogScript.intent(enemy_id, round_number)
 
 
+func _resolved_player_damage(action_id: String) -> int:
+	var damage := EnemyCatalogScript.player_damage(enemy_id, action_id)
+	if action_id in [USE_ART, USE_TALISMAN]:
+		if armor_break_turns > 0:
+			damage += 1
+			armor_break_turns -= 1
+		if focus_turns > 0:
+			damage += 1
+			focus_turns -= 1
+	return damage
+
+
+func _start_boss_encounter() -> void:
+	enemy_id = EnemyCatalogScript.ROCK_ARMOR_WARDEN
+	enemy_hp = EnemyCatalogScript.max_hp(enemy_id)
+	player_hp = 12
+	round_number = 1
+	companion_supports = 1
+	spring_lamps = 1
+	lamp_turns = 0
+	armor_break_turns = 0
+	focus_turns = 0
+
+
 func _reset_chapter() -> void:
 	phase = Phase.RIVERBANK
 	gathered_moonleaf = false
@@ -394,6 +449,8 @@ func _reset_chapter() -> void:
 	lamp_turns = 0
 	setbacks = 0
 	briefing_response = RESPONSE_UNANSWERED
+	armor_break_turns = 0
+	focus_turns = 0
 
 
 func _integer_in_range(value: Variant, minimum: int, maximum: int) -> bool:
@@ -417,7 +474,9 @@ func _valid_phase_invariants(
 	next_spring_lamps: int,
 	next_lamp_turns: int,
 	next_setbacks: int,
-	next_briefing_response: String
+	next_briefing_response: String,
+	next_armor_break_turns: int,
+	next_focus_turns: int
 ) -> bool:
 	if next_briefing_response not in [RESPONSE_UNANSWERED, RESPONSE_CAREFUL, RESPONSE_TRUSTING]:
 		return false
@@ -425,14 +484,14 @@ func _valid_phase_invariants(
 		return false
 	var next_enemy_max := EnemyCatalogScript.max_hp(next_enemy_id)
 	if next_phase == Phase.RIVERBANK:
-		return next_realm == "凡身" and next_player_hp > 0 and next_enemy_hp == next_enemy_max and next_round == 1 and next_companion_supports == 1 and next_spring_lamps == 1 and next_lamp_turns == 0
+		return next_realm == "凡身" and next_player_hp > 0 and next_enemy_hp == next_enemy_max and next_round == 1 and next_companion_supports == 1 and next_spring_lamps == 1 and next_lamp_turns == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
 	if next_phase == Phase.MOUNTAIN_PATH:
-		return next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp == next_enemy_max and next_round == 1 and next_lamp_turns == 0
+		return next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp == next_enemy_max and next_round == 1 and next_lamp_turns == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
 	if next_phase == Phase.BATTLE:
 		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp > 0 and (next_lamp_turns == 0 or next_spring_lamps == 0)
 	if next_phase == Phase.SPRING:
-		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp == 0
-	return next_realm == "引息境一层" and not next_gathered and next_enemy_hp == 0 and next_setbacks >= 0
+		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
+	return next_realm == "引息境一层" and not next_gathered and next_enemy_hp == 0 and next_setbacks >= 0 and next_armor_break_turns == 0 and next_focus_turns == 0
 
 
 func _enemy_for_approach_action(action_id: String) -> String:

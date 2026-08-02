@@ -30,6 +30,7 @@ func _run() -> void:
 	_test_gathering_and_gate()
 	_test_combat_paths()
 	_test_enemy_profile_combat()
+	_test_boss_and_statuses()
 	_test_companion_retreat_and_rescue()
 	_test_breakthrough_and_completion()
 	await _test_visual_scale_scene()
@@ -54,7 +55,8 @@ func _test_initial_state() -> void:
 
 
 func _test_enemy_catalog() -> void:
-	_expect_equal(EnemyCatalogScript.ENEMY_IDS.size(), 3, "山道配置三种原创普通敌人")
+	_expect_equal(EnemyCatalogScript.REGULAR_ENEMY_IDS.size(), 3, "山道配置三种原创普通敌人")
+	_expect_equal(EnemyCatalogScript.ENEMY_IDS.size(), 4, "普通敌人与首领共用一个配置目录")
 	_expect_true(EnemyCatalogScript.supports("rock_armor_young"), "稳定敌人标识可识别")
 	_expect_false(EnemyCatalogScript.supports(3), "非文本敌人标识被拒绝")
 	var rock: Dictionary = EnemyCatalogScript.profile("rock_armor_young")
@@ -71,6 +73,8 @@ func _test_enemy_catalog() -> void:
 	_expect_equal(EnemyCatalogScript.player_damage("missing", "unknown"), 0, "未知组合不产生伤害")
 	_expect_true(EnemyCatalogScript.exposes_weakness("spring_moss_shell", "use_art"), "配置可判断材质相克")
 	_expect_false(EnemyCatalogScript.exposes_weakness("spring_moss_shell", "guard"), "非弱点行动不误报相克")
+	_expect_true(EnemyCatalogScript.is_boss("rock_armor_warden"), "守巢者配置被标记为首领")
+	_expect_false(EnemyCatalogScript.is_boss("rock_armor_young"), "普通岩甲幼兽不误判为首领")
 
 
 func _test_exploration_rules() -> void:
@@ -132,6 +136,12 @@ func _test_state_restore() -> void:
 	var response_mismatch := snapshot.duplicate(true)
 	response_mismatch["briefing_response"] = "unanswered"
 	_expect_false(restored.restore(response_mismatch), "已交谈状态不能恢复为未回应")
+	var excessive_status := snapshot.duplicate(true)
+	excessive_status["focus_turns"] = 3
+	_expect_false(restored.restore(excessive_status), "持续状态层数拒绝超出规则上限")
+	var inactive_status: Dictionary = JourneyStateScript.new().snapshot()
+	inactive_status["armor_break_turns"] = 1
+	_expect_false(restored.restore(inactive_status), "非战斗阶段不能保留破甲状态")
 
 
 func _test_dialogue_state() -> void:
@@ -166,7 +176,7 @@ func _test_versioned_save() -> void:
 	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
 	var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(loaded["ok"], "版本化存档读取成功")
-	_expect_equal(loaded["data"]["save_version"], 7.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["save_version"], 8.0, "存档声明当前版本")
 	_expect_equal(loaded["data"]["journey"]["enemy_id"], "rock_armor_young", "新版存档声明稳定敌人标识")
 	_expect_equal(loaded["data"]["exploration"]["map_id"], "zhaohe_ferry", "新版存档声明稳定地图标识")
 	var restored_dialogue = DialogueStateScript.new()
@@ -197,7 +207,7 @@ func _test_versioned_save() -> void:
 	var migrated: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated["ok"], "v1 存档可迁移到当前版本")
 	_expect_equal(migrated["migrated_from_version"], 1, "迁移结果声明来源版本")
-	_expect_equal(migrated["data"]["save_version"], 7, "迁移后的内存快照升级为 v7")
+	_expect_equal(migrated["data"]["save_version"], 8, "迁移后的内存快照升级为 v8")
 	_expect_equal(migrated["data"]["journey"]["enemy_id"], "rock_armor_young", "旧版迁移补入默认敌人标识")
 	_expect_equal(migrated["data"]["exploration"]["map_id"], "zhaohe_ferry", "v1 迁移补入照禾渡口地图标识")
 	_expect_equal(migrated["data"]["journey"]["companion_supports"], 1, "迁移补入同伴援护资源")
@@ -277,6 +287,22 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v6["migrated_from_version"], 6, "v6 迁移声明来源版本")
 	_expect_equal(migrated_v6["data"]["journey"]["enemy_id"], "rock_armor_young", "v6 迁移补入默认敌人标识")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v6 迁移后可写回新版存档")
+	var version_seven_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_seven_journey.erase("armor_break_turns")
+	version_seven_journey.erase("focus_turns")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 7,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": version_seven_journey,
+		"exploration": exploration.snapshot(),
+		"dialogue": DialogueStateScript.default_snapshot(),
+	}))
+	var migrated_v7: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v7["ok"], "v7 敌人存档可迁移到战斗状态版本")
+	_expect_equal(migrated_v7["migrated_from_version"], 7, "v7 迁移声明来源版本")
+	_expect_equal(migrated_v7["data"]["journey"]["armor_break_turns"], 0, "v7 迁移不虚构破甲状态")
+	_expect_equal(migrated_v7["data"]["journey"]["focus_turns"], 0, "v7 迁移不虚构凝息状态")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v7 迁移后可写回新版存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -297,7 +323,7 @@ func _test_versioned_save() -> void:
 	var unknown_map_exploration := exploration.snapshot().duplicate(true)
 	unknown_map_exploration["map_id"] = "unreleased_secret_realm"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 7,
+		"save_version": 8,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": unknown_map_exploration,
@@ -305,7 +331,7 @@ func _test_versioned_save() -> void:
 	}))
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_map", "未知地图不会恢复到错误场景")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 7,
+		"save_version": 8,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": exploration.snapshot(),
@@ -315,7 +341,7 @@ func _test_versioned_save() -> void:
 	var unknown_enemy_journey: Dictionary = journey.snapshot().duplicate(true)
 	unknown_enemy_journey["enemy_id"] = "unreleased_enemy"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 7,
+		"save_version": 8,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": unknown_enemy_journey,
 		"exploration": exploration.snapshot(),
@@ -403,11 +429,13 @@ func _test_combat_paths() -> void:
 	_expect_false(state.choose("invalid")["ok"], "战斗拒绝未知行动")
 
 	var victory: Dictionary = state.choose("use_art")
-	_expect_equal(victory["snapshot"]["enemy_hp"], 3, "术式造成三点伤害")
+	_expect_equal(victory["snapshot"]["enemy_hp"], 2, "破甲状态令后续术式追加一点伤害")
+	_expect_equal(victory["snapshot"]["armor_break_turns"], 1, "一次攻势消耗一层破甲延续")
 	victory = state.choose("use_art")
-	_expect_equal(victory["snapshot"]["enemy_hp"], 0, "伤害不会低于零")
-	_expect_equal(state.phase_id(), "spring", "胜利进入泉室")
-	_expect_true(victory["events"].has("battle_won"), "胜利事件只在结束时返回")
+	_expect_equal(victory["snapshot"]["enemy_id"], "rock_armor_warden", "普通敌人退场后统一解析器切换首领配置")
+	_expect_equal(victory["snapshot"]["enemy_hp"], 14, "首领以完整生命进入同一战斗阶段")
+	_expect_equal(state.phase_id(), "battle", "普通战胜利不会跳过守巢首领")
+	_expect_true(victory["events"].has("boss_arrived"), "普通战结束返回首领入场事件")
 
 
 func _test_enemy_profile_combat() -> void:
@@ -419,7 +447,7 @@ func _test_enemy_profile_combat() -> void:
 	_expect_equal(moss_hit["snapshot"]["enemy_hp"], 4, "引气术命中泉苔弱点造成四点伤害")
 	_expect_true(moss_hit["events"].has("weakness_exposed"), "泉苔相克事件可供表现层消费")
 	moss.choose("use_art")
-	_expect_equal(moss.phase_id(), "spring", "泉苔按独立配置可以稳定击败")
+	_expect_equal(moss.enemy_id, "rock_armor_warden", "泉苔退场后同样进入共享首领战")
 
 	var puppet = _battle_state("approach_stone_puppet")
 	_expect_equal(puppet.enemy_id, "unbalanced_stone_puppet", "石傀接近行动选择对应配置")
@@ -433,6 +461,41 @@ func _test_enemy_profile_combat() -> void:
 	_expect_true(restored_puppet.restore(saved_puppet), "非默认敌人与回合可以从快照恢复")
 	_expect_equal(restored_puppet.enemy_id, "unbalanced_stone_puppet", "恢复保持稳定敌人标识")
 	_expect_equal(restored_puppet.current_enemy_intent()["name"], "踏地回正", "恢复保持由回合推导的下一意图")
+
+
+func _test_boss_and_statuses() -> void:
+	var boss = _battle_state()
+	boss.choose("use_talisman")
+	boss.choose("use_art")
+	var arrival: Dictionary = boss.choose("use_art")
+	_expect_equal(boss.enemy_id, "rock_armor_warden", "普通遭遇胜利触发岩甲守巢者")
+	_expect_equal(boss.player_hp, 12, "首领入场间隙由砚青包扎到满气血")
+	_expect_equal(boss.companion_supports, 1, "首领战重新准备一次同伴援护")
+	_expect_equal(boss.spring_lamps, 1, "首领战重新准备一盏战术石灯")
+	_expect_equal(boss.talismans, 0, "首领转场不返还普通战消耗的符箓")
+	_expect_true(arrival["events"].has("regular_enemy_won"), "普通敌人退场事件与首领入场分离")
+
+	var counter: Dictionary = boss.choose("guard")
+	_expect_equal(counter["snapshot"]["enemy_hp"], 12, "守势借首领重击造成两点反伤")
+	_expect_equal(counter["snapshot"]["armor_break_turns"], 2, "命中首领弱点施加两层破甲")
+	var broken_hit: Dictionary = boss.choose("use_art")
+	_expect_equal(broken_hit["snapshot"]["enemy_hp"], 8, "破甲令引气术从三点增为四点")
+	_expect_equal(broken_hit["snapshot"]["armor_break_turns"], 1, "破甲按后续攻击次数递减")
+	var support: Dictionary = boss.choose("companion_support")
+	_expect_equal(support["snapshot"]["focus_turns"], 2, "砚青援护同时施加两层凝息")
+	var saved_statuses: Dictionary = boss.snapshot()
+	var restored_boss = JourneyStateScript.new()
+	_expect_true(restored_boss.restore(saved_statuses), "首领与两种持续状态可以存档恢复")
+	_expect_equal(restored_boss.current_enemy_intent()["name"], boss.current_enemy_intent()["name"], "首领恢复保持下一招")
+	var focused_hit: Dictionary = boss.choose("use_art")
+	_expect_equal(focused_hit["snapshot"]["enemy_hp"], 3, "破甲与凝息同时为术式追加两点伤害")
+	_expect_equal(focused_hit["snapshot"]["armor_break_turns"], 0, "术式消耗最后一层破甲")
+	_expect_equal(focused_hit["snapshot"]["focus_turns"], 1, "术式消耗一层凝息")
+	var boss_victory: Dictionary = boss.choose("use_art")
+	_expect_equal(boss.phase_id(), "spring", "击败守巢者后才打开泉室")
+	_expect_equal(boss_victory["snapshot"]["enemy_hp"], 0, "首领伤害不会低于零")
+	_expect_equal(boss_victory["snapshot"]["focus_turns"], 0, "战斗结束清理持续状态")
+	_expect_true(boss_victory["events"].has("battle_won"), "首领胜利返回最终战斗事件")
 
 
 func _test_companion_retreat_and_rescue() -> void:
@@ -488,6 +551,7 @@ func _test_breakthrough_and_completion() -> void:
 	state.choose("use_talisman")
 	state.choose("use_art")
 	state.choose("use_art")
+	_defeat_boss(state)
 	_expect_equal(state.phase_id(), "spring", "组合行动可以获胜")
 	_expect_false(state.choose("invalid")["ok"], "泉室拒绝未知行动")
 	var result: Dictionary = state.choose("breakthrough")
@@ -683,6 +747,15 @@ func _test_scene_smoke() -> void:
 	await _press_action(instance, "镇岩符")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("回合 4"), "战斗状态呈现回合信息")
 	await _press_action(instance, "引气术")
+	_expect_true(instance.get_node("%StatusLabel").text.contains("岩甲兽守巢者 14/14"), "普通敌人后无缝进入首领配置")
+	_expect_true(instance.get_node("%DescriptionLabel").text.contains("成熟腹甲"), "场景显示首领专属短描述")
+	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("压阵肩撞"), "首领第一招在行动前明示")
+	await _press_action(instance, "守势调息")
+	_expect_true(instance.get_node("%StatusLabel").text.contains("破甲 2"), "守住首领重击后状态栏显示破甲")
+	await _press_action(instance, "引气术")
+	await _press_action(instance, "请砚青援护")
+	_expect_true(instance.get_node("%StatusLabel").text.contains("凝息 2"), "同伴援护后状态栏显示凝息")
+	await _press_action(instance, "引气术")
 	await _press_action(instance, "引气术")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉石室", "胜利进入泉室")
 
@@ -791,6 +864,14 @@ func _battle_state(approach_action: String = "approach_enemy"):
 	state.choose("enter_spring")
 	state.choose(approach_action)
 	return state
+
+
+func _defeat_boss(state) -> Dictionary:
+	state.choose("guard")
+	state.choose("use_art")
+	state.choose("companion_support")
+	state.choose("use_art")
+	return state.choose("use_art")
 
 
 func _expect_true(value: bool, label: String) -> void:
