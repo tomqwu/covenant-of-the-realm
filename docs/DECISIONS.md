@@ -4,6 +4,19 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Starting over never destroys local progress in one activation
+
+When any primary, backup, or interrupted-write journey artifact exists, the title's first
+`重新开始` activation changes the existing two primary buttons into an explicit confirmation:
+cancel and preserve the files, or confirm deletion and begin again. Cancel receives default focus;
+controller Start and Escape also cancel, while unrelated title preferences are temporarily disabled.
+No journey object or file byte changes before the second confirmation. Invalid or future-version
+artifacts receive the same protection so a player retains the option of manual recovery. The flow
+reuses existing nodes to stay within the 120-node lifecycle budget and owns no rule or save-schema
+state. Reference capture tooling separately freezes animation frames, feedback phase, and transition
+time only while writing PNGs, making two consecutive full capture runs byte-identical without
+changing runtime presentation.
+
 ### 2026-08-02 — Text size and contrast are player settings, not rule inputs
 
 Settings v3 adds `text_scale` (`standard`/`large`) and `high_contrast` (boolean), toggled from

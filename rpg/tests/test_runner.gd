@@ -1312,6 +1312,25 @@ func _test_scene_smoke() -> void:
 	resumed.toggle_high_contrast()
 	_expect_equal(resumed.accessibility_contract()["dialogue_font_color"], base_accessibility["dialogue_font_color"], "新场景基准在应用高对比之前捕获")
 	resumed.toggle_high_contrast()
+	var completed_save_text := FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH)
+	resumed.get_node("%NewGameButton").pressed.emit()
+	await process_frame
+	var confirmation: Dictionary = resumed.new_game_confirmation_contract()
+	_expect_true(confirmation["visible"], "有效存档要求二次确认才会重新开始")
+	_expect_true(confirmation["warning"].contains("无法撤销"), "覆盖警告明确说明不可撤销")
+	_expect_equal(confirmation["confirm_label"], "确认重新开始", "危险操作使用明确确认标签")
+	_expect_equal(confirmation["cancel_label"], "取消，保留存档", "安全默认项说明会保留存档")
+	_expect_true(confirmation["settings_disabled"], "确认期间停用无关标题设置")
+	_expect_false(confirmation["rule_authority"], "覆盖确认不成为旅程规则权威")
+	_expect_equal(FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH), completed_save_text, "第一次重新开始点击不改写有效存档")
+	_expect_equal(resumed.journey.phase_id(), "riverbank", "标题确认不提前替换内存旅程")
+	_expect_equal(root.gui_get_focus_owner(), resumed.get_node("%ContinueButton"), "覆盖确认默认聚焦取消")
+	resumed.get_node("%ContinueButton").pressed.emit()
+	await process_frame
+	_expect_false(resumed.new_game_confirmation_contract()["visible"], "取消会离开覆盖确认状态")
+	_expect_equal(FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH), completed_save_text, "取消覆盖完整保留存档字节")
+	_expect_true(resumed.get_node("%TitleStatus").text.contains("第一息"), "取消后恢复原存档位置说明")
+	_expect_equal(root.gui_get_focus_owner(), resumed.get_node("%NewGameButton"), "取消后焦点回到发起操作的按钮")
 	_expect_true(resumed.continue_game(), "新场景可以继续本地存档")
 	await process_frame
 	_expect_equal(resumed.get_node("%LocationLabel").text, "第一息", "继续游戏恢复章节完成态")
@@ -1323,8 +1342,38 @@ func _test_scene_smoke() -> void:
 	_expect_equal(resumed.journey.discoveries, [], "重游清空上一轮环境见闻")
 	_expect_equal(resumed.journey.ferryman_response, "unanswered", "重游清空上一轮守堤选择")
 	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["journey"]["phase"], "riverbank", "重游结果写入存档")
+	resumed.journey.setbacks = 3
+	resumed.return_to_title()
+	resumed.get_node("%NewGameButton").pressed.emit()
+	await process_frame
+	_expect_true(resumed.new_game_confirmation_contract()["visible"], "第二次尝试仍先进入覆盖确认")
+	resumed.get_node("%NewGameButton").pressed.emit()
+	await process_frame
+	_expect_false(resumed.get_node("%TitleOverlay").visible, "明确确认后才进入新旅程")
+	_expect_equal(resumed.journey.setbacks, 0, "明确确认会建立全新的规则状态")
+	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["journey"]["setbacks"], 0.0, "明确确认把新旅程写入存档")
 	resumed.get_node("%AudioManager").set_audio_enabled(false)
 	resumed.queue_free()
+	await process_frame
+
+	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
+	_write_test_file(TEST_SCENE_SAVE_PATH, "{not-json")
+	var invalid_save_instance := scene.instantiate()
+	invalid_save_instance.configure_save_path(TEST_SCENE_SAVE_PATH)
+	invalid_save_instance.configure_settings_path(TEST_SCENE_SETTINGS_PATH)
+	root.add_child(invalid_save_instance)
+	await process_frame
+	_expect_true(invalid_save_instance.get_node("%ContinueButton").disabled, "异常存档不能继续载入")
+	invalid_save_instance.get_node("%NewGameButton").pressed.emit()
+	await process_frame
+	_expect_true(invalid_save_instance.new_game_confirmation_contract()["visible"], "异常存档也不会被一次点击删除")
+	_expect_true(invalid_save_instance.new_game_confirmation_contract()["warning"].contains("异常存档"), "异常存档使用准确覆盖警告")
+	_expect_equal(FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH), "{not-json", "异常原文件在确认前保持原样")
+	invalid_save_instance.get_node("%ContinueButton").pressed.emit()
+	await process_frame
+	_expect_equal(FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH), "{not-json", "取消后异常原文件仍可供人工恢复")
+	invalid_save_instance.get_node("%AudioManager").set_audio_enabled(false)
+	invalid_save_instance.queue_free()
 	await process_frame
 	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
 	SettingsStoreScript.remove(TEST_SCENE_SETTINGS_PATH)

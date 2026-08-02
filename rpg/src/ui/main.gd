@@ -70,6 +70,7 @@ var autosave_elapsed := 0.0
 var dialogue_history_visible := false
 var dialogue_reveal_elapsed := 0.0
 var journal_previous_focus: Control = null
+var new_game_confirmation_visible := false
 var reading_labels: Array[Label] = []
 var base_reading_font_sizes := {}
 var base_reading_font_colors := {}
@@ -103,7 +104,7 @@ func _ready() -> void:
 	journal_button.focus_mode = Control.FOCUS_ALL
 	_style_menu_button(journal_close_button)
 	new_game_button.pressed.connect(start_new_game)
-	continue_button.pressed.connect(continue_game)
+	continue_button.pressed.connect(_on_continue_button_pressed)
 	resume_button.pressed.connect(toggle_pause_menu)
 	return_title_button.pressed.connect(return_to_title)
 	title_audio_button.pressed.connect(toggle_audio)
@@ -163,6 +164,10 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if scene_transition.is_transitioning():
+		get_viewport().set_input_as_handled()
+		return
+	if title_overlay.visible and new_game_confirmation_visible and event.is_action_pressed("pause_menu"):
+		cancel_new_game_confirmation()
 		get_viewport().set_input_as_handled()
 		return
 	if journal_overlay.visible:
@@ -636,6 +641,14 @@ func accessibility_contract() -> Dictionary:
 
 
 func start_new_game() -> void:
+	if not new_game_confirmation_visible and _has_local_save_artifact():
+		_show_new_game_confirmation()
+		return
+	_begin_new_game()
+
+
+func _begin_new_game() -> void:
+	new_game_confirmation_visible = false
 	SaveGameScript.remove(save_path)
 	journey = JourneyStateScript.new()
 	exploration = ExplorationStateScript.new()
@@ -652,7 +665,17 @@ func start_new_game() -> void:
 	_save_game()
 
 
+func _on_continue_button_pressed() -> void:
+	if new_game_confirmation_visible:
+		cancel_new_game_confirmation()
+		return
+	continue_game()
+
+
 func continue_game() -> bool:
+	if new_game_confirmation_visible:
+		cancel_new_game_confirmation()
+		return false
 	var loaded: Dictionary = SaveGameScript.read(save_path)
 	var decoded := _decode_save(loaded)
 	if not decoded["ok"]:
@@ -717,6 +740,9 @@ func _save_game() -> bool:
 
 
 func _refresh_title_state() -> void:
+	new_game_confirmation_visible = false
+	continue_button.text = "继续旅程"
+	_set_title_settings_disabled(false)
 	var loaded: Dictionary = SaveGameScript.read(save_path)
 	var decoded := _decode_save(loaded)
 	continue_button.disabled = not decoded["ok"]
@@ -733,6 +759,57 @@ func _refresh_title_state() -> void:
 	else:
 		title_status.text = "存档暂不可读取（%s）；原文件已保留。" % loaded["reason"]
 		new_game_button.text = "开始新游戏（覆盖异常存档）"
+
+
+func _show_new_game_confirmation() -> void:
+	new_game_confirmation_visible = true
+	var loaded: Dictionary = SaveGameScript.read(save_path)
+	var decoded := _decode_save(loaded)
+	title_status.text = "要删除现有进度与备份吗？此操作无法撤销。" if decoded["ok"] else "要删除异常存档与备份吗？此操作无法撤销。"
+	continue_button.disabled = false
+	continue_button.text = "取消，保留存档"
+	new_game_button.text = "确认重新开始"
+	_set_title_settings_disabled(true)
+	continue_button.grab_focus.call_deferred()
+
+
+func cancel_new_game_confirmation() -> void:
+	if not new_game_confirmation_visible:
+		return
+	_refresh_title_state()
+	new_game_button.grab_focus.call_deferred()
+
+
+func _has_local_save_artifact() -> bool:
+	return (
+		FileAccess.file_exists(save_path)
+		or FileAccess.file_exists(save_path + ".bak")
+		or FileAccess.file_exists(save_path + ".tmp")
+	)
+
+
+func _set_title_settings_disabled(disabled: bool) -> void:
+	for button: Button in [
+		title_audio_button,
+		title_volume_button,
+		title_battle_speed_button,
+		title_motion_button,
+		title_text_scale_button,
+		title_contrast_button,
+	]:
+		button.disabled = disabled
+
+
+func new_game_confirmation_contract() -> Dictionary:
+	return {
+		"visible": new_game_confirmation_visible,
+		"warning": title_status.text,
+		"confirm_label": new_game_button.text,
+		"cancel_label": continue_button.text,
+		"settings_disabled": title_audio_button.disabled and title_contrast_button.disabled,
+		"save_artifact_present": _has_local_save_artifact(),
+		"rule_authority": false,
+	}
 
 
 func _decode_save(loaded: Dictionary) -> Dictionary:

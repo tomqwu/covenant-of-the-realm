@@ -32,6 +32,15 @@ func _capture_flow() -> void:
 
 	instance.start_new_game()
 	await _settle()
+	instance.return_to_title()
+	instance.start_new_game()
+	await _settle()
+	assert(instance.new_game_confirmation_contract()["visible"], "覆盖确认截图必须保留现有旅程")
+	await _save_frame("01-new-game-confirmation.png")
+	instance.cancel_new_game_confirmation()
+	assert(instance.continue_game(), "覆盖确认截图后应继续原旅程")
+	instance._render([])
+	await _settle()
 	await _save_frame("01-zhaohe-ferry.png")
 	instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.40, "player_y": 0.20})
 	instance._render([])
@@ -167,6 +176,12 @@ func _settle() -> void:
 
 
 func _save_frame(filename: String) -> void:
+	var was_paused := paused
+	paused = true
+	_normalize_capture_state()
+	_freeze_animated_sprites()
+	RenderingServer.force_draw(false)
+	await process_frame
 	var output_dir := ProjectSettings.globalize_path(OUTPUT_DIR)
 	DirAccess.make_dir_recursive_absolute(output_dir)
 	var image := root.get_texture().get_image()
@@ -174,4 +189,25 @@ func _save_frame(filename: String) -> void:
 	if error != OK:
 		push_error("无法保存 RPG 截图：%s" % filename)
 		quit(1)
+	paused = was_paused
 	await process_frame
+
+
+func _freeze_animated_sprites() -> void:
+	for candidate in root.find_children("*", "AnimatedSprite2D", true, false):
+		var sprite := candidate as AnimatedSprite2D
+		sprite.pause()
+		sprite.frame = 0
+		sprite.frame_progress = 0.0
+
+
+func _normalize_capture_state() -> void:
+	var map_canvas := root.find_child("MapCanvas", true, false)
+	if map_canvas != null and map_canvas.feedback_remaining > 0.0:
+		map_canvas.feedback_remaining = map_canvas.feedback_duration * 0.5
+		map_canvas.feedback_phase = 0.0
+		map_canvas.queue_redraw()
+	var transition := root.find_child("SceneTransition", true, false)
+	if transition != null and transition.is_transitioning():
+		transition.elapsed = 0.0
+		transition.advance(0.12)
