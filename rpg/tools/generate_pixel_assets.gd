@@ -14,20 +14,21 @@ const GOLD := Color("e4c36e")
 
 func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUTPUT_DIR))
-	_generate_actor("protagonist.png", Color("58738f"), Color("b89b63"), true)
-	_generate_actor("yanqing.png", Color("c6764f"), Color("73533d"), false)
+	_generate_actor("protagonist.png", Color("58738f"), Color("b89b63"), "protagonist")
+	_generate_actor("yanqing.png", Color("c6764f"), Color("73533d"), "yanqing")
+	_generate_actor("liangshu.png", Color("526963"), Color("a88b57"), "liangshu")
 	_generate_enemy_atlas()
 	_generate_ferry_tiles()
 	print("Generated original pixel atlases in %s." % OUTPUT_DIR)
 	quit(0)
 
 
-func _generate_actor(file_name: String, robe: Color, accent: Color, protagonist: bool) -> void:
+func _generate_actor(file_name: String, robe: Color, accent: Color, role: String) -> void:
 	var image := Image.create(ATLAS_SIZE.x, ATLAS_SIZE.y, false, Image.FORMAT_RGBA8)
 	image.fill(TRANSPARENT)
 	for row in range(4):
 		for column in range(4):
-			_draw_frame(image, Vector2i(column * FRAME_SIZE.x, row * FRAME_SIZE.y), row, column, robe, accent, protagonist)
+			_draw_frame(image, Vector2i(column * FRAME_SIZE.x, row * FRAME_SIZE.y), row, column, robe, accent, role)
 	var output_path := "%s/%s" % [OUTPUT_DIR, file_name]
 	var error := image.save_png(ProjectSettings.globalize_path(output_path))
 	if error != OK:
@@ -188,7 +189,7 @@ func _draw_tile_base(image: Image, column: int, base: Color, detail: Color, patt
 			_fill(image, Rect2i(origin_x + 22, 20, 2, 6), detail)
 
 
-func _draw_frame(image: Image, origin: Vector2i, direction: int, column: int, robe: Color, accent: Color, protagonist: bool) -> void:
+func _draw_frame(image: Image, origin: Vector2i, direction: int, column: int, robe: Color, accent: Color, role: String) -> void:
 	var step := -1 if column == 2 else (1 if column == 3 else 0)
 	var bob := 1 if column == 3 else 0
 	var center_x := origin.x + 16
@@ -208,17 +209,28 @@ func _draw_frame(image: Image, origin: Vector2i, direction: int, column: int, ro
 	_fill(image, Rect2i(center_x - 10, body_y + 24, 20, 5), robe.darkened(0.22))
 	_fill(image, Rect2i(center_x - 1, body_y + 5, 2, 20), GOLD.darkened(0.08))
 
-	if protagonist:
+	if role == "protagonist":
 		_fill(image, Rect2i(center_x - 12, body_y + 6, 5, 21), accent)
 		_fill(image, Rect2i(center_x - 14, body_y + 8, 3, 17), accent.darkened(0.18))
-	else:
+	elif role == "yanqing":
 		_fill(image, Rect2i(center_x + 10, body_y + 8, 4, 20), accent)
 		_fill(image, Rect2i(center_x + 14, body_y + 12, 2, 16), accent.darkened(0.22))
+	else:
+		# The levee keeper carries a measuring staff and a rain-dark shoulder cape.
+		_fill(image, Rect2i(center_x - 13, body_y + 5, 26, 8), accent.darkened(0.22))
+		_fill(image, Rect2i(center_x + 12, body_y + 1, 3, 35), accent.darkened(0.30))
 
 	var head_y := origin.y + 7 + bob
 	_fill(image, Rect2i(center_x - 7, head_y, 14, 14), SKIN)
-	_fill(image, Rect2i(center_x - 7, head_y, 14, 4), INK)
-	_fill(image, Rect2i(center_x - 4, head_y - 3, 8, 4), INK)
+	if role == "liangshu":
+		# Broad reed hat and silver beard distinguish Liangshu at map scale in every direction.
+		_fill(image, Rect2i(center_x - 13, head_y - 3, 26, 4), accent)
+		_fill(image, Rect2i(center_x - 9, head_y - 7, 18, 5), accent.lightened(0.12))
+		_fill(image, Rect2i(center_x - 7, head_y, 14, 3), INK.lightened(0.10))
+		_fill(image, Rect2i(center_x - 5, head_y + 11, 10, 7), Color("b8b3a1"))
+	else:
+		_fill(image, Rect2i(center_x - 7, head_y, 14, 4), INK)
+		_fill(image, Rect2i(center_x - 4, head_y - 3, 8, 4), INK)
 	if direction == 0:
 		_fill(image, Rect2i(center_x - 4, head_y + 8, 2, 2), INK)
 		_fill(image, Rect2i(center_x + 2, head_y + 8, 2, 2), INK)

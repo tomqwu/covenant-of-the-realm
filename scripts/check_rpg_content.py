@@ -17,9 +17,11 @@ REQUIRED_JOURNAL_IDS = {
     "ferry_watermark",
     "spring_seam",
 }
+REQUIRED_JOURNAL_SIDE_IDS = {"ferryman_record", "ferryman_repair"}
 ALLOWED_DIALOGUE_TOKENS = {
     "companion_reflection",
     "discovery_reflection",
+    "ferryman_reflection",
     "harvest_reflection",
     "setback_reflection",
 }
@@ -69,6 +71,11 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
     dialogues = _mapping(story.get("dialogues"), f"{source}.dialogues", failures)
     journal_entries = _mapping(
         story.get("journal_entries"), f"{source}.journal_entries", failures
+    )
+    journal_side_entries = _mapping(
+        story.get("journal_side_entries"),
+        f"{source}.journal_side_entries",
+        failures,
     )
     raw_transitions = story.get("transitions", {})
     transitions = _mapping(raw_transitions, f"{source}.transitions", failures)
@@ -201,6 +208,25 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
     for entry_id, raw_entry in journal_entries.items():
         label = f"{source}.journal_entries.{entry_id}"
         _text(entry_id, f"{source}.journal_entries.id", failures)
+        entry = _mapping(raw_entry, label, failures)
+        _text(entry.get("title"), f"{label}.title", failures)
+        _text(entry.get("summary"), f"{label}.summary", failures)
+
+    side_entry_ids = set(journal_side_entries)
+    if side_entry_ids != REQUIRED_JOURNAL_SIDE_IDS:
+        missing = sorted(REQUIRED_JOURNAL_SIDE_IDS - side_entry_ids)
+        unknown = sorted(side_entry_ids - REQUIRED_JOURNAL_SIDE_IDS)
+        if missing:
+            failures.append(
+                f"{source}.journal_side_entries is missing: {', '.join(missing)}"
+            )
+        if unknown:
+            failures.append(
+                f"{source}.journal_side_entries has unknown ids: {', '.join(unknown)}"
+            )
+    for entry_id, raw_entry in journal_side_entries.items():
+        label = f"{source}.journal_side_entries.{entry_id}"
+        _text(entry_id, f"{source}.journal_side_entries.id", failures)
         entry = _mapping(raw_entry, label, failures)
         _text(entry.get("title"), f"{label}.title", failures)
         _text(entry.get("summary"), f"{label}.summary", failures)

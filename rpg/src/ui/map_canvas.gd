@@ -15,6 +15,7 @@ const DAWN_PEACH := Color("e7a76f")
 
 @onready var player_sprite = %PlayerSprite
 @onready var companion_sprite = %CompanionSprite
+@onready var ferryman_sprite = %FerrymanSprite
 @onready var ferry_ground: TileMapLayer = %FerryGround
 @onready var path_ground: TileMapLayer = %PathGround
 @onready var battle_enemy_sprite: AnimatedSprite2D = %BattleEnemySprite
@@ -43,6 +44,7 @@ var companion_position := Vector2(0.53, 0.51)
 var companion_motion := Vector2.ZERO
 var companion_trail_needs_reset := true
 var discoveries: Array[String] = []
+var ferryman_response := "unanswered"
 
 
 func set_story_state(
@@ -52,7 +54,8 @@ func set_story_state(
 	active_lamp_turns: int,
 	next_enemy_id: String,
 	next_moonleaf_method: String,
-	next_discoveries: Array
+	next_discoveries: Array,
+	next_ferryman_response: String
 ) -> void:
 	if next_phase != phase_id or talked != talked_to_companion:
 		companion_trail_needs_reset = true
@@ -65,6 +68,7 @@ func set_story_state(
 	discoveries.clear()
 	for discovery_id in next_discoveries:
 		discoveries.append(str(discovery_id))
+	ferryman_response = next_ferryman_response
 	_sync_actor_visuals()
 	queue_redraw()
 
@@ -138,7 +142,11 @@ func current_visual_mode() -> String:
 
 
 func uses_animated_actor_sprites() -> bool:
-	return player_sprite is AnimatedSprite2D and companion_sprite is AnimatedSprite2D
+	return (
+		player_sprite is AnimatedSprite2D
+		and companion_sprite is AnimatedSprite2D
+		and ferryman_sprite is AnimatedSprite2D
+	)
 
 
 func uses_ferry_tile_layers() -> bool:
@@ -188,6 +196,18 @@ func discovery_visual_contract() -> Dictionary:
 	}
 
 
+func ferryman_visual_contract() -> Dictionary:
+	return {
+		"visible": ferryman_sprite.visible,
+		"response": ferryman_response,
+		"normalized_position": Vector2(0.41, 0.66),
+		"sprite_position": ferryman_sprite.position,
+		"sprite_depth": ferryman_sprite.z_index,
+		"gauge_upright": ferryman_response == "repair",
+		"record_tag": ferryman_response == "record",
+	}
+
+
 func depth_for_y(feet_y: float) -> int:
 	var height := maxf(get_rect().size.y, 1.0)
 	return 10 + clampi(int(round(feet_y / height * 50.0)), 0, 50)
@@ -212,6 +232,7 @@ func occlusion_contract() -> Dictionary:
 		"maximum_depth": maximum_depth,
 		"player_depth": player_sprite.z_index,
 		"companion_depth": companion_sprite.z_index,
+		"ferryman_depth": ferryman_sprite.z_index,
 		"map_depth_ceiling": 60,
 	}
 
@@ -232,7 +253,12 @@ func _process(delta: float) -> void:
 
 
 func _sync_actor_visuals() -> void:
-	if not is_node_ready() or not is_instance_valid(player_sprite) or not is_instance_valid(companion_sprite):
+	if (
+		not is_node_ready()
+		or not is_instance_valid(player_sprite)
+		or not is_instance_valid(companion_sprite)
+		or not is_instance_valid(ferryman_sprite)
+	):
 		return
 	var size := get_rect().size
 	_sync_occluders(size)
@@ -242,11 +268,14 @@ func _sync_actor_visuals() -> void:
 	path_rock_enemy_sprite.visible = phase_id == "mountain_path"
 	path_moss_enemy_sprite.visible = phase_id == "mountain_path"
 	path_puppet_enemy_sprite.visible = phase_id == "mountain_path"
+	ferryman_sprite.visible = phase_id == "riverbank"
 	battle_enemy_sprite.set_enemy_id(enemy_id)
 	battle_enemy_sprite.position = Vector2(size.x * 0.66, size.y * 0.49).round()
 	path_rock_enemy_sprite.position = Vector2(size.x * 0.76, size.y * 0.36).round()
 	path_moss_enemy_sprite.position = Vector2(size.x * 0.54, size.y * 0.52).round()
 	path_puppet_enemy_sprite.position = Vector2(size.x * 0.81, size.y * 0.31).round()
+	ferryman_sprite.position = Vector2(size.x * 0.41, size.y * 0.66).round()
+	ferryman_sprite.set_motion(Vector2.RIGHT, false)
 	player_sprite.visible = true
 	companion_sprite.visible = true
 	match phase_id:
@@ -294,6 +323,7 @@ func _apply_depth_sort() -> void:
 	path_rock_enemy_sprite.z_index = depth_for_y(path_rock_enemy_sprite.position.y)
 	path_moss_enemy_sprite.z_index = depth_for_y(path_moss_enemy_sprite.position.y)
 	path_puppet_enemy_sprite.z_index = depth_for_y(path_puppet_enemy_sprite.position.y)
+	ferryman_sprite.z_index = depth_for_y(ferryman_sprite.position.y)
 
 
 func _sync_occluders(size: Vector2) -> void:
@@ -394,10 +424,13 @@ func _draw_riverbank() -> void:
 
 	_draw_spring_gate(Vector2(size.x * 0.88, size.y * 0.18))
 	_draw_ferry_watermark(Vector2(size.x * 0.43, size.y * 0.42), discoveries.has("ferry_watermark"))
+	_draw_ferryman_water_gauge(Vector2(size.x * 0.385, size.y * 0.66), ferryman_response)
 	if not discoveries.has("ferry_watermark"):
 		_draw_interaction_marker(Vector2(size.x * 0.43, size.y * 0.42), nearby_action == "inspect_ferry_watermark")
 	if not talked_to_companion:
 		_draw_interaction_marker(Vector2(size.x * 0.53, size.y * 0.51), nearby_action == "talk_to_companion")
+	if ferryman_response == "unanswered":
+		_draw_interaction_marker(Vector2(size.x * 0.41, size.y * 0.66), nearby_action == "talk_to_ferryman")
 	if not gathered_moonleaf:
 		_draw_interaction_marker(Vector2(size.x * 0.69, size.y * 0.62), nearby_action == "gather_moonleaf")
 	_draw_interaction_marker(Vector2(size.x * 0.88, size.y * 0.18), nearby_action == "enter_spring")
@@ -605,6 +638,23 @@ func _draw_ferry_watermark(center: Vector2, discovered: bool) -> void:
 		draw_line(Vector2(center.x - width, y), Vector2(center.x + width, y), RIVER_JADE.darkened(0.18), 2.0)
 	if discovered:
 		draw_circle(center + Vector2(0, -25), 4.0, FRESH_CELADON)
+
+
+func _draw_ferryman_water_gauge(feet: Vector2, response: String) -> void:
+	var lean := Vector2.ZERO if response == "repair" else Vector2(9, 0)
+	var base := feet + Vector2(-8, 0)
+	draw_line(base, base + Vector2(lean.x, -52), Color("7a6545"), 6.0)
+	for index in range(4):
+		var ratio := float(index + 1) / 5.0
+		var mark := base.lerp(base + Vector2(lean.x, -52), ratio)
+		draw_line(mark + Vector2(-5, 0), mark + Vector2(5, 0), WARM_PAPER.darkened(0.48), 2.0)
+	if response == "repair":
+		draw_circle(base + Vector2(0, -56), 4.0, FRESH_CELADON)
+	elif response == "record":
+		var tag := base + Vector2(lean.x + 8, -35)
+		draw_rect(Rect2(tag, Vector2(17, 13)), WARM_PAPER)
+		draw_line(tag + Vector2(4, 4), tag + Vector2(13, 4), COOL_SHADOW, 1.0)
+		draw_line(tag + Vector2(4, 8), tag + Vector2(11, 8), COOL_SHADOW, 1.0)
 
 
 func _draw_spring_seam(center: Vector2, discovered: bool) -> void:

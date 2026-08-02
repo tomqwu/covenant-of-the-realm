@@ -4,6 +4,18 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — The ferryman side story leaves public evidence without a power reward
+
+梁叔 now waits at a fixed reachable ferry coordinate as the chapter's third animated map actor.
+His four-line original dialogue offers exactly two bounded outcomes: help set the flooded water
+gauge upright, or record the retreat time and mud height for the levee log. Both outcomes preserve
+all health, items, combat strength, relationship values, discovery count, routes, and ending access.
+They instead choose a persistent map residue, one content-driven journal entry, one chapter-summary
+label, and one epilogue reflection. The interaction disappears after the response and chapter replay
+clears it. Save v11 stores only `unanswered`, `repair`, or `record`; v1–v10 migrate conservatively to
+`unanswered`. A third project-generated 32×56 atlas and a fourth motion-free painted-paper portrait
+use the stable presentation ID `liangshu`; neither presentation layer owns the side-story result.
+
 ### 2026-08-02 — Chapter epilogue reuses structured dialogue and reflects the played route
 
 `回顾此行` now starts the stable `chapter_epilogue` dialogue only after the first breakthrough.
@@ -28,9 +40,9 @@ deterministic discovery list already contains all persistent truth.
 
 ### 2026-08-02 — Dialogue portraits are finite motion-free painted-paper presentation
 
-The prologue dialogue uses three stable presentation IDs: `protagonist`, `yanqing`, and
+The prologue dialogue uses four stable presentation IDs: `protagonist`, `yanqing`, `liangshu`, and
 `journal`. Project-authored Godot drawing code renders the protagonist in clear indigo, 砚青 in
-warm ochre, and history mode as an unpeopled travel journal over the same bright paper landscape.
+warm ochre, 梁叔 in levee-shadow teal, and history mode as an unpeopled travel journal over the same bright paper landscape.
 The current speaker, player responses, and dialogue history select those IDs; an unknown ID falls
 back to the journal instead of inventing a person. A visible Chinese caption remains beside the
 art for identity and accessibility. Portraits ignore pointer input, contain no animation, do not

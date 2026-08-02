@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://src/ui/actor_sprite.gd" id="4_actor"]
 [ext_resource type="Texture2D" path="res://assets/pixel/protagonist.png" id="5_protagonist"]
 [ext_resource type="Texture2D" path="res://assets/pixel/yanqing.png" id="6_yanqing"]
+[ext_resource type="Texture2D" path="res://assets/pixel/liangshu.png" id="13_liangshu"]
 [ext_resource type="Script" path="res://src/ui/ferry_tile_layer.gd" id="7_ferry_layer"]
 [ext_resource type="Texture2D" path="res://assets/pixel/ferry_tiles.png" id="8_ferry_tiles"]
 [ext_resource type="Script" path="res://src/ui/enemy_sprite.gd" id="9_enemy"]
@@ -132,6 +133,14 @@ z_index = 9
 script = ExtResource("4_actor")
 atlas_texture = ExtResource("6_yanqing")
 initial_facing = "left"
+
+[node name="FerrymanSprite" type="AnimatedSprite2D" parent="MapFrame/MapCanvas"]
+unique_name_in_owner = true
+texture_filter = 1
+z_index = 9
+script = ExtResource("4_actor")
+atlas_texture = ExtResource("13_liangshu")
+initial_facing = "right"
 
 [node name="BattleEnemySprite" type="AnimatedSprite2D" parent="MapFrame/MapCanvas"]
 unique_name_in_owner = true

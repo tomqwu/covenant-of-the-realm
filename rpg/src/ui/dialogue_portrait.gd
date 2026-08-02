@@ -3,8 +3,9 @@ class_name DialoguePortrait
 
 const PROTAGONIST := "protagonist"
 const YANQING := "yanqing"
+const LIANGSHU := "liangshu"
 const JOURNAL := "journal"
-const PORTRAIT_IDS := [PROTAGONIST, YANQING, JOURNAL]
+const PORTRAIT_IDS := [PROTAGONIST, YANQING, LIANGSHU, JOURNAL]
 
 const INK_ROOT := Color("27312e")
 const COOL_SHADOW := Color("355e63")
@@ -34,6 +35,7 @@ func set_portrait(next_id: String) -> bool:
 	tooltip_text = {
 		PROTAGONIST: "行旅者纸绘头像",
 		YANQING: "砚青纸绘头像",
+		LIANGSHU: "梁叔纸绘头像",
 		JOURNAL: "行旅札记纸绘图",
 	}[portrait_id]
 	queue_redraw()
@@ -50,6 +52,7 @@ func visual_contract() -> Dictionary:
 			"warm_paper": WARM_PAPER,
 			"protagonist": CLEAR_INDIGO,
 			"yanqing": WARM_OCHRE,
+			"liangshu": COOL_SHADOW,
 			"journal": FRESH_CELADON,
 		},
 		"motion_free": true,
@@ -67,6 +70,8 @@ func _draw() -> void:
 			_draw_protagonist(size)
 		YANQING:
 			_draw_yanqing(size)
+		LIANGSHU:
+			_draw_liangshu(size)
 		_:
 			_draw_journal(size)
 	_draw_frame(size)
@@ -133,6 +138,30 @@ func _draw_yanqing(size: Vector2) -> void:
 	draw_arc(center + Vector2(0, 7), 6.0, 0.45, 2.20, 8, Color("945746"), 1.5)
 	draw_line(center + Vector2(9, 29), center + Vector2(31, 11), WARM_PAPER.darkened(0.12), 4.0)
 	draw_circle(center + Vector2(30, 10), 4.0, FRESH_CELADON)
+
+
+func _draw_liangshu(size: Vector2) -> void:
+	var center := Vector2(size.x * 0.50, size.y * 0.45)
+	_draw_person_shadow(center, size)
+	_draw_shoulders(center, size, COOL_SHADOW.lightened(0.16), Color("596d65"))
+	_draw_neck_and_face(center, Color("c99673"), Color("a46d58"))
+	# A broad reed hat, rain-dark coat and short grey beard read as a working levee keeper.
+	draw_colored_polygon(PackedVector2Array([
+		center + Vector2(-43, -42), center + Vector2(-19, -59),
+		center + Vector2(18, -59), center + Vector2(43, -42),
+	]), Color("a88b57"))
+	draw_line(center + Vector2(-43, -42), center + Vector2(43, -42), INK_ROOT, 3.0)
+	draw_line(center + Vector2(-25, -50), center + Vector2(27, -50), SPIRIT_GOLD.darkened(0.28), 2.0)
+	draw_colored_polygon(PackedVector2Array([
+		center + Vector2(-17, -41), center + Vector2(18, -41),
+		center + Vector2(15, -20), center + Vector2(-15, -20),
+	]), INK_ROOT.lightened(0.12))
+	_draw_face(center, COOL_SHADOW.darkened(0.18), Vector2(-1, 0))
+	draw_colored_polygon(PackedVector2Array([
+		center + Vector2(-10, 5), center + Vector2(10, 5), center + Vector2(5, 22), center + Vector2(-4, 25),
+	]), Color("b8b3a1"))
+	draw_line(center + Vector2(-27, 32), center + Vector2(-27, 69), Color("927a52"), 5.0)
+	draw_line(center + Vector2(-32, 68), center + Vector2(-22, 68), INK_ROOT, 2.0)
 
 
 func _draw_journal(size: Vector2) -> void:

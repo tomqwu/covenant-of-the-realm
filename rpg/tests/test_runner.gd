@@ -31,6 +31,7 @@ func _run() -> void:
 	_test_settings_store()
 	_test_companion_trail()
 	_test_dialogue_portraits()
+	_test_ferryman_side_story()
 	_test_environment_discoveries()
 	_test_gathering_and_gate()
 	_test_combat_paths()
@@ -57,6 +58,8 @@ func _test_initial_state() -> void:
 	_expect_true(state.available_actions().has("gather_moonleaf"), "初始可采集")
 	_expect_true(state.available_actions().has("gather_moonleaf_cutting"), "初始可选择剪叶留根")
 	_expect_true(state.available_actions().has("inspect_ferry_watermark"), "初始渡口包含可选环境调查")
+	_expect_true(state.available_actions().has("talk_to_ferryman"), "初始渡口包含可选守堤交谈")
+	_expect_equal(state.snapshot()["ferryman_response"], "unanswered", "新旅程不替玩家决定守堤办法")
 	_expect_equal(state.snapshot()["discoveries"], [], "新旅程没有伪造已读见闻")
 	_expect_equal(state.snapshot()["moonleaf_method"], "unselected", "采集前没有伪造取药方式")
 	_expect_true(state.available_actions().has("enter_spring"), "初始可尝试进山")
@@ -115,6 +118,9 @@ func _test_exploration_rules() -> void:
 	_expect_true(state.restore({"map_id": "zhaohe_ferry", "player_x": 0.43, "player_y": 0.42}), "渡口旧水痕坐标可达")
 	_expect_equal(state.interaction_action(false, true), "inspect_ferry_watermark", "未读旧水痕提供近距离调查")
 	_expect_equal(state.interaction_action(false, true, ["ferry_watermark"]), "", "已读旧水痕不重复占用交互")
+	_expect_true(state.restore({"map_id": "zhaohe_ferry", "player_x": 0.41, "player_y": 0.66}), "渡口守堤人坐标可达")
+	_expect_equal(state.interaction_action(false, true), "talk_to_ferryman", "靠近梁叔出现独立交谈行动")
+	_expect_equal(state.interaction_action(false, true, [], "repair"), "", "守堤选择完成后不重复占用交互")
 	_expect_true(state.restore({"map_id": "cangquan_path", "player_x": 0.73, "player_y": 0.34}), "山道坐标按山道碰撞而非渡口建筑恢复")
 	_expect_equal(state.map_id, "cangquan_path", "恢复后切换稳定地图标识")
 	_expect_equal(state.interaction_action(true, true), "approach_enemy", "岩甲幼兽有独立接近行动")
@@ -175,6 +181,9 @@ func _test_state_restore() -> void:
 	var impossible_path_discovery: Dictionary = JourneyStateScript.new().snapshot()
 	impossible_path_discovery["discoveries"] = ["spring_seam"]
 	_expect_false(restored.restore(impossible_path_discovery), "未进山的初始状态不能伪造山道见闻")
+	var invalid_ferryman: Dictionary = JourneyStateScript.new().snapshot()
+	invalid_ferryman["ferryman_response"] = "take_money"
+	_expect_false(restored.restore(invalid_ferryman), "未知守堤回应不能进入持久规则状态")
 
 
 func _test_dialogue_state() -> void:
@@ -201,6 +210,12 @@ func _test_dialogue_state() -> void:
 	_expect_equal(restored_epilogue.dialogue_id, "chapter_epilogue", "恢复保持稳定余波对话标识")
 	_expect_true(restored_epilogue.skip_to_choices(5), "余波可快速显示到收束回应")
 	_expect_true(restored_epilogue.finish(), "余波回应后回到空闲对话状态")
+	_expect_true(restored_epilogue.start("ferryman_briefing"), "守堤支线复用可恢复结构化对话")
+	_expect_true(restored_epilogue.advance(4), "守堤对话可逐句推进")
+	var ferryman_dialogue_snapshot: Dictionary = restored_epilogue.snapshot()
+	var restored_ferryman_dialogue = DialogueStateScript.new()
+	_expect_true(restored_ferryman_dialogue.restore(ferryman_dialogue_snapshot), "守堤对话可在选择前恢复")
+	_expect_equal(restored_ferryman_dialogue.dialogue_id, "ferryman_briefing", "守堤恢复保持稳定对话标识")
 	_expect_true(restored.restore({"active": true, "dialogue_id": "companion_briefing", "line_index": 8}), "规则状态允许未来内容扩充到第八行")
 	_expect_false(restored.restore({"active": true, "dialogue_id": "companion_briefing", "line_index": 65}), "异常过大的对话行号被拒绝")
 	_expect_false(restored.restore({"active": false, "dialogue_id": "companion_briefing", "line_index": 0}), "空闲状态不能保留对话标识")
@@ -217,7 +232,7 @@ func _test_versioned_save() -> void:
 	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
 	var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(loaded["ok"], "版本化存档读取成功")
-	_expect_equal(loaded["data"]["save_version"], 10.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["save_version"], 11.0, "存档声明当前版本")
 	_expect_equal(loaded["data"]["journey"]["moonleaf_method"], "whole_plant", "新版存档保留取药方式")
 	_expect_equal(loaded["data"]["journey"]["enemy_id"], "rock_armor_young", "新版存档声明稳定敌人标识")
 	_expect_equal(loaded["data"]["exploration"]["map_id"], "zhaohe_ferry", "新版存档声明稳定地图标识")
@@ -249,7 +264,7 @@ func _test_versioned_save() -> void:
 	var migrated: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated["ok"], "v1 存档可迁移到当前版本")
 	_expect_equal(migrated["migrated_from_version"], 1, "迁移结果声明来源版本")
-	_expect_equal(migrated["data"]["save_version"], 10, "迁移后的内存快照升级为 v10")
+	_expect_equal(migrated["data"]["save_version"], 11, "迁移后的内存快照升级为 v11")
 	_expect_equal(migrated["data"]["journey"]["enemy_id"], "rock_armor_young", "旧版迁移补入默认敌人标识")
 	_expect_equal(migrated["data"]["exploration"]["map_id"], "zhaohe_ferry", "v1 迁移补入照禾渡口地图标识")
 	_expect_equal(migrated["data"]["journey"]["companion_supports"], 1, "迁移补入同伴援护资源")
@@ -260,6 +275,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated["data"]["journey"]["briefing_response"], "careful", "旧版已交谈存档迁移为谨慎回应")
 	_expect_equal(migrated["data"]["journey"]["moonleaf_method"], "whole_plant", "旧版持药存档迁移为保守整株记录")
 	_expect_equal(migrated["data"]["journey"]["discoveries"], [], "旧版存档不虚构环境见闻")
+	_expect_equal(migrated["data"]["journey"]["ferryman_response"], "unanswered", "旧版存档不虚构守堤选择")
 	_expect_equal(migrated["data"]["dialogue"], DialogueStateScript.default_snapshot(), "旧版迁移补入空闲对话状态")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "迁移后可写回新版存档")
 	var version_two_journey: Dictionary = journey.snapshot().duplicate(true)
@@ -375,6 +391,20 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v9["migrated_from_version"], 9, "v9 迁移声明来源版本")
 	_expect_equal(migrated_v9["data"]["journey"]["discoveries"], [], "v9 迁移不虚构未记录见闻")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v9 迁移后可写回新版存档")
+	var version_ten_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_ten_journey.erase("ferryman_response")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 10,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": version_ten_journey,
+		"exploration": exploration.snapshot(),
+		"dialogue": DialogueStateScript.default_snapshot(),
+	}))
+	var migrated_v10: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v10["ok"], "v10 见闻存档可迁移到守堤选择版本")
+	_expect_equal(migrated_v10["migrated_from_version"], 10, "v10 迁移声明来源版本")
+	_expect_equal(migrated_v10["data"]["journey"]["ferryman_response"], "unanswered", "v10 迁移不替玩家作守堤选择")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v10 迁移后可写回新版存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -395,7 +425,7 @@ func _test_versioned_save() -> void:
 	var unknown_map_exploration := exploration.snapshot().duplicate(true)
 	unknown_map_exploration["map_id"] = "unreleased_secret_realm"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 10,
+		"save_version": 11,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": unknown_map_exploration,
@@ -403,7 +433,7 @@ func _test_versioned_save() -> void:
 	}))
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_map", "未知地图不会恢复到错误场景")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 10,
+		"save_version": 11,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": exploration.snapshot(),
@@ -413,7 +443,7 @@ func _test_versioned_save() -> void:
 	var unknown_enemy_journey: Dictionary = journey.snapshot().duplicate(true)
 	unknown_enemy_journey["enemy_id"] = "unreleased_enemy"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 10,
+		"save_version": 11,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": unknown_enemy_journey,
 		"exploration": exploration.snapshot(),
@@ -496,10 +526,38 @@ func _test_dialogue_portraits() -> void:
 	_expect_false(protagonist["rule_authority"], "头像表现不成为规则权威")
 	_expect_true(portrait.set_portrait("yanqing"), "纸绘头像接受稳定砚青标识")
 	_expect_equal(portrait.visual_contract()["portrait_id"], "yanqing", "砚青头像与主角拥有不同表现标识")
+	_expect_true(portrait.set_portrait("liangshu"), "纸绘头像接受稳定梁叔标识")
+	_expect_equal(portrait.visual_contract()["palette"]["liangshu"], Color("355e63"), "梁叔头像使用守堤冷青识别色")
 	_expect_false(portrait.set_portrait("licensed_character"), "未知或外部人物标识不会直接进入头像表现")
 	_expect_equal(portrait.visual_contract()["portrait_id"], "journal", "未知头像安全回退为无人物的行旅札记")
-	_expect_equal(portrait.visual_contract()["supported_ids"].size(), 3, "切片只声明三个有限头像表现标识")
+	_expect_equal(portrait.visual_contract()["supported_ids"].size(), 4, "切片只声明四个有限头像表现标识")
 	portrait.free()
+
+
+func _test_ferryman_side_story() -> void:
+	var repair_state = JourneyStateScript.new()
+	var before_repair: Dictionary = repair_state.snapshot()
+	var repaired: Dictionary = repair_state.complete_ferryman_dialogue("repair")
+	_expect_true(repaired["ok"], "渡口可选择扶正水尺")
+	_expect_equal(repaired["events"], ["ferryman_repair"], "扶尺返回稳定语义事件")
+	_expect_equal(repair_state.ferryman_response, "repair", "扶尺选择进入持久状态")
+	var after_repair: Dictionary = repair_state.snapshot()
+	for key in before_repair:
+		if key != "ferryman_response":
+			_expect_equal(after_repair[key], before_repair[key], "扶尺不暗中奖励或修改 %s" % key)
+	_expect_false(repair_state.complete_ferryman_dialogue("record")["ok"], "守堤选择不能重复领取")
+	_expect_false(repair_state.available_actions().has("talk_to_ferryman"), "完成后守堤行动隐藏")
+
+	var record_state = JourneyStateScript.new()
+	_expect_false(record_state.complete_ferryman_dialogue("steal_gauge")["ok"], "未知守堤选择不修改状态")
+	_expect_equal(record_state.ferryman_response, "unanswered", "非法守堤选择保留未回应")
+	var recorded: Dictionary = record_state.complete_ferryman_dialogue("record")
+	_expect_true(recorded["ok"], "渡口可选择记录涨水时辰")
+	_expect_equal(recorded["events"], ["ferryman_record"], "记时返回稳定语义事件")
+	record_state.choose("talk_to_companion")
+	record_state.choose("gather_moonleaf")
+	record_state.choose("enter_spring")
+	_expect_false(record_state.complete_ferryman_dialogue("repair")["ok"], "离开渡口不能远程改变守堤选择")
 
 
 func _test_environment_discoveries() -> void:
@@ -817,7 +875,7 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.get_node("%LocationLabel").text, "照禾渡口", "主场景读取内容")
 	_expect_equal(_action_button_count(instance), 1, "出生点只显示近距离同伴交谈")
 	_expect_equal(instance.get_node("%MapCanvas").actor_height_px(), 56.0, "角色使用 56 px 生产基准")
-	_expect_true(instance.get_node("%MapCanvas").uses_animated_actor_sprites(), "主角与同伴使用 AnimatedSprite2D 表现节点")
+	_expect_true(instance.get_node("%MapCanvas").uses_animated_actor_sprites(), "主角、同伴与守堤人使用 AnimatedSprite2D 表现节点")
 	var player_sprite: AnimatedSprite2D = instance.get_node("%PlayerSprite")
 	var sprite_contract: Dictionary = player_sprite.animation_contract()
 	_expect_equal(sprite_contract["frame_size"], Vector2(32, 56), "人物帧遵守 32×56 像素合同")
@@ -826,6 +884,12 @@ func _test_scene_smoke() -> void:
 	_expect_equal(sprite_contract["filter"], CanvasItem.TEXTURE_FILTER_NEAREST, "人物纹理使用最近邻过滤")
 	_expect_equal(player_sprite.sprite_frames.get_animation_names().size(), 8, "人物提供四方向待机与行走动画")
 	_expect_equal(player_sprite.sprite_frames.get_frame_count("walk_right"), 2, "行走方向包含两个可循环帧")
+	var ferryman_sprite: AnimatedSprite2D = instance.get_node("%FerrymanSprite")
+	_expect_true(ferryman_sprite.visible, "梁叔在渡口以独立地图角色出现")
+	_expect_equal(ferryman_sprite.animation_contract()["frame_size"], Vector2(32, 56), "守堤人复用固定人物动画合同")
+	var initial_ferryman_visual: Dictionary = instance.get_node("%MapCanvas").ferryman_visual_contract()
+	_expect_equal(initial_ferryman_visual["response"], "unanswered", "未交谈时地图不替玩家选择守堤处理")
+	_expect_false(initial_ferryman_visual["gauge_upright"], "初始歪斜水尺可从地图辨认")
 	_expect_true(instance.get_node("%MapCanvas").uses_animated_enemy_sprites(), "山道与战斗敌人使用 AnimatedSprite2D 表现节点")
 	var enemy_sprite: AnimatedSprite2D = instance.get_node("%BattleEnemySprite")
 	var enemy_sprite_contract: Dictionary = enemy_sprite.animation_contract()
@@ -857,6 +921,7 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%DialogueOverlay").z_index > ferry_occlusion["maximum_depth"], "对话模态始终位于所有地图遮挡之上")
 	_expect_true(instance.get_node("%MapCanvas").depth_for_y(120.0) < instance.get_node("%MapCanvas").depth_for_y(520.0), "脚底越靠下显示深度越靠前")
 	_expect_equal(ferry_occlusion["player_depth"], instance.get_node("%MapCanvas").depth_for_y(player_sprite.position.y), "主角显示深度来自脚底 Y 值")
+	_expect_equal(ferry_occlusion["ferryman_depth"], instance.get_node("%MapCanvas").depth_for_y(ferryman_sprite.position.y), "守堤人显示深度来自脚底 Y 值")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "riverbank", "初始地图使用渡口画面")
 	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("与渡碑旁"), "初始目标引导同伴交谈")
 	_expect_true(instance.get_node("%InputHint").text.contains("WASD"), "探索显示键盘与手柄输入提示")
@@ -918,6 +983,17 @@ func _test_scene_smoke() -> void:
 		},
 	})
 	_expect_false(premature_epilogue["ok"], "未完成章节不能伪造活动余波对话")
+	var answered_ferryman: Dictionary = instance.journey.snapshot().duplicate(true)
+	answered_ferryman["ferryman_response"] = "repair"
+	var inconsistent_ferryman_dialogue: Dictionary = instance._decode_save({
+		"ok": true,
+		"data": {
+			"journey": answered_ferryman,
+			"exploration": instance.exploration.snapshot(),
+			"dialogue": {"active": true, "dialogue_id": "ferryman_briefing", "line_index": 1},
+		},
+	})
+	_expect_false(inconsistent_ferryman_dialogue["ok"], "已完成守堤选择不能同时恢复活动支线对话")
 	_expect_true(instance.interact()["ok"], "出生点语义交互开启同伴对话")
 	_expect_true(instance.get_node("%DialogueOverlay").visible, "场景显示独立对话层")
 	_expect_false(instance.journey.talked_to_companion, "回应前不提前完成风险简报")
@@ -958,6 +1034,33 @@ func _test_scene_smoke() -> void:
 	_expect_equal(initial_follow["point_count"], 2, "同行开始时只建立安全休息位与主角脚印")
 	_expect_false(instance.interact()["ok"], "完成交谈后原地没有重复奖励")
 	_expect_true(instance.get_node("%EventLabel").text.contains("附近没有"), "无目标交互给出中文反馈")
+	_expect_true(instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.41, "player_y": 0.66}), "场景测试到达守堤人身旁")
+	instance._render([])
+	_expect_equal(_action_button_count(instance), 1, "梁叔身旁只显示近距离守堤行动")
+	_expect_true(instance.interact()["ok"], "近距离交互开启守堤支线")
+	_expect_equal(instance.dialogue.dialogue_id, "ferryman_briefing", "场景启动稳定守堤对话标识")
+	_expect_equal(instance.get_node("%DialoguePortrait").visual_contract()["portrait_id"], "liangshu", "梁叔台词显示独立纸绘头像")
+	_expect_equal(instance.get_node("%DialoguePortraitLabel").text, "梁叔 · 照禾守堤人", "梁叔头像保留中文身份说明")
+	_expect_true(instance.get_node("%DialogueLabel").text.contains("浅石"), "守堤对话呈现原创空间细节")
+	instance.skip_dialogue_to_response()
+	await process_frame
+	_expect_equal(_dialogue_choice_count(instance), 2, "守堤支线提供两个同等选择")
+	_expect_true(instance.get_node("%DialogueLabel").text.contains("不改变战斗强度"), "选择提示明确无隐藏战斗奖励")
+	_expect_equal(instance._dialogue_choice_event("repair"), "ferryman_repair", "扶尺内容事件与规则映射一致")
+	await _press_dialogue_choice(instance, "一起扶正水尺。")
+	_expect_equal(instance.journey.ferryman_response, "repair", "场景选择扶尺进入持久规则状态")
+	var repaired_visual: Dictionary = instance.get_node("%MapCanvas").ferryman_visual_contract()
+	_expect_true(repaired_visual["gauge_upright"], "扶尺后地图永久显示直立水尺")
+	_expect_false(repaired_visual["record_tag"], "扶尺结果不误画记时纸签")
+	_expect_equal(_action_button_count(instance), 0, "完成守堤选择后交互行动隐藏")
+	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["save_version"], 11.0, "守堤选择写入存档 v11")
+	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["journey"]["ferryman_response"], "repair", "守堤选择立即自动保存")
+	instance.open_journal()
+	await process_frame
+	var ferryman_journal: Dictionary = instance.journal_contract()
+	_expect_true(ferryman_journal["unlocked_titles"].has("扶正的照禾水尺"), "守堤结果进入内容驱动札记")
+	_expect_true(ferryman_journal["entries_text"].contains("下一次涨水"), "札记保留选择的公共后果")
+	instance.close_journal()
 	_expect_true(instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.43, "player_y": 0.42}), "场景测试到达渡口旧水痕")
 	instance._render([])
 	_expect_equal(_action_button_count(instance), 1, "旧水痕近旁只显示对应调查")
@@ -1114,6 +1217,7 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%StatusLabel").text.contains("引息境一层"), "场景显示突破境界")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "complete", "结算切换明亮突破画面")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("本节结算"), "完成画面显示战绩结算")
+	_expect_true(instance.get_node("%DescriptionLabel").text.contains("水尺扶正"), "结算回显本轮守堤选择")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("依旧规取药"), "结算回显本轮采集选择")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("见闻 3/3"), "结算回显环境探索完成度")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("经历 1 次"), "结算记录实际撤退次数")
@@ -1126,6 +1230,7 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.dialogue.active and instance.dialogue.dialogue_id == "chapter_epilogue", "结算回顾开启可保存的余波对话")
 	_expect_true(instance.get_node("%DialogueLabel").text.contains("依旧规只取了一株"), "余波回显本轮整株采集方式")
 	_expect_true(instance.get_node("%DialogueLabel").text.contains("沿途3处生活痕迹"), "余波回显本轮见闻数量")
+	_expect_true(instance._resolved_dialogue_text("{ferryman_reflection}").contains("重新立稳"), "余波回显扶尺结果")
 	_expect_equal(instance.get_node("%DialoguePortrait").visual_contract()["portrait_id"], "yanqing", "余波首句显示砚青纸绘头像")
 	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["dialogue"]["dialogue_id"], "chapter_epilogue", "余波开启后立即保存结构化位置")
 	_expect_equal(instance._dialogue_choice_event("record"), "epilogue_recorded", "余波回应内容事件与规则映射一致")
@@ -1161,6 +1266,7 @@ func _test_scene_smoke() -> void:
 	_expect_equal(resumed.get_node("%MapCanvas").current_visual_mode(), "riverbank", "重游恢复渡口地图")
 	_expect_equal(resumed.exploration.player_position, ExplorationStateScript.START_POSITION, "重游重置玩家位置")
 	_expect_equal(resumed.journey.discoveries, [], "重游清空上一轮环境见闻")
+	_expect_equal(resumed.journey.ferryman_response, "unanswered", "重游清空上一轮守堤选择")
 	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["journey"]["phase"], "riverbank", "重游结果写入存档")
 	resumed.get_node("%AudioManager").set_audio_enabled(false)
 	resumed.queue_free()

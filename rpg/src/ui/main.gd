@@ -209,9 +209,10 @@ func _render(event_ids: Array) -> void:
 		snapshot["lamp_turns"],
 		snapshot["enemy_id"],
 		snapshot["moonleaf_method"],
-		snapshot["discoveries"]
+		snapshot["discoveries"],
+		snapshot["ferryman_response"]
 	)
-	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"], snapshot["discoveries"])
+	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"], snapshot["discoveries"], snapshot["ferryman_response"])
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	map_canvas.show_battle_feedback(
 		event_ids,
@@ -321,7 +322,11 @@ func _chapter_summary(snapshot: Dictionary) -> String:
 	var response_text := "你与砚青先认清了退路" if snapshot["briefing_response"] == "careful" else "你与砚青以信任同行"
 	var harvest_text := "月芽留根" if snapshot["moonleaf_method"] == "cutting" else "依旧规取药"
 	var discovery_text := "见闻 %d/3" % snapshot["discoveries"].size()
-	return "本节结算　%s · %s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, discovery_text, response_text]
+	var ferryman_text: String = {
+		"repair": "水尺扶正",
+		"record": "涨时入簿",
+	}.get(snapshot["ferryman_response"], "未问守堤")
+	return "本节结算　%s · %s · %s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, discovery_text, ferryman_text, response_text]
 
 
 func _build_actions(node: Dictionary) -> void:
@@ -407,6 +412,9 @@ func _on_action(action_id: String) -> void:
 	if action_id == JourneyStateScript.TALK_TO_COMPANION and not journey.talked_to_companion:
 		_start_companion_dialogue()
 		return
+	if action_id == JourneyStateScript.TALK_TO_FERRYMAN and journey.ferryman_response == JourneyStateScript.FERRYMAN_UNANSWERED:
+		_start_ferryman_dialogue()
+		return
 	if action_id == JourneyStateScript.REVIEW_JOURNEY and journey.phase_id() == "complete":
 		_start_chapter_epilogue()
 		return
@@ -427,7 +435,7 @@ func move_player(direction: Vector2, delta: float) -> Vector2:
 	var previous_position: Vector2 = exploration.player_position
 	exploration.move(direction, delta)
 	map_canvas.set_player_motion(direction if not exploration.player_position.is_equal_approx(previous_position) else Vector2.ZERO)
-	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion, journey.discoveries)
+	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion, journey.discoveries, journey.ferryman_response)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	if nearby_action_id != previous_action:
 		_build_actions(content["nodes"][journey.phase_id()])
@@ -441,6 +449,8 @@ func interact() -> Dictionary:
 		return no_target
 	if nearby_action_id == JourneyStateScript.TALK_TO_COMPANION and not journey.talked_to_companion:
 		return _start_companion_dialogue()
+	if nearby_action_id == JourneyStateScript.TALK_TO_FERRYMAN and journey.ferryman_response == JourneyStateScript.FERRYMAN_UNANSWERED:
+		return _start_ferryman_dialogue()
 	var result: Dictionary = journey.choose(nearby_action_id)
 	if result["ok"]:
 		_sync_exploration_after_action(nearby_action_id, result["events"])
@@ -657,6 +667,9 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 			DialogueStateScript.CHAPTER_EPILOGUE:
 				if restored_journey.phase_id() != "complete":
 					return {"ok": false, "reason": "存档中的对话与剧情进度不一致"}
+			DialogueStateScript.FERRYMAN_BRIEFING:
+				if restored_journey.phase_id() != "riverbank" or restored_journey.ferryman_response != JourneyStateScript.FERRYMAN_UNANSWERED:
+					return {"ok": false, "reason": "存档中的对话与剧情进度不一致"}
 		var dialogue_data: Dictionary = content.get("dialogues", {}).get(restored_dialogue.dialogue_id, {})
 		if dialogue_data.is_empty() or restored_dialogue.line_index > dialogue_data.get("lines", []).size():
 			return {"ok": false, "reason": "存档中的对话位置无效"}
@@ -681,6 +694,19 @@ func _start_companion_dialogue() -> Dictionary:
 func _start_chapter_epilogue() -> Dictionary:
 	if journey.phase_id() != "complete" or not dialogue.start(DialogueStateScript.CHAPTER_EPILOGUE):
 		return {"ok": false, "events": ["epilogue_unavailable"], "snapshot": journey.snapshot()}
+	dialogue_history_visible = false
+	_render_dialogue_overlay()
+	_save_game()
+	return {"ok": true, "events": ["dialogue_started"], "snapshot": journey.snapshot()}
+
+
+func _start_ferryman_dialogue() -> Dictionary:
+	if (
+		journey.phase_id() != "riverbank"
+		or journey.ferryman_response != JourneyStateScript.FERRYMAN_UNANSWERED
+		or not dialogue.start(DialogueStateScript.FERRYMAN_BRIEFING)
+	):
+		return {"ok": false, "events": ["ferryman_already_answered"], "snapshot": journey.snapshot()}
 	dialogue_history_visible = false
 	_render_dialogue_overlay()
 	_save_game()
@@ -734,6 +760,8 @@ func _choose_dialogue_response(response_id: String) -> void:
 			result = journey.complete_companion_briefing(response_id)
 		DialogueStateScript.CHAPTER_EPILOGUE:
 			result = journey.complete_epilogue(response_id)
+		DialogueStateScript.FERRYMAN_BRIEFING:
+			result = journey.complete_ferryman_dialogue(response_id)
 		_:
 			return
 	if not result["ok"]:
@@ -790,7 +818,7 @@ func _render_dialogue_overlay() -> void:
 	var line: Dictionary = lines[dialogue.line_index]
 	var speaker := str(line.get("speaker", ""))
 	dialogue_speaker_label.text = speaker
-	_set_dialogue_portrait("protagonist" if speaker == "你" else "yanqing" if speaker == "砚青" else "journal")
+	_set_dialogue_portrait("protagonist" if speaker == "你" else "yanqing" if speaker == "砚青" else "liangshu" if speaker == "梁叔" else "journal")
 	dialogue_label.text = _resolved_dialogue_text(str(line.get("text", "")))
 	dialogue_label.visible_characters = 0
 	dialogue_reveal_elapsed = 0.0
@@ -848,6 +876,7 @@ func _set_dialogue_portrait(portrait_id: String) -> void:
 	dialogue_portrait_label.text = {
 		"protagonist": "行旅者 · 初入山河",
 		"yanqing": "砚青 · 照禾药师",
+		"liangshu": "梁叔 · 照禾守堤人",
 		"journal": "行旅札记 · 最近四句",
 	}.get(stable_id, "行旅札记 · 最近四句")
 
@@ -864,10 +893,15 @@ func _resolved_dialogue_text(source_text: String) -> String:
 	elif setback_count > 1:
 		setback_reflection = "你经历%d次撤退或救援，仍肯重新准备" % setback_count
 	var companion_reflection := "你先认清退路再迈步" if snapshot["briefing_response"] == "careful" else "你肯把判断交给同伴，也肯在危险时提醒我"
+	var ferryman_reflection: String = {
+		"repair": "梁叔的水尺已经重新立稳",
+		"record": "梁叔把你记下的涨水时辰夹进了守堤簿",
+	}.get(snapshot["ferryman_response"], "渡口那根水尺仍等着人去看")
 	return source_text.replace("{harvest_reflection}", harvest_reflection) \
 		.replace("{discovery_reflection}", discovery_reflection) \
 		.replace("{setback_reflection}", setback_reflection) \
-		.replace("{companion_reflection}", companion_reflection)
+		.replace("{companion_reflection}", companion_reflection) \
+		.replace("{ferryman_reflection}", ferryman_reflection)
 
 
 func _can_open_journal() -> bool:
@@ -924,6 +958,10 @@ func _render_journal() -> void:
 		else:
 			locked_index += 1
 			lines.append("◇ 未记之事 %d\n靠近可疑的生活痕迹，亲自辨认后才会写入。" % locked_index)
+	if snapshot["ferryman_response"] != JourneyStateScript.FERRYMAN_UNANSWERED:
+		var side_id := "ferryman_%s" % snapshot["ferryman_response"]
+		var side_entry: Dictionary = content.get("journal_side_entries", {}).get(side_id, {})
+		lines.append("◆ %s\n%s" % [side_entry.get("title", "守堤小记"), side_entry.get("summary", "这段守堤记录暂时无法辨认。")])
 	journal_entries_label.text = "\n\n".join(lines)
 
 
@@ -933,6 +971,11 @@ func journal_contract() -> Dictionary:
 	for discovery_id in journey.discoveries:
 		if entries.has(discovery_id):
 			unlocked_titles.append(str(entries[discovery_id].get("title", "")))
+	if journey.ferryman_response != JourneyStateScript.FERRYMAN_UNANSWERED:
+		var side_id := "ferryman_%s" % journey.ferryman_response
+		var side_entries: Dictionary = content.get("journal_side_entries", {})
+		if side_entries.has(side_id):
+			unlocked_titles.append(str(side_entries[side_id].get("title", "")))
 	return {
 		"visible": journal_overlay.visible,
 		"discovered_count": journey.discoveries.size(),

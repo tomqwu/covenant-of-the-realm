@@ -29,7 +29,7 @@ package-rpg: rpg-import-assets ## Export a reproducible Godot pack and SHA-256 m
 play-rpg-package: package-rpg ## Build and launch the same resource pack validated by CI
 	@./scripts/godot --main-pack build/rpg/covenant-of-the-realm.pck
 
-capture-rpg-ui: ## Rebuild the RPG scale test and four UI reference screenshots
+capture-rpg-ui: ## Rebuild the RPG scale test and UI reference screenshots
 	@./scripts/godot --path rpg --script res://tools/capture_ui.gd
 
 stop: ## Stop the local multiplayer server

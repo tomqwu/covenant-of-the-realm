@@ -27,6 +27,8 @@ def test_rejects_non_object_and_missing_contract() -> None:
     assert "story.dialogues must not be empty" in failures
     assert "story.journal_entries must be an object" in failures
     assert any("journal_entries is missing" in failure for failure in failures)
+    assert "story.journal_side_entries must be an object" in failures
+    assert any("journal_side_entries is missing" in failure for failure in failures)
     assert "story.start_node must be non-empty text" in failures
 
 
@@ -102,6 +104,10 @@ def test_reachability_handles_converging_paths() -> None:
             "ferry_watermark": {"title": "水痕", "summary": "旧日水位。"},
             "spring_seam": {"title": "泉纹", "summary": "分流泉脉。"},
             "abandoned_basket": {"title": "药篓", "summary": "修补提绳。"},
+        },
+        "journal_side_entries": {
+            "ferryman_repair": {"title": "扶尺", "summary": "水尺立稳。"},
+            "ferryman_record": {"title": "记时", "summary": "涨时入簿。"},
         },
     }
     assert validate_story(data) == []
@@ -207,6 +213,41 @@ def test_rejects_malformed_dialogue_contract() -> None:
     assert "story.dialogues.companion_briefing.lines must be a non-empty list" in failures
     assert (
         "story.dialogues.companion_briefing.choices must contain exactly two responses"
+        in failures
+    )
+
+
+def test_validates_finite_journal_side_entries() -> None:
+    data = story()
+    data["journal_side_entries"].pop("ferryman_record")
+    data["journal_side_entries"]["licensed_choice"] = {
+        "title": "不应出现",
+        "summary": "没有规则消费者的支线结果。",
+    }
+    failures = validate_story(data)
+    assert "story.journal_side_entries is missing: ferryman_record" in failures
+    assert "story.journal_side_entries has unknown ids: licensed_choice" in failures
+
+    data = story()
+    data["journal_side_entries"]["unused_result"] = {
+        "title": "多余结果",
+        "summary": "没有稳定规则标识的结果也应被拒绝。",
+    }
+    failures = validate_story(data)
+    assert not any("journal_side_entries is missing" in failure for failure in failures)
+    assert "story.journal_side_entries has unknown ids: unused_result" in failures
+
+    data = story()
+    data["journal_side_entries"]["ferryman_repair"] = []
+    data["journal_side_entries"]["ferryman_record"]["summary"] = ""
+    failures = validate_story(data)
+    assert "story.journal_side_entries.ferryman_repair must be an object" in failures
+    assert (
+        "story.journal_side_entries.ferryman_repair.title must be non-empty text"
+        in failures
+    )
+    assert (
+        "story.journal_side_entries.ferryman_record.summary must be non-empty text"
         in failures
     )
 

@@ -56,8 +56,9 @@ def validate_contract(data: Any) -> list[str]:
     elif any(not isinstance(color, str) or len(color) != 6 for color in palette):
         failures.append("palette entries must be six-character RGB hex values")
     atlases = data.get("atlases")
-    if not isinstance(atlases, list) or not atlases:
-        failures.append("atlases must be a non-empty list")
+    expected_actor_atlases = ["protagonist.png", "yanqing.png", "liangshu.png"]
+    if not isinstance(atlases, list) or atlases != expected_actor_atlases:
+        failures.append("atlases must match the three stable actor IDs")
         return failures
     width = data.get("actor_frame_px", [0, 0])[0] * data.get("atlas_columns", 0)
     height = data.get("actor_frame_px", [0, 0])[1] * data.get("atlas_rows", 0)

@@ -18,12 +18,14 @@ by `scripts/setup_rpg`.
 
 ## 2026-08-02 · Deterministic character and ferry pixel atlases
 
-`rpg/assets/pixel/protagonist.png` and `yanqing.png` are original 128×224 RGBA atlases generated
+`rpg/assets/pixel/protagonist.png`, `yanqing.png`, and `liangshu.png` are original 128×224 RGBA atlases generated
 by the project-authored `rpg/tools/generate_pixel_assets.gd`. No model, input image, stock asset,
 external palette, commercial sprite, font, or third-party art library is used. The generator draws
 two idle and two walking frames in four directions from rectangles and the confirmed project
 palette. `asset_contract.json` records the 32×56 frame, foot anchor, collision, animation, nearest-
 filter, and pixel-snap contract; `scripts/check_rpg_assets.py` verifies the metadata and PNG headers.
+梁叔's broad reed hat, measuring staff, rain-dark cape, and short grey beard are likewise drawn
+only by that deterministic project-local generator; no external character or image input was used.
 
 The same generator creates `ferry_tiles.png`, an original 256×32 RGBA strip containing eight
 32 px ground tiles for grass, water, bank, road, moonleaf field, stone, deep grass, and water

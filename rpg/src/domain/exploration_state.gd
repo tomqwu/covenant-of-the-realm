@@ -4,6 +4,7 @@ class_name ExplorationState
 const GATHER_MOONLEAF := "gather_moonleaf"
 const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
+const TALK_TO_FERRYMAN := "talk_to_ferryman"
 const INSPECT_PATH_MARKER := "inspect_path_marker"
 const INSPECT_FERRY_WATERMARK := "inspect_ferry_watermark"
 const INSPECT_SPRING_SEAM := "inspect_spring_seam"
@@ -23,6 +24,7 @@ const MOONLEAF_POSITION := Vector2(0.69, 0.62)
 const SPRING_GATE_POSITION := Vector2(0.88, 0.18)
 const COMPANION_POSITION := Vector2(0.53, 0.51)
 const FERRY_WATERMARK_POSITION := Vector2(0.43, 0.42)
+const FERRYMAN_POSITION := Vector2(0.41, 0.66)
 const PATH_START_POSITION := Vector2(0.16, 0.68)
 const PATH_RETURN_POSITION := Vector2(0.10, 0.68)
 const PATH_MARKER_POSITION := Vector2(0.43, 0.57)
@@ -70,7 +72,12 @@ func move(direction: Vector2, delta: float) -> Vector2:
 	return player_position
 
 
-func interaction_action(gathered_moonleaf: bool, talked_to_companion: bool = false, discoveries: Array = []) -> String:
+func interaction_action(
+	gathered_moonleaf: bool,
+	talked_to_companion: bool = false,
+	discoveries: Array = [],
+	ferryman_response: String = "unanswered"
+) -> String:
 	if map_id == MOUNTAIN_PATH_MAP_ID:
 		if player_position.distance_to(PATH_RETURN_POSITION) <= INTERACTION_RADIUS:
 			return RETURN_TO_FERRY
@@ -91,6 +98,8 @@ func interaction_action(gathered_moonleaf: bool, talked_to_companion: bool = fal
 		return ""
 	if not discoveries.has("ferry_watermark") and player_position.distance_to(FERRY_WATERMARK_POSITION) <= INTERACTION_RADIUS:
 		return INSPECT_FERRY_WATERMARK
+	if ferryman_response == "unanswered" and player_position.distance_to(FERRYMAN_POSITION) <= INTERACTION_RADIUS:
+		return TALK_TO_FERRYMAN
 	if not talked_to_companion and player_position.distance_to(COMPANION_POSITION) <= INTERACTION_RADIUS:
 		return TALK_TO_COMPANION
 	if not gathered_moonleaf and player_position.distance_to(MOONLEAF_POSITION) <= INTERACTION_RADIUS:

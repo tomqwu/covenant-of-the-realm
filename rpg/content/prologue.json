@@ -28,6 +28,11 @@
           "possible_targets": ["riverbank"]
         },
         {
+          "id": "talk_to_ferryman",
+          "label": "询问守堤人",
+          "possible_targets": ["riverbank"]
+        },
+        {
           "id": "gather_moonleaf",
           "label": "依旧规取一株",
           "possible_targets": ["riverbank"]
@@ -186,13 +191,26 @@
         {"speaker": "你", "text": "第一次引息不像登上高处，倒像终于听见脚下的水往哪里去。"},
         {"speaker": "砚青", "text": "{setback_reflection}。能走到这里，说明路线与退路都没有白看。"},
         {"speaker": "你", "text": "下一次出门，我得先知道自己能失去什么，也得知道什么值得留下。"},
-        {"speaker": "砚青", "text": "{companion_reflection}。照禾的河明早还会涨，我们也还来得及再走一段。"}
+        {"speaker": "砚青", "text": "{companion_reflection}。{ferryman_reflection}。照禾的河明早还会涨，我们也还来得及再走一段。"}
       ],
       "choices": [
         {"id": "record", "label": "先把所见写进札记。", "event_id": "epilogue_recorded"},
         {"id": "return", "label": "明日再沿河走一趟。", "event_id": "epilogue_returned"}
       ],
       "choice_prompt": "第一息已经稳住。你想怎样收好这段行旅？"
+    },
+    "ferryman_briefing": {
+      "lines": [
+        {"speaker": "梁叔", "text": "先别踩那块浅石。昨夜涨水把水尺冲歪了，刻度还沾着新泥。"},
+        {"speaker": "你", "text": "水已经退了半掌。要扶正木尺，还是先记下这一刻的水位？"},
+        {"speaker": "梁叔", "text": "两样都能留给后来守堤的人，只是今天这一身力气，够做其中一样。"},
+        {"speaker": "梁叔", "text": "你替我拿个主意。山里人走远路，也得先学会看脚边的水。"}
+      ],
+      "choices": [
+        {"id": "repair", "label": "一起扶正水尺。", "event_id": "ferryman_repair"},
+        {"id": "record", "label": "先记下涨水时辰。", "event_id": "ferryman_record"}
+      ],
+      "choice_prompt": "水尺与守堤簿都能留下证据；两种选择不改变战斗强度。"
     }
   },
   "journal_entries": {
@@ -209,6 +227,16 @@
       "summary": "弃篓者带走药材，却把修好的绳结留在原处，像是默许下一位行旅者取用。"
     }
   },
+  "journal_side_entries": {
+    "ferryman_repair": {
+      "title": "扶正的照禾水尺",
+      "summary": "你与梁叔把木尺重新压进浅石。下一次涨水，刻度会直接留在正位。"
+    },
+    "ferryman_record": {
+      "title": "守堤簿里的涨时",
+      "summary": "你记下退水时刻与泥痕高度。梁叔把纸条夹进守堤簿，留给下一班人比较。"
+    }
+  },
   "messages": {
     "gathered": "你与砚青只取一株月芽草，将余下幼株重新覆好薄土。",
     "gathered_cutting": "你剪下成熟月芽叶，把根须与新芽留在湿土中；药性足以护住第一次引息。",
@@ -219,6 +247,10 @@
     "epilogue_returned": "你约砚青明早再看一次河势。修行已经开始，日常山河仍要一步步走。",
     "epilogue_unavailable": "此刻还没有一段完整行旅可以回顾。",
     "invalid_epilogue_response": "这不是此刻可以作出的余波回应。",
+    "ferryman_repair": "你与梁叔踩住浅石，把歪斜水尺重新立稳。木尺没有奖励你，但下一场涨水会留下更准的刻度。",
+    "ferryman_record": "你把昨夜涨水、今晨退水与泥痕高度逐项写下。梁叔将纸条夹进守堤簿，留给下一班人。",
+    "ferryman_already_answered": "水尺与守堤簿已经按你的选择处理妥当。",
+    "invalid_ferryman_response": "这不是此刻可以作出的守堤选择。",
     "invalid_briefing_response": "此刻无法作出这项回应。",
     "already_briefed": "砚青已经说明了山道的风险与退路。",
     "need_briefing": "你还不知道山道异动的详情，先回渡碑旁与砚青商量。",

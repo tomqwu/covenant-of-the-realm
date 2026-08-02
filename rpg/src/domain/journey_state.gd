@@ -9,6 +9,7 @@ const GATHER_MOONLEAF := "gather_moonleaf"
 const GATHER_MOONLEAF_CUTTING := "gather_moonleaf_cutting"
 const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
+const TALK_TO_FERRYMAN := "talk_to_ferryman"
 const INSPECT_PATH_MARKER := "inspect_path_marker"
 const INSPECT_FERRY_WATERMARK := "inspect_ferry_watermark"
 const INSPECT_SPRING_SEAM := "inspect_spring_seam"
@@ -35,6 +36,10 @@ const BRIEFING_RESPONSES := [RESPONSE_CAREFUL, RESPONSE_TRUSTING]
 const EPILOGUE_RECORD := "record"
 const EPILOGUE_RETURN := "return"
 const EPILOGUE_RESPONSES := [EPILOGUE_RECORD, EPILOGUE_RETURN]
+const FERRYMAN_UNANSWERED := "unanswered"
+const FERRYMAN_REPAIR := "repair"
+const FERRYMAN_RECORD := "record"
+const FERRYMAN_RESPONSES := [FERRYMAN_UNANSWERED, FERRYMAN_REPAIR, FERRYMAN_RECORD]
 const MOONLEAF_UNSELECTED := "unselected"
 const MOONLEAF_WHOLE_PLANT := "whole_plant"
 const MOONLEAF_CUTTING := "cutting"
@@ -62,6 +67,7 @@ var moonleaf_method := MOONLEAF_UNSELECTED
 var armor_break_turns := 0
 var focus_turns := 0
 var discoveries: Array[String] = []
+var ferryman_response := FERRYMAN_UNANSWERED
 
 
 func phase_id() -> String:
@@ -86,6 +92,8 @@ func available_actions() -> PackedStringArray:
 				actions.append(INSPECT_FERRY_WATERMARK)
 			if not talked_to_companion:
 				actions.append(TALK_TO_COMPANION)
+			if ferryman_response == FERRYMAN_UNANSWERED:
+				actions.append(TALK_TO_FERRYMAN)
 			if not gathered_moonleaf:
 				actions.append(GATHER_MOONLEAF)
 				actions.append(GATHER_MOONLEAF_CUTTING)
@@ -188,6 +196,7 @@ func snapshot() -> Dictionary:
 		"armor_break_turns": armor_break_turns,
 		"focus_turns": focus_turns,
 		"discoveries": discoveries.duplicate(),
+		"ferryman_response": ferryman_response,
 	}
 
 
@@ -211,6 +220,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		"armor_break_turns",
 		"focus_turns",
 		"discoveries",
+		"ferryman_response",
 	]
 	for key in required_keys:
 		if not snapshot_data.has(key):
@@ -228,6 +238,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if typeof(snapshot_data["moonleaf_method"]) != TYPE_STRING:
 		return false
 	if not _valid_discoveries(snapshot_data["discoveries"]):
+		return false
+	if typeof(snapshot_data["ferryman_response"]) != TYPE_STRING:
 		return false
 	if not EnemyCatalogScript.supports(snapshot_data["enemy_id"]):
 		return false
@@ -286,6 +298,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	var next_discoveries: Array[String] = []
 	for discovery_id in snapshot_data["discoveries"]:
 		next_discoveries.append(discovery_id)
+	var next_ferryman_response: String = snapshot_data["ferryman_response"]
 	if not _valid_phase_invariants(
 		next_phase,
 		next_gathered,
@@ -304,7 +317,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_moonleaf_method,
 		next_armor_break_turns,
 		next_focus_turns,
-		next_discoveries
+		next_discoveries,
+		next_ferryman_response
 	):
 		return false
 
@@ -326,6 +340,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	armor_break_turns = next_armor_break_turns
 	focus_turns = next_focus_turns
 	discoveries = next_discoveries
+	ferryman_response = next_ferryman_response
 	return true
 
 
@@ -334,6 +349,8 @@ func _choose_riverbank(action_id: String) -> Dictionary:
 		return _record_discovery(DISCOVERY_FERRY_WATERMARK, "ferry_watermark_discovered")
 	if action_id == TALK_TO_COMPANION:
 		return complete_companion_briefing(RESPONSE_CAREFUL)
+	if action_id == TALK_TO_FERRYMAN:
+		return complete_ferryman_dialogue(FERRYMAN_REPAIR)
 	if action_id in [GATHER_MOONLEAF, GATHER_MOONLEAF_CUTTING]:
 		if gathered_moonleaf:
 			return _result(false, ["already_gathered"])
@@ -466,6 +483,15 @@ func complete_epilogue(response_id: String) -> Dictionary:
 	return _result(true, [event_id])
 
 
+func complete_ferryman_dialogue(response_id: String) -> Dictionary:
+	if phase != Phase.RIVERBANK or ferryman_response != FERRYMAN_UNANSWERED:
+		return _result(false, ["ferryman_already_answered"])
+	if response_id not in [FERRYMAN_REPAIR, FERRYMAN_RECORD]:
+		return _result(false, ["invalid_ferryman_response"])
+	ferryman_response = response_id
+	return _result(true, ["ferryman_%s" % response_id])
+
+
 func current_enemy_profile() -> Dictionary:
 	return EnemyCatalogScript.profile(enemy_id)
 
@@ -517,6 +543,7 @@ func _reset_chapter() -> void:
 	armor_break_turns = 0
 	focus_turns = 0
 	discoveries.clear()
+	ferryman_response = FERRYMAN_UNANSWERED
 
 
 func _integer_in_range(value: Variant, minimum: int, maximum: int) -> bool:
@@ -544,8 +571,11 @@ func _valid_phase_invariants(
 	next_moonleaf_method: String,
 	next_armor_break_turns: int,
 	next_focus_turns: int,
-	next_discoveries: Array[String]
+	next_discoveries: Array[String],
+	next_ferryman_response: String
 ) -> bool:
+	if next_ferryman_response not in FERRYMAN_RESPONSES:
+		return false
 	if not _valid_discoveries(next_discoveries):
 		return false
 	if (
