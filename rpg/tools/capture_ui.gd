@@ -33,6 +33,12 @@ func _capture_flow() -> void:
 	instance.start_new_game()
 	await _settle()
 	await _save_frame("01-zhaohe-ferry.png")
+	instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.40, "player_y": 0.20})
+	instance._render([])
+	await _settle()
+	await _save_frame("01-y-depth-occlusion.png")
+	instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51})
+	instance._render([])
 
 	instance._on_action("talk_to_companion")
 	instance.show_full_dialogue_line()

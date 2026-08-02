@@ -4,6 +4,16 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Map occlusion sorts by feet Y below modal UI
+
+Runtime-drawn roofs and tree canopies now have independent foreground nodes while their base forms
+remain in the map drawing. Actors, enemy sprites, roofs, and canopies map their feet/base Y into
+the bounded z band 10–60: an actor behind a base is occluded, and an actor below it renders in
+front. Ferry, path, and battle rebuild only their own seven, five, or four occluders; the spring and
+completion scenes clear them. Dialogue remains at z 80, title at 100, and pause at 110, so no map
+depth can cross a modal paper surface. The performance gate now observes 88 main-scene nodes,
+within the existing 120-node budget, and still requires zero root-child residue after destruction.
+
 ### 2026-08-02 — Moonleaf harvesting has two non-blocking persisted methods
 
 At the moonleaf field, the existing `gather_moonleaf` action remains the stable one-button default

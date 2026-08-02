@@ -1,5 +1,6 @@
 extends Control
 
+const MapOccluderScript := preload("res://src/ui/map_occluder.gd")
 const ACTOR_HEIGHT := 56.0
 const INK_ROOT := Color("27312e")
 const COOL_SHADOW := Color("355e63")
@@ -34,6 +35,8 @@ var feedback_remaining := 0.0
 var feedback_duration := 0.0
 var feedback_motion_enabled := true
 var feedback_phase := 0.0
+var occluder_nodes: Array[Node] = []
+var occluder_signature := ""
 
 
 func set_story_state(
@@ -150,6 +153,34 @@ func moonleaf_visual_contract() -> Dictionary:
 	}
 
 
+func depth_for_y(feet_y: float) -> int:
+	var height := maxf(get_rect().size.y, 1.0)
+	return 10 + clampi(int(round(feet_y / height * 50.0)), 0, 50)
+
+
+func occlusion_contract() -> Dictionary:
+	var minimum_depth := 60
+	var maximum_depth := 10
+	var ids: Array[String] = []
+	var depths := {}
+	for occluder in occluder_nodes:
+		var contract: Dictionary = occluder.visual_contract()
+		minimum_depth = mini(minimum_depth, int(contract["z_index"]))
+		maximum_depth = maxi(maximum_depth, int(contract["z_index"]))
+		ids.append(str(contract["id"]))
+		depths[contract["id"]] = contract["z_index"]
+	return {
+		"count": occluder_nodes.size(),
+		"ids": ids,
+		"depths": depths,
+		"minimum_depth": minimum_depth,
+		"maximum_depth": maximum_depth,
+		"player_depth": player_sprite.z_index,
+		"companion_depth": companion_sprite.z_index,
+		"map_depth_ceiling": 60,
+	}
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and is_node_ready():
 		_sync_actor_visuals()
@@ -169,6 +200,7 @@ func _sync_actor_visuals() -> void:
 	if not is_node_ready() or not is_instance_valid(player_sprite) or not is_instance_valid(companion_sprite):
 		return
 	var size := get_rect().size
+	_sync_occluders(size)
 	ferry_ground.visible = phase_id == "riverbank"
 	path_ground.visible = phase_id == "mountain_path"
 	battle_enemy_sprite.visible = phase_id == "battle"
@@ -203,6 +235,61 @@ func _sync_actor_visuals() -> void:
 			companion_sprite.position = Vector2(size.x * 0.69, size.y * 0.65).round()
 			player_sprite.set_motion(Vector2.RIGHT, false)
 			companion_sprite.set_motion(Vector2.LEFT, false)
+	_apply_depth_sort()
+
+
+func _apply_depth_sort() -> void:
+	player_sprite.z_index = depth_for_y(player_sprite.position.y)
+	companion_sprite.z_index = depth_for_y(companion_sprite.position.y)
+	battle_enemy_sprite.z_index = depth_for_y(battle_enemy_sprite.position.y)
+	path_rock_enemy_sprite.z_index = depth_for_y(path_rock_enemy_sprite.position.y)
+	path_moss_enemy_sprite.z_index = depth_for_y(path_moss_enemy_sprite.position.y)
+	path_puppet_enemy_sprite.z_index = depth_for_y(path_puppet_enemy_sprite.position.y)
+
+
+func _sync_occluders(size: Vector2) -> void:
+	var next_signature := "%s:%d:%d" % [phase_id, int(size.x), int(size.y)]
+	if next_signature == occluder_signature:
+		return
+	occluder_signature = next_signature
+	for occluder in occluder_nodes:
+		occluder.free()
+	occluder_nodes.clear()
+	match phase_id:
+		"riverbank":
+			_add_roof_occluder("ferry_roof_0", Vector2(size.x * 0.51, size.y * 0.20), Vector2(148, 92), WARM_RUST.darkened(0.25))
+			_add_roof_occluder("ferry_roof_1", Vector2(size.x * 0.72, size.y * 0.35), Vector2(156, 96), Color("9a835d"))
+			_add_roof_occluder("ferry_roof_2", Vector2(size.x * 0.82, size.y * 0.58), Vector2(164, 92), COOL_SHADOW.lightened(0.2))
+			for index in range(4):
+				_add_tree_occluder("ferry_tree_%d" % index, [Vector2(455, 115), Vector2(978, 130), Vector2(1030, 340), Vector2(468, 420)][index])
+		"mountain_path":
+			for index in range(5):
+				_add_tree_occluder("path_tree_%d" % index, [Vector2(180, 160), Vector2(400, 110), Vector2(690, 145), Vector2(1000, 260), Vector2(940, 420)][index])
+		"battle":
+			for index in range(4):
+				_add_tree_occluder("battle_tree_%d" % index, [Vector2(130, 165), Vector2(338, 145), Vector2(915, 115), Vector2(1010, 300)][index])
+
+
+func _add_tree_occluder(occluder_id: String, center: Vector2) -> void:
+	_add_occluder(occluder_id, "tree", center, Vector2.ZERO, FRESH_CELADON, center.y + 46.0)
+
+
+func _add_roof_occluder(occluder_id: String, top_left: Vector2, dimensions: Vector2, roof_color: Color) -> void:
+	_add_occluder(occluder_id, "roof", top_left, dimensions, roof_color, top_left.y + dimensions.y)
+
+
+func _add_occluder(
+	occluder_id: String,
+	kind: String,
+	occluder_position: Vector2,
+	dimensions: Vector2,
+	accent: Color,
+	feet_y: float
+) -> void:
+	var occluder = MapOccluderScript.new()
+	occluder.configure(occluder_id, kind, occluder_position, dimensions, accent, feet_y, depth_for_y(feet_y))
+	add_child(occluder)
+	occluder_nodes.append(occluder)
 
 
 func _draw() -> void:
