@@ -14,14 +14,16 @@ const DAWN_PEACH := Color("e7a76f")
 var phase_id := "riverbank"
 var gathered_moonleaf := false
 var talked_to_companion := false
+var lamp_turns := 0
 var player_position := Vector2(0.47, 0.51)
 var nearby_action := ""
 
 
-func set_story_state(next_phase: String, gathered: bool, talked: bool) -> void:
+func set_story_state(next_phase: String, gathered: bool, talked: bool, active_lamp_turns: int) -> void:
 	phase_id = next_phase
 	gathered_moonleaf = gathered
 	talked_to_companion = talked
+	lamp_turns = active_lamp_turns
 	queue_redraw()
 
 
@@ -130,6 +132,8 @@ func _draw_battle_path() -> void:
 	_draw_cave(Vector2(size.x * 0.86, size.y * 0.16), Vector2(126, 88))
 	_draw_actor(Vector2(size.x * 0.43, size.y * 0.58), CLEAR_INDIGO, true)
 	_draw_actor(Vector2(size.x * 0.36, size.y * 0.54), WARM_RUST, false)
+	if lamp_turns > 0:
+		_draw_spring_lamp(Vector2(size.x * 0.48, size.y * 0.62))
 	_draw_beast(Vector2(size.x * 0.66, size.y * 0.43))
 	draw_line(Vector2(size.x * 0.40, size.y * 0.49), Vector2(size.x * 0.64, size.y * 0.40), SPIRIT_GOLD, 3.0)
 	draw_circle(Vector2(size.x * 0.64, size.y * 0.40), 6.0, SPIRIT_GOLD, false, 2.0)
@@ -254,6 +258,17 @@ func _draw_spring_gate(center: Vector2) -> void:
 	draw_line(center + Vector2(27, 25), center + Vector2(27, -31), Color("755f43"), 7.0)
 	draw_line(center + Vector2(-34, -31), center + Vector2(34, -31), WARM_RUST.darkened(0.18), 10.0)
 	draw_circle(center + Vector2(0, -31), 5.0, SPIRIT_GOLD)
+
+
+func _draw_spring_lamp(feet: Vector2) -> void:
+	draw_rect(Rect2(feet + Vector2(-8, -28), Vector2(16, 26)), COOL_SHADOW.lightened(0.18))
+	draw_colored_polygon(PackedVector2Array([
+		feet + Vector2(-13, -29),
+		feet + Vector2(0, -39),
+		feet + Vector2(13, -29),
+	]), SPIRIT_GOLD.darkened(0.16))
+	draw_circle(feet + Vector2(0, -17), 7.0, Color(0.70, 0.94, 0.86, 0.82))
+	draw_circle(feet + Vector2(0, -17), 19.0, Color(0.70, 0.94, 0.86, 0.18), false, 3.0)
 
 
 func _draw_interaction_marker(center: Vector2, active: bool) -> void:

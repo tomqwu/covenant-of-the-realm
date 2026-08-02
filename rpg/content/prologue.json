@@ -52,6 +52,11 @@
           "possible_targets": ["battle"]
         },
         {
+          "id": "deploy_spring_lamp",
+          "label": "布置引泉石灯",
+          "possible_targets": ["battle"]
+        },
+        {
           "id": "retreat",
           "label": "撤回照禾渡口",
           "possible_targets": ["riverbank"]
@@ -106,9 +111,12 @@
     "no_talisman": "镇岩符已经用尽。",
     "guarded": "你收束气息稳住经脉，砚青替你看住岩甲兽的冲势。",
     "enemy_hit": "岩甲兽撞来，你受到伤害。",
-    "enemy_glanced": "守势卸去了大半冲击。",
+    "enemy_glanced": "当前防护削弱了这次冲击。",
     "companion_supported": "砚青扬开护脉药雾，替你稳住伤势与岩甲兽的冲势。",
     "no_companion_support": "砚青的护脉药已经用尽，本场战斗无法再次援护。",
+    "spring_lamp_deployed": "你将引泉石灯按进路旁阵眼，青白泉光护住前路。",
+    "spring_lamp_absorbed": "石灯引开一缕冲势，本次伤害降低一点。",
+    "no_spring_lamp": "本次挑战的引泉石灯已经布下，无法重复部署。",
     "retreated": "你与砚青沿预留的石标撤回渡口。岩甲兽重新缩回完整甲势。",
     "companion_rescue": "你气血耗尽前，砚青将你拖离山道。休整后仍可再次进山。",
     "battle_won": "岩甲兽退入山缝，通往泉室的道路已经打开。",

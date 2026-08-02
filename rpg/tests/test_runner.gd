@@ -107,7 +107,7 @@ func _test_versioned_save() -> void:
 	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
 	var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(loaded["ok"], "版本化存档读取成功")
-	_expect_equal(loaded["data"]["save_version"], 3.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["save_version"], 4.0, "存档声明当前版本")
 	var restored_journey = JourneyStateScript.new()
 	var restored_exploration = ExplorationStateScript.new()
 	_expect_true(restored_journey.restore(loaded["data"]["journey"]), "读取的规则快照通过业务校验")
@@ -119,6 +119,8 @@ func _test_versioned_save() -> void:
 	legacy_journey.erase("companion_supports")
 	legacy_journey.erase("setbacks")
 	legacy_journey.erase("talked_to_companion")
+	legacy_journey.erase("spring_lamps")
+	legacy_journey.erase("lamp_turns")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 1,
 		"story_id": SaveGameScript.STORY_ID,
@@ -128,13 +130,17 @@ func _test_versioned_save() -> void:
 	var migrated: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated["ok"], "v1 存档可迁移到当前版本")
 	_expect_equal(migrated["migrated_from_version"], 1, "迁移结果声明来源版本")
-	_expect_equal(migrated["data"]["save_version"], 3, "迁移后的内存快照升级为 v3")
+	_expect_equal(migrated["data"]["save_version"], 4, "迁移后的内存快照升级为 v4")
 	_expect_equal(migrated["data"]["journey"]["companion_supports"], 1, "迁移补入同伴援护资源")
 	_expect_equal(migrated["data"]["journey"]["setbacks"], 0, "迁移补入挫败计数")
 	_expect_true(migrated["data"]["journey"]["talked_to_companion"], "战斗中的 v1 存档迁移为已完成简报")
+	_expect_equal(migrated["data"]["journey"]["spring_lamps"], 1, "v1 迁移补入战术石灯")
+	_expect_equal(migrated["data"]["journey"]["lamp_turns"], 0, "v1 迁移不虚构持续效果")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "迁移后可写回新版存档")
 	var version_two_journey: Dictionary = journey.snapshot().duplicate(true)
 	version_two_journey.erase("talked_to_companion")
+	version_two_journey.erase("spring_lamps")
+	version_two_journey.erase("lamp_turns")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 2,
 		"story_id": SaveGameScript.STORY_ID,
@@ -145,7 +151,22 @@ func _test_versioned_save() -> void:
 	_expect_true(migrated_v2["ok"], "v2 存档可迁移到当前版本")
 	_expect_equal(migrated_v2["migrated_from_version"], 2, "v2 迁移声明来源版本")
 	_expect_true(migrated_v2["data"]["journey"]["talked_to_companion"], "战斗中的 v2 存档补入已交谈状态")
+	_expect_equal(migrated_v2["data"]["journey"]["spring_lamps"], 1, "v2 存档补入战术石灯")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v2 迁移后可写回新版存档")
+	var version_three_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_three_journey.erase("spring_lamps")
+	version_three_journey.erase("lamp_turns")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 3,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": version_three_journey,
+		"exploration": exploration.snapshot(),
+	}))
+	var migrated_v3: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v3["ok"], "v3 存档可迁移到当前版本")
+	_expect_equal(migrated_v3["migrated_from_version"], 3, "v3 迁移声明来源版本")
+	_expect_equal(migrated_v3["data"]["journey"]["spring_lamps"], 1, "v3 存档补入战术石灯")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v3 迁移后可写回新版存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -233,6 +254,19 @@ func _test_combat_paths() -> void:
 
 
 func _test_companion_retreat_and_rescue() -> void:
+	var deployed = _battle_state()
+	var deployment: Dictionary = deployed.choose("deploy_spring_lamp")
+	_expect_true(deployment["ok"], "战斗中可以布置战术石灯")
+	_expect_equal(deployment["snapshot"]["spring_lamps"], 0, "部署物占用唯一战术槽")
+	_expect_equal(deployment["snapshot"]["lamp_turns"], 1, "部署回合后石灯仍可再保护一次")
+	_expect_equal(deployment["snapshot"]["player_hp"], 10, "部署回合由石灯降低一点伤害")
+	_expect_true(deployment["events"].has("spring_lamp_absorbed"), "部署返回持续效果事件")
+	var warded_guard: Dictionary = deployed.choose("guard")
+	_expect_equal(warded_guard["snapshot"]["player_hp"], 10, "守势与石灯合计免除下一次冲击")
+	_expect_equal(warded_guard["snapshot"]["lamp_turns"], 0, "石灯持续次数耗尽")
+	_expect_false(deployed.available_actions().has("deploy_spring_lamp"), "已占用的部署槽从行动隐藏")
+	_expect_false(deployed.choose("deploy_spring_lamp")["ok"], "同一挑战不能重复部署石灯")
+
 	var supported = _battle_state()
 	supported.choose("use_art")
 	var support: Dictionary = supported.choose("companion_support")
@@ -252,6 +286,7 @@ func _test_companion_retreat_and_rescue() -> void:
 	_expect_equal(retreat["snapshot"]["enemy_hp"], 9, "撤退后敌人恢复完整甲势")
 	_expect_equal(retreat["snapshot"]["talismans"], 0, "撤退不会返还已消耗符箓")
 	_expect_equal(retreat["snapshot"]["setbacks"], 1, "撤退记录一次挫败")
+	_expect_equal(retreat["snapshot"]["spring_lamps"], 1, "撤退后下一次挑战可重新布灯")
 	_expect_true(retreated.choose("enter_spring")["ok"], "撤退后可从山门再次挑战")
 
 	var rescued = _battle_state()
@@ -284,6 +319,7 @@ func _test_breakthrough_and_completion() -> void:
 	_expect_equal(replay["snapshot"]["realm"], "凡身", "重游重置境界")
 	_expect_equal(replay["snapshot"]["talismans"], 1, "重游重置消耗品")
 	_expect_equal(replay["snapshot"]["setbacks"], 0, "重游重置挫败记录")
+	_expect_equal(replay["snapshot"]["spring_lamps"], 1, "重游重置战术部署物")
 	_expect_false(replay["snapshot"]["talked_to_companion"], "重游重置开场交谈")
 	_expect_false(state.choose("breakthrough")["ok"], "突破不能重复")
 
@@ -360,7 +396,7 @@ func _test_scene_smoke() -> void:
 	_expect_equal(_action_button_count(instance), 1, "走到山门后显示进入行动")
 	await _press_action(instance, "进入藏泉山道")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉山道", "场景进入战斗")
-	_expect_equal(_action_button_count(instance), 5, "战斗显示术式、符箓、守势、援护与撤退")
+	_expect_equal(_action_button_count(instance), 6, "战斗显示术式、符箓、守势、援护、石灯与撤退")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "battle", "战斗切换山道画面")
 	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("甲缝"), "战斗目标提示弱点与退路")
 	await _press_action(instance, "撤回照禾渡口")
@@ -369,12 +405,15 @@ func _test_scene_smoke() -> void:
 	_expect_equal(_action_button_count(instance), 1, "撤回山门附近可立即重新挑战")
 	await _press_action(instance, "进入藏泉山道")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉山道", "场景可在撤退后再次进山")
+	await _press_action(instance, "布置引泉石灯")
+	_expect_true(instance.get_node("%EventLabel").text.contains("青白泉光"), "场景呈现战术部署物")
+	_expect_true(instance.get_node("%StatusLabel").text.contains("石灯 0"), "状态显示部署槽已使用")
 
 	await _press_action(instance, "请砚青援护")
 	_expect_true(instance.get_node("%EventLabel").text.contains("护脉药雾"), "场景呈现主动同伴援护")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("援护 0"), "战斗状态显示援护资源用尽")
 	await _press_action(instance, "镇岩符")
-	_expect_true(instance.get_node("%StatusLabel").text.contains("回合 3"), "战斗状态呈现回合信息")
+	_expect_true(instance.get_node("%StatusLabel").text.contains("回合 4"), "战斗状态呈现回合信息")
 	await _press_action(instance, "引气术")
 	await _press_action(instance, "引气术")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉石室", "胜利进入泉室")

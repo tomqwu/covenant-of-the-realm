@@ -121,7 +121,12 @@ func _render(event_ids: Array) -> void:
 		description_label.text += "\n\n" + _chapter_summary(snapshot)
 	status_label.text = _status_text(snapshot)
 	event_label.text = _event_text(event_ids)
-	map_canvas.set_story_state(snapshot["phase"], snapshot["gathered_moonleaf"], snapshot["talked_to_companion"])
+	map_canvas.set_story_state(
+		snapshot["phase"],
+		snapshot["gathered_moonleaf"],
+		snapshot["talked_to_companion"],
+		snapshot["lamp_turns"]
+	)
 	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"])
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	_build_actions(node)
@@ -130,12 +135,13 @@ func _render(event_ids: Array) -> void:
 func _status_text(snapshot: Dictionary) -> String:
 	var herb := "有" if snapshot["gathered_moonleaf"] else "无"
 	if snapshot["phase"] == "battle":
-		return "%s　气血 %d/12　岩甲兽 %d/9　镇岩符 %d　援护 %d　回合 %d" % [
+		return "%s　气血 %d/12　岩甲兽 %d/9　符 %d　援护 %d　石灯 %d　回合 %d" % [
 			snapshot["realm"],
 			snapshot["player_hp"],
 			snapshot["enemy_hp"],
 			snapshot["talismans"],
 			snapshot["companion_supports"],
+			snapshot["spring_lamps"],
 			snapshot["round"],
 		]
 	return "%s　气血 %d/12　月芽草：%s　同行：砚青" % [snapshot["realm"], snapshot["player_hp"], herb]
@@ -171,7 +177,8 @@ func _event_text(event_ids: Array) -> String:
 func _chapter_summary(snapshot: Dictionary) -> String:
 	var setback_text := "全程无失手" if snapshot["setbacks"] == 0 else "经历 %d 次撤退或救援" % snapshot["setbacks"]
 	var talisman_text := "镇岩符留存" if snapshot["talismans"] > 0 else "镇岩符已用"
-	return "本节结算　%s · %s · %s · 砚青平安同行" % [snapshot["realm"], setback_text, talisman_text]
+	var lamp_text := "石灯未布" if snapshot["spring_lamps"] > 0 else "石灯已护阵"
+	return "本节结算　%s · %s · %s · %s · 砚青平安同行" % [snapshot["realm"], setback_text, talisman_text, lamp_text]
 
 
 func _build_actions(node: Dictionary) -> void:

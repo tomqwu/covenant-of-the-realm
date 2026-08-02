@@ -50,6 +50,8 @@ func _run() -> void:
 	await _press_action(game, "撤回照禾渡口")
 	_expect(game.journey.phase_id() == "riverbank", "E2E 可沿退路撤回")
 	await _press_action(game, "进入藏泉山道")
+	await _press_action(game, "布置引泉石灯")
+	_expect(game.journey.lamp_turns == 1, "E2E 战术石灯进入持续状态")
 	await _press_action(game, "请砚青援护")
 	await _press_action(game, "镇岩符")
 	await _press_action(game, "引气术")

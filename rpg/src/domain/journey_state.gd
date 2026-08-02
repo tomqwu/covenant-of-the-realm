@@ -10,6 +10,7 @@ const USE_ART := "use_art"
 const USE_TALISMAN := "use_talisman"
 const GUARD := "guard"
 const COMPANION_SUPPORT := "companion_support"
+const DEPLOY_SPRING_LAMP := "deploy_spring_lamp"
 const RETREAT := "retreat"
 const BREAKTHROUGH := "breakthrough"
 const REVIEW_JOURNEY := "review_journey"
@@ -25,6 +26,8 @@ var talismans := 1
 var round_number := 1
 var realm := "凡身"
 var companion_supports := 1
+var spring_lamps := 1
+var lamp_turns := 0
 var setbacks := 0
 
 
@@ -57,6 +60,8 @@ func available_actions() -> PackedStringArray:
 			battle_actions.append(GUARD)
 			if companion_supports > 0:
 				battle_actions.append(COMPANION_SUPPORT)
+			if spring_lamps > 0:
+				battle_actions.append(DEPLOY_SPRING_LAMP)
 			battle_actions.append(RETREAT)
 			return battle_actions
 		Phase.SPRING:
@@ -99,6 +104,8 @@ func snapshot() -> Dictionary:
 		"round": round_number,
 		"realm": realm,
 		"companion_supports": companion_supports,
+		"spring_lamps": spring_lamps,
+		"lamp_turns": lamp_turns,
 		"setbacks": setbacks,
 	}
 
@@ -114,6 +121,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 		"round",
 		"realm",
 		"companion_supports",
+		"spring_lamps",
+		"lamp_turns",
 		"setbacks",
 	]
 	for key in required_keys:
@@ -136,6 +145,10 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if not _integer_in_range(snapshot_data["round"], 1, 100):
 		return false
 	if not _integer_in_range(snapshot_data["companion_supports"], 0, 1):
+		return false
+	if not _integer_in_range(snapshot_data["spring_lamps"], 0, 1):
+		return false
+	if not _integer_in_range(snapshot_data["lamp_turns"], 0, 2):
 		return false
 	if not _integer_in_range(snapshot_data["setbacks"], 0, 99):
 		return false
@@ -161,6 +174,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	var next_round := int(snapshot_data["round"])
 	var next_realm: String = snapshot_data["realm"]
 	var next_companion_supports := int(snapshot_data["companion_supports"])
+	var next_spring_lamps := int(snapshot_data["spring_lamps"])
+	var next_lamp_turns := int(snapshot_data["lamp_turns"])
 	var next_setbacks := int(snapshot_data["setbacks"])
 	if not _valid_phase_invariants(
 		next_phase,
@@ -172,6 +187,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_round,
 		next_realm,
 		next_companion_supports,
+		next_spring_lamps,
+		next_lamp_turns,
 		next_setbacks
 	):
 		return false
@@ -185,6 +202,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	round_number = next_round
 	realm = next_realm
 	companion_supports = next_companion_supports
+	spring_lamps = next_spring_lamps
+	lamp_turns = next_lamp_turns
 	setbacks = next_setbacks
 	return true
 
@@ -233,6 +252,12 @@ func _choose_battle(action_id: String) -> Dictionary:
 			player_hp = mini(12, player_hp + 3)
 			guard_amount = 2
 			events.append("companion_supported")
+		DEPLOY_SPRING_LAMP:
+			if spring_lamps <= 0:
+				return _result(false, ["no_spring_lamp"])
+			spring_lamps -= 1
+			lamp_turns = 2
+			events.append("spring_lamp_deployed")
 		RETREAT:
 			setbacks += 1
 			phase = Phase.RIVERBANK
@@ -240,6 +265,8 @@ func _choose_battle(action_id: String) -> Dictionary:
 			enemy_hp = 9
 			round_number = 1
 			companion_supports = 1
+			spring_lamps = 1
+			lamp_turns = 0
 			return _result(true, ["retreated"])
 		_:
 			return _result(false, ["invalid_action"])
@@ -248,6 +275,10 @@ func _choose_battle(action_id: String) -> Dictionary:
 		phase = Phase.SPRING
 		events.append("battle_won")
 		return _result(true, events)
+	if lamp_turns > 0:
+		guard_amount += 1
+		lamp_turns -= 1
+		events.append("spring_lamp_absorbed")
 
 	var damage: int = maxi(0, 3 - guard_amount)
 	player_hp = maxi(0, player_hp - damage)
@@ -259,6 +290,8 @@ func _choose_battle(action_id: String) -> Dictionary:
 		enemy_hp = 9
 		round_number = 1
 		companion_supports = 1
+		spring_lamps = 1
+		lamp_turns = 0
 		events.append("companion_rescue")
 		return _result(true, events)
 	round_number += 1
@@ -279,6 +312,8 @@ func _reset_chapter() -> void:
 	round_number = 1
 	realm = "凡身"
 	companion_supports = 1
+	spring_lamps = 1
+	lamp_turns = 0
 	setbacks = 0
 
 
@@ -299,12 +334,14 @@ func _valid_phase_invariants(
 	next_round: int,
 	next_realm: String,
 	next_companion_supports: int,
+	next_spring_lamps: int,
+	next_lamp_turns: int,
 	next_setbacks: int
 ) -> bool:
 	if next_phase == Phase.RIVERBANK:
-		return next_realm == "凡身" and next_player_hp > 0 and next_enemy_hp == 9 and next_round == 1 and next_companion_supports == 1
+		return next_realm == "凡身" and next_player_hp > 0 and next_enemy_hp == 9 and next_round == 1 and next_companion_supports == 1 and next_spring_lamps == 1 and next_lamp_turns == 0
 	if next_phase == Phase.BATTLE:
-		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp > 0
+		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp > 0 and (next_lamp_turns == 0 or next_spring_lamps == 0)
 	if next_phase == Phase.SPRING:
 		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp == 0
 	return next_realm == "引息境一层" and not next_gathered and next_enemy_hp == 0 and next_setbacks >= 0

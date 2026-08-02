@@ -29,6 +29,9 @@ state; save v3 adds the companion-briefing quest flag. V1/v2 files are migrated 
 validated, then rewritten only after the player chooses to continue. Mid-chapter legacy saves
 infer that the required briefing already occurred; ferry saves expose the new conversation.
 
+Save v4 adds the tactical-deployable slot and remaining effect turns. V1–v3 migrations initialize
+an unused lamp and no invented active effect.
+
 ### 2026-08-01 — Spatial briefing starts the quest
 
 The opening objective first asks the player to approach 砚青 at the ferry marker. The companion
@@ -52,6 +55,14 @@ intentional Godot resource identity metadata; the `.pck` itself stays under igno
 Native macOS, Windows, or Linux executables wait for a confirmed distribution target, official
 export templates, product icon, signing identity, and platform smoke tests. Local players can
 build and launch the validated pack with `make play-rpg-package` using the pinned engine entrypoint.
+
+### 2026-08-01 — Visible two-turn tactical deployable
+
+The first deployable slot holds one 引泉石灯 per combat attempt. Deployment consumes the slot,
+reduces the current incoming hit by one, and persists for one more enemy response. The active lamp
+is visible on the battlefield and in the HUD. Retreat or companion rescue resets the attempt and
+restores the lamp; victory records whether it was used in chapter settlement. This establishes a
+real tactical-slot contract without introducing a general inventory or equipment framework.
 
 ### 2026-08-01 — Recoverable first-combat failure
 

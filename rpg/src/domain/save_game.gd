@@ -1,7 +1,7 @@
 extends RefCounted
 class_name SaveGame
 
-const SAVE_VERSION := 3
+const SAVE_VERSION := 4
 const STORY_ID := "zhaohe_first_breath"
 const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 
@@ -102,6 +102,8 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["journey"]["companion_supports"] = 1
 		migrated["journey"]["setbacks"] = 0
 		migrated["journey"]["talked_to_companion"] = migrated["journey"].get("phase") != "riverbank"
+		migrated["journey"]["spring_lamps"] = 1
+		migrated["journey"]["lamp_turns"] = 0
 		var migration_result := _result(true, migrated, "")
 		migration_result["migrated_from_version"] = 1
 		return migration_result
@@ -109,8 +111,18 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		var migrated := payload.duplicate(true)
 		migrated["save_version"] = SAVE_VERSION
 		migrated["journey"]["talked_to_companion"] = migrated["journey"].get("phase") != "riverbank"
+		migrated["journey"]["spring_lamps"] = 1
+		migrated["journey"]["lamp_turns"] = 0
 		var migration_result := _result(true, migrated, "")
 		migration_result["migrated_from_version"] = 2
+		return migration_result
+	if int(version) == 3:
+		var migrated := payload.duplicate(true)
+		migrated["save_version"] = SAVE_VERSION
+		migrated["journey"]["spring_lamps"] = 1
+		migrated["journey"]["lamp_turns"] = 0
+		var migration_result := _result(true, migrated, "")
+		migration_result["migrated_from_version"] = 3
 		return migration_result
 	if int(version) != SAVE_VERSION:
 		return _result(false, {}, "unsupported_version")
