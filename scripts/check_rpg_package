@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+package_tmp="$(mktemp -d)"
+trap 'rm -rf "$package_tmp"' EXIT
+
+first_pack="$package_tmp/covenant-first.pck"
+second_pack="$package_tmp/covenant-second.pck"
+
+"$repo_root/scripts/godot" --quiet --headless --path "$repo_root/rpg" --export-pack "Playable Pack" "$first_pack"
+"$repo_root/scripts/godot" --quiet --headless --path "$repo_root/rpg" --export-pack "Playable Pack" "$second_pack"
+
+test -s "$first_pack"
+cmp "$first_pack" "$second_pack"
+"$repo_root/scripts/godot" --quiet --headless --main-pack "$first_pack" --quit-after 2
+
+pack_size="$(wc -c < "$first_pack" | tr -d ' ')"
+printf 'RPG package passed: reproducible PCK, %s bytes, boot smoke complete.\n' "$pack_size"

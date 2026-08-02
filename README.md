@@ -21,6 +21,12 @@ make setup-rpg
 make play-rpg
 ```
 
+To build and launch the same reproducible resource pack used by the package gate:
+
+```sh
+make play-rpg-package
+```
+
 The current graybox uses original project locations and characters only. It is playable from a
 Chinese title screen through exploration, preparation, a recoverable deterministic battle,
 `引息境一层`, chapter settlement, save resume, and replay. Keyboard, mouse, and controller
@@ -63,6 +69,7 @@ Open `http://127.0.0.1:4001/webclient/`. Create an account with:
 ```sh
 make test-rpg                # Godot domain and scene tests
 make test-rpg-e2e            # complete Godot new-game → ending → resume → replay path
+make check-rpg-package       # byte-reproducible PCK export and boot smoke
 make rpg-content-check       # original story-graph integrity
 make test                    # rules, Evennia integration, real two-client E2E
 make lint                    # Ruff and documentation integrity

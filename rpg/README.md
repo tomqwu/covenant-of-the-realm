@@ -8,7 +8,15 @@ make setup-rpg
 make play-rpg
 make test-rpg
 make test-rpg-e2e
+make check-rpg-package
+make play-rpg-package
 ```
+
+`make package-rpg` writes the cross-platform game-data pack to the ignored path
+`build/rpg/covenant-of-the-realm.pck`. `make play-rpg-package` launches that pack with the pinned
+Godot entrypoint. The package gate exports twice, requires byte-identical results, and boots the
+pack headlessly. A native `.app`/`.exe` is intentionally deferred until platform export templates,
+signing identity, product icon, and distribution target are confirmed.
 
 启动后可选择新游戏或继续本机的版本化存档。游戏会在成功交互、战斗行动和持续
 移动时自动保存；按 `Esc` 或手柄 Start 可暂停、保存并返回标题。损坏或未知版本

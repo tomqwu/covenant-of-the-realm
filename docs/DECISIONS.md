@@ -44,6 +44,15 @@ sound at runtime through `AudioStreamGenerator`, so no third-party or generated 
 the repository. Versioned settings are stored separately from journey progress; invalid settings
 fall back to silence without affecting the save game.
 
+### 2026-08-01 — Reproducible PCK as the overnight delivery boundary
+
+The overnight slice exports a cross-platform Godot resource pack and validates it by two
+byte-identical builds plus a headless main-scene boot. Generated `.gd.uid` files are committed as
+intentional Godot resource identity metadata; the `.pck` itself stays under ignored `build/`.
+Native macOS, Windows, or Linux executables wait for a confirmed distribution target, official
+export templates, product icon, signing identity, and platform smoke tests. Local players can
+build and launch the validated pack with `make play-rpg-package` using the pinned engine entrypoint.
+
 ### 2026-08-01 — Recoverable first-combat failure
 
 The first combat teaches preparation without creating a hard fail state. The player may retreat
