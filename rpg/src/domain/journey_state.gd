@@ -77,6 +77,66 @@ func snapshot() -> Dictionary:
 	}
 
 
+func restore(snapshot_data: Dictionary) -> bool:
+	var required_keys := ["phase", "gathered_moonleaf", "player_hp", "enemy_hp", "talismans", "round", "realm"]
+	for key in required_keys:
+		if not snapshot_data.has(key):
+			return false
+	if typeof(snapshot_data["phase"]) != TYPE_STRING:
+		return false
+	if typeof(snapshot_data["gathered_moonleaf"]) != TYPE_BOOL:
+		return false
+	if typeof(snapshot_data["realm"]) != TYPE_STRING:
+		return false
+	if not _integer_in_range(snapshot_data["player_hp"], 0, 12):
+		return false
+	if not _integer_in_range(snapshot_data["enemy_hp"], 0, 9):
+		return false
+	if not _integer_in_range(snapshot_data["talismans"], 0, 1):
+		return false
+	if not _integer_in_range(snapshot_data["round"], 1, 100):
+		return false
+
+	var next_phase: Phase
+	match snapshot_data["phase"]:
+		"riverbank":
+			next_phase = Phase.RIVERBANK
+		"battle":
+			next_phase = Phase.BATTLE
+		"spring":
+			next_phase = Phase.SPRING
+		"complete":
+			next_phase = Phase.COMPLETE
+		_:
+			return false
+
+	var next_gathered: bool = snapshot_data["gathered_moonleaf"]
+	var next_player_hp := int(snapshot_data["player_hp"])
+	var next_enemy_hp := int(snapshot_data["enemy_hp"])
+	var next_talismans := int(snapshot_data["talismans"])
+	var next_round := int(snapshot_data["round"])
+	var next_realm: String = snapshot_data["realm"]
+	if not _valid_phase_invariants(
+		next_phase,
+		next_gathered,
+		next_player_hp,
+		next_enemy_hp,
+		next_talismans,
+		next_round,
+		next_realm
+	):
+		return false
+
+	phase = next_phase
+	gathered_moonleaf = next_gathered
+	player_hp = next_player_hp
+	enemy_hp = next_enemy_hp
+	talismans = next_talismans
+	round_number = next_round
+	realm = next_realm
+	return true
+
+
 func _choose_riverbank(action_id: String) -> Dictionary:
 	if action_id == GATHER_MOONLEAF:
 		if gathered_moonleaf:
@@ -124,3 +184,28 @@ func _choose_battle(action_id: String) -> Dictionary:
 
 func _result(ok: bool, events: Array[String]) -> Dictionary:
 	return {"ok": ok, "events": events, "snapshot": snapshot()}
+
+
+func _integer_in_range(value: Variant, minimum: int, maximum: int) -> bool:
+	if typeof(value) != TYPE_INT and typeof(value) != TYPE_FLOAT:
+		return false
+	var numeric := float(value)
+	return is_finite(numeric) and numeric == floorf(numeric) and numeric >= minimum and numeric <= maximum
+
+
+func _valid_phase_invariants(
+	next_phase: Phase,
+	next_gathered: bool,
+	next_player_hp: int,
+	next_enemy_hp: int,
+	next_talismans: int,
+	next_round: int,
+	next_realm: String
+) -> bool:
+	if next_phase == Phase.RIVERBANK:
+		return next_realm == "凡身" and next_player_hp == 12 and next_enemy_hp == 9 and next_talismans == 1 and next_round == 1
+	if next_phase == Phase.BATTLE:
+		return next_realm == "凡身" and next_gathered and next_enemy_hp > 0
+	if next_phase == Phase.SPRING:
+		return next_realm == "凡身" and next_gathered and next_enemy_hp == 0
+	return next_realm == "引息境一层" and not next_gathered and next_enemy_hp == 0

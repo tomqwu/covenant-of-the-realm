@@ -2,6 +2,9 @@ extends SceneTree
 
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
+const SaveGameScript := preload("res://src/domain/save_game.gd")
+const TEST_SAVE_PATH := "user://automated-test-save.json"
+const TEST_SCENE_SAVE_PATH := "user://automated-scene-save.json"
 
 var assertions := 0
 var failures: Array[String] = []
@@ -14,6 +17,8 @@ func _initialize() -> void:
 func _run() -> void:
 	_test_initial_state()
 	_test_exploration_rules()
+	_test_state_restore()
+	_test_versioned_save()
 	_test_gathering_and_gate()
 	_test_combat_paths()
 	_test_breakthrough_and_completion()
@@ -61,6 +66,68 @@ func _test_exploration_rules() -> void:
 	_expect_equal(state.player_position, gate_position, "无效恢复保留原位置")
 	_expect_false(state.restore({"player_x": 0.5}), "缺失坐标的快照被拒绝")
 	_expect_equal(state.snapshot().keys(), ["player_x", "player_y"], "探索快照只含稳定坐标")
+
+
+func _test_state_restore() -> void:
+	var source = _battle_state()
+	source.choose("guard")
+	var snapshot: Dictionary = source.snapshot()
+	var restored = JourneyStateScript.new()
+	_expect_true(restored.restore(snapshot), "规则状态可以从合法快照恢复")
+	_expect_equal(restored.snapshot(), snapshot, "恢复后的规则状态逐字段一致")
+
+	var before: Dictionary = restored.snapshot()
+	var impossible := snapshot.duplicate(true)
+	impossible["phase"] = "spring"
+	_expect_false(restored.restore(impossible), "阶段不变量不成立时拒绝恢复")
+	_expect_equal(restored.snapshot(), before, "无效规则快照不会部分修改状态")
+	var fractional := snapshot.duplicate(true)
+	fractional["player_hp"] = 10.5
+	_expect_false(restored.restore(fractional), "规则整数值拒绝小数")
+	var missing := snapshot.duplicate(true)
+	missing.erase("realm")
+	_expect_false(restored.restore(missing), "缺失规则字段时拒绝恢复")
+
+
+func _test_versioned_save() -> void:
+	SaveGameScript.remove(TEST_SAVE_PATH)
+	var journey = _battle_state()
+	journey.choose("guard")
+	var exploration = ExplorationStateScript.new()
+	_expect_true(exploration.restore({"player_x": 0.88, "player_y": 0.18}), "准备合法探索存档")
+	var written: Dictionary = SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)
+	_expect_true(written["ok"], "版本化存档写入成功")
+	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
+	var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(loaded["ok"], "版本化存档读取成功")
+	_expect_equal(loaded["data"]["save_version"], 1.0, "存档声明当前版本")
+	var restored_journey = JourneyStateScript.new()
+	var restored_exploration = ExplorationStateScript.new()
+	_expect_true(restored_journey.restore(loaded["data"]["journey"]), "读取的规则快照通过业务校验")
+	_expect_true(restored_exploration.restore(loaded["data"]["exploration"]), "读取的探索快照通过碰撞校验")
+	_expect_equal(restored_journey.snapshot(), journey.snapshot(), "磁盘往返保留规则状态")
+	_expect_true(restored_exploration.player_position.is_equal_approx(exploration.player_position), "磁盘往返保留玩家位置")
+	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
+	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
+	_write_test_file(TEST_SAVE_PATH, "{broken")
+	var recovered: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(recovered["ok"], "主文件损坏时读取安全备份")
+	_expect_true(recovered["recovered_from_backup"], "备份恢复被明确标记")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "备份恢复后可以重新保存主文件")
+
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 999,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": journey.snapshot(),
+		"exploration": exploration.snapshot(),
+	}))
+	var future: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_false(future["ok"], "未知未来版本不会被静默加载")
+	_expect_equal(future["reason"], "unsupported_version", "未知版本返回稳定原因")
+	_write_test_file(TEST_SAVE_PATH, "{broken")
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_json", "损坏 JSON 被安全拒绝")
+	SaveGameScript.remove(TEST_SAVE_PATH)
+	_expect_false(FileAccess.file_exists(TEST_SAVE_PATH), "测试存档和临时文件可清理")
 
 
 func _test_gathering_and_gate() -> void:
@@ -123,10 +190,18 @@ func _test_visual_scale_scene() -> void:
 
 
 func _test_scene_smoke() -> void:
+	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
 	var scene: PackedScene = load("res://src/ui/main.tscn")
 	var instance := scene.instantiate()
+	instance.configure_save_path(TEST_SCENE_SAVE_PATH)
 	root.add_child(instance)
 	await process_frame
+	_expect_true(instance.get_node("%TitleOverlay").visible, "首次启动显示中文标题界面")
+	_expect_true(instance.get_node("%ContinueButton").disabled, "没有存档时继续按钮禁用")
+	instance.get_node("%NewGameButton").pressed.emit()
+	await process_frame
+	_expect_false(instance.get_node("%TitleOverlay").visible, "新游戏进入实际地图")
+	_expect_true(SaveGameScript.exists(TEST_SCENE_SAVE_PATH), "新游戏立即建立版本化存档")
 	_expect_equal(instance.get_node("%LocationLabel").text, "照禾渡口", "主场景读取内容")
 	_expect_equal(_action_button_count(instance), 0, "出生点不显示远距离行动")
 	_expect_equal(instance.get_node("%MapCanvas").actor_height_px(), 56.0, "角色使用 56 px 生产基准")
@@ -137,6 +212,11 @@ func _test_scene_smoke() -> void:
 	_expect_true(InputMap.has_action("interact"), "交互使用语义输入动作")
 	_expect_true(_action_has_joypad_event("move_left"), "移动动作包含手柄绑定")
 	_expect_true(_action_has_joypad_event("interact"), "交互动作包含手柄绑定")
+	_expect_true(_action_has_joypad_event("pause_menu"), "暂停动作包含手柄绑定")
+	instance.toggle_pause_menu()
+	_expect_true(instance.get_node("%PauseOverlay").visible, "暂停菜单可由统一动作打开")
+	instance.toggle_pause_menu()
+	_expect_false(instance.get_node("%PauseOverlay").visible, "暂停菜单可继续游戏")
 	_expect_false(instance.interact()["ok"], "出生点交互不会隔空采集")
 	_expect_true(instance.get_node("%EventLabel").text.contains("附近没有"), "无目标交互给出中文反馈")
 
@@ -172,8 +252,25 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.get_node("%LocationLabel").text, "第一息", "场景完成章节")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("引息境一层"), "场景显示突破境界")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "complete", "结算切换明亮突破画面")
+	instance.return_to_title()
+	await process_frame
+	_expect_true(instance.get_node("%TitleOverlay").visible, "完成后可以保存并返回标题")
+	_expect_false(instance.get_node("%ContinueButton").disabled, "已有存档时允许继续")
 	instance.queue_free()
 	await process_frame
+
+	var resumed := scene.instantiate()
+	resumed.configure_save_path(TEST_SCENE_SAVE_PATH)
+	root.add_child(resumed)
+	await process_frame
+	_expect_true(resumed.get_node("%TitleStatus").text.contains("第一息"), "标题界面展示存档位置")
+	_expect_true(resumed.continue_game(), "新场景可以继续本地存档")
+	await process_frame
+	_expect_equal(resumed.get_node("%LocationLabel").text, "第一息", "继续游戏恢复章节完成态")
+	_expect_true(resumed.get_node("%EventLabel").text.contains("本地存档恢复"), "恢复存档提供中文反馈")
+	resumed.queue_free()
+	await process_frame
+	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
 
 
 func _press_action(instance: Node, label: String) -> void:
@@ -207,6 +304,15 @@ func _action_has_joypad_event(action_name: StringName) -> bool:
 		if event is InputEventJoypadMotion or event is InputEventJoypadButton:
 			return true
 	return false
+
+
+func _write_test_file(path: String, contents: String) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		failures.append("无法写入测试文件：%s" % path)
+		return
+	file.store_string(contents)
+	file.close()
 
 
 func _battle_state():

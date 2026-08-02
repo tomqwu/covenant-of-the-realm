@@ -130,7 +130,7 @@ Expand the executable RPG graybox into a complete 90-minute original chapter:
 4. 藏泉山道 exploration, warning, and retreat path;
 5. three regular enemy profiles and one boss;
 6. an active chapter companion and one deployable tactical slot;
-7. versioned save/load and chapter replay;
+7. versioned save/load, title/continue, and safe backup recovery (implemented; chapter replay remains);
 8. mouse, keyboard, and controller parity;
 9. original visual/audio direction with recorded provenance;
 10. new-game-to-chapter-end automated acceptance path.

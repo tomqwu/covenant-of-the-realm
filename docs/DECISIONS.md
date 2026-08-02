@@ -16,6 +16,14 @@ interact actions, and world interactions require proximity rather than remote me
 This is an implementation baseline for the overnight playable slice, not a release-platform or
 final-sprite commitment.
 
+### 2026-08-01 — Versioned local save boundary
+
+Save only versioned deterministic journey snapshots and normalized exploration coordinates as
+JSON under `user://`; never serialize the scene tree or executable objects. Validate domain
+invariants before restoring, reject unknown versions without modifying memory, and preserve a
+last-known-good backup while promoting a verified temporary file. Starting a new game is the
+explicit operation that replaces an existing or unreadable local save.
+
 ### 2026-08-01 — Brighter and more optimistic visual tone
 
 Refine the confirmed hybrid art direction toward clear daylight, fresh air, visible water,

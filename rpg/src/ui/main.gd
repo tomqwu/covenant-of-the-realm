@@ -3,6 +3,7 @@ extends Control
 const CONTENT_PATH := "res://content/prologue.json"
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
+const SaveGameScript := preload("res://src/domain/save_game.gd")
 
 @onready var map_canvas: Control = %MapCanvas
 @onready var chapter_label: Label = %ChapterLabel
@@ -13,28 +14,65 @@ const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 @onready var event_label: Label = %EventLabel
 @onready var actions: VBoxContainer = %Actions
 @onready var input_hint: Label = %InputHint
+@onready var title_overlay: Control = %TitleOverlay
+@onready var title_status: Label = %TitleStatus
+@onready var new_game_button: Button = %NewGameButton
+@onready var continue_button: Button = %ContinueButton
+@onready var pause_overlay: Control = %PauseOverlay
+@onready var resume_button: Button = %ResumeButton
+@onready var return_title_button: Button = %ReturnTitleButton
 
 var content: Dictionary = {}
 var journey = JourneyStateScript.new()
 var exploration = ExplorationStateScript.new()
 var nearby_action_id := ""
+var save_path := SaveGameScript.DEFAULT_SAVE_PATH
+var is_playing := false
+var autosave_elapsed := 0.0
 
 
 func _ready() -> void:
 	_ensure_input_actions()
 	content = _load_content()
 	_render([])
+	_style_menu_button(new_game_button)
+	_style_menu_button(continue_button)
+	_style_menu_button(resume_button)
+	_style_menu_button(return_title_button)
+	new_game_button.pressed.connect(start_new_game)
+	continue_button.pressed.connect(continue_game)
+	resume_button.pressed.connect(toggle_pause_menu)
+	return_title_button.pressed.connect(return_to_title)
+	pause_overlay.hide()
+	_refresh_title_state()
+	title_overlay.show()
+	if continue_button.disabled:
+		new_game_button.grab_focus.call_deferred()
+	else:
+		continue_button.grab_focus.call_deferred()
 
 
 func _process(delta: float) -> void:
-	if journey.phase_id() != "riverbank":
+	if not is_playing or title_overlay.visible or pause_overlay.visible or journey.phase_id() != "riverbank":
 		return
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if not direction.is_zero_approx():
+		var before: Vector2 = exploration.player_position
 		move_player(direction, delta)
+		if not exploration.player_position.is_equal_approx(before):
+			autosave_elapsed += delta
+			if autosave_elapsed >= 1.0:
+				_save_game()
+				autosave_elapsed = 0.0
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if is_playing and event.is_action_pressed("pause_menu"):
+		toggle_pause_menu()
+		get_viewport().set_input_as_handled()
+		return
+	if not is_playing or title_overlay.visible or pause_overlay.visible:
+		return
 	if journey.phase_id() == "riverbank" and event.is_action_pressed("interact"):
 		interact()
 		get_viewport().set_input_as_handled()
@@ -169,9 +207,17 @@ func _style_action_button(button: Button) -> void:
 	button.add_theme_font_size_override("font_size", 17)
 
 
+func _style_menu_button(button: Button) -> void:
+	_style_action_button(button)
+	button.custom_minimum_size = Vector2(320, 52)
+	button.focus_mode = Control.FOCUS_ALL
+
+
 func _on_action(action_id: String) -> void:
 	var result: Dictionary = journey.choose(action_id)
 	_render(result["events"])
+	if result["ok"]:
+		_save_game()
 
 
 func move_player(direction: Vector2, delta: float) -> Vector2:
@@ -193,7 +239,122 @@ func interact() -> Dictionary:
 		return no_target
 	var result: Dictionary = journey.choose(nearby_action_id)
 	_render(result["events"])
+	if result["ok"]:
+		_save_game()
 	return result
+
+
+func configure_save_path(path: String) -> void:
+	save_path = path
+
+
+func start_new_game() -> void:
+	SaveGameScript.remove(save_path)
+	journey = JourneyStateScript.new()
+	exploration = ExplorationStateScript.new()
+	nearby_action_id = ""
+	autosave_elapsed = 0.0
+	is_playing = true
+	title_overlay.hide()
+	pause_overlay.hide()
+	_render([])
+	_save_game()
+
+
+func continue_game() -> bool:
+	var loaded: Dictionary = SaveGameScript.read(save_path)
+	var decoded := _decode_save(loaded)
+	if not decoded["ok"]:
+		_refresh_title_state()
+		return false
+	journey = decoded["journey"]
+	exploration = decoded["exploration"]
+	is_playing = true
+	autosave_elapsed = 0.0
+	title_overlay.hide()
+	pause_overlay.hide()
+	_render(["save_loaded_backup"] if loaded["recovered_from_backup"] else ["save_loaded"])
+	return true
+
+
+func toggle_pause_menu() -> void:
+	if not is_playing or title_overlay.visible:
+		return
+	pause_overlay.visible = not pause_overlay.visible
+	if pause_overlay.visible:
+		_save_game()
+		resume_button.grab_focus.call_deferred()
+
+
+func return_to_title() -> void:
+	if is_playing:
+		_save_game()
+	is_playing = false
+	pause_overlay.hide()
+	_refresh_title_state()
+	title_overlay.show()
+	if continue_button.disabled:
+		new_game_button.grab_focus.call_deferred()
+	else:
+		continue_button.grab_focus.call_deferred()
+
+
+func _save_game() -> bool:
+	if not is_playing:
+		return false
+	var result: Dictionary = SaveGameScript.write(journey.snapshot(), exploration.snapshot(), save_path)
+	if not result["ok"]:
+		event_label.text = "自动存档失败（%s）。当前游戏仍可继续。" % result["reason"]
+	return result["ok"]
+
+
+func _refresh_title_state() -> void:
+	var loaded: Dictionary = SaveGameScript.read(save_path)
+	var decoded := _decode_save(loaded)
+	continue_button.disabled = not decoded["ok"]
+	if decoded["ok"]:
+		var phase_name := _phase_display_name(str(loaded["data"]["journey"].get("phase", "")))
+		title_status.text = "发现本地存档 · %s" % phase_name
+		new_game_button.text = "重新开始（覆盖存档）"
+	elif loaded["reason"] == "missing":
+		title_status.text = "尚无旅程存档。"
+		new_game_button.text = "踏入山河"
+	elif loaded["ok"]:
+		title_status.text = "%s；原文件已保留。" % decoded["reason"]
+		new_game_button.text = "开始新游戏（覆盖异常存档）"
+	else:
+		title_status.text = "存档暂不可读取（%s）；原文件已保留。" % loaded["reason"]
+		new_game_button.text = "开始新游戏（覆盖异常存档）"
+
+
+func _decode_save(loaded: Dictionary) -> Dictionary:
+	if not loaded["ok"]:
+		return {"ok": false, "reason": "存档文件不可读取"}
+	var restored_journey = JourneyStateScript.new()
+	if not restored_journey.restore(loaded["data"]["journey"]):
+		return {"ok": false, "reason": "存档中的剧情状态无效"}
+	var restored_exploration = ExplorationStateScript.new()
+	if not restored_exploration.restore(loaded["data"]["exploration"]):
+		return {"ok": false, "reason": "存档中的地图位置无效"}
+	return {
+		"ok": true,
+		"reason": "",
+		"journey": restored_journey,
+		"exploration": restored_exploration,
+	}
+
+
+func _phase_display_name(phase_name: String) -> String:
+	match phase_name:
+		"riverbank":
+			return "照禾渡口"
+		"battle":
+			return "藏泉山道"
+		"spring":
+			return "藏泉石室"
+		"complete":
+			return "第一息"
+	return "未知地点"
 
 
 func _ensure_input_actions() -> void:
@@ -202,11 +363,13 @@ func _ensure_input_actions() -> void:
 	_add_key_action("move_up", [KEY_W, KEY_UP])
 	_add_key_action("move_down", [KEY_S, KEY_DOWN])
 	_add_key_action("interact", [KEY_E, KEY_SPACE])
+	_add_key_action("pause_menu", [KEY_ESCAPE])
 	_add_joy_axis("move_left", JOY_AXIS_LEFT_X, -1.0)
 	_add_joy_axis("move_right", JOY_AXIS_LEFT_X, 1.0)
 	_add_joy_axis("move_up", JOY_AXIS_LEFT_Y, -1.0)
 	_add_joy_axis("move_down", JOY_AXIS_LEFT_Y, 1.0)
 	_add_joy_button("interact", JOY_BUTTON_A)
+	_add_joy_button("pause_menu", JOY_BUTTON_START)
 
 
 func _add_key_action(action_name: StringName, keycodes: Array) -> void:

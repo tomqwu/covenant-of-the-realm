@@ -1,6 +1,8 @@
 extends SceneTree
 
 const OUTPUT_DIR := "res://../docs/concepts/gameplay-ui-v1"
+const CAPTURE_SAVE_PATH := "user://capture-ui-save.json"
+const SaveGameScript := preload("res://src/domain/save_game.gd")
 
 
 func _initialize() -> void:
@@ -18,7 +20,13 @@ func _capture_flow() -> void:
 
 	var scene: PackedScene = load("res://src/ui/main.tscn")
 	var instance := scene.instantiate()
+	SaveGameScript.remove(CAPTURE_SAVE_PATH)
+	instance.configure_save_path(CAPTURE_SAVE_PATH)
 	root.add_child(instance)
+	await _settle()
+	await _save_frame("01-title-screen.png")
+
+	instance.start_new_game()
 	await _settle()
 	await _save_frame("01-zhaohe-ferry.png")
 
@@ -36,6 +44,7 @@ func _capture_flow() -> void:
 	instance._on_action("breakthrough")
 	await _settle()
 	await _save_frame("04-first-breath.png")
+	SaveGameScript.remove(CAPTURE_SAVE_PATH)
 	quit(0)
 
 

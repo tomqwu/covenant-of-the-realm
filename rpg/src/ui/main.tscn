@@ -235,3 +235,156 @@ theme_override_colors/font_color = Color(0.286, 0.424, 0.38, 0.9)
 theme_override_font_sizes/font_size = 12
 text = "WASD / 方向键移动 · E / 空格 / 手柄 A 交互"
 horizontal_alignment = 2
+
+[node name="TitleOverlay" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Shade" type="ColorRect" parent="TitleOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.12, 0.11, 0.78)
+
+[node name="Center" type="CenterContainer" parent="TitleOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitlePanel" type="PanelContainer" parent="TitleOverlay/Center"]
+custom_minimum_size = Vector2(560, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StylePaper")
+
+[node name="Margin" type="MarginContainer" parent="TitleOverlay/Center/TitlePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 54
+theme_override_constants/margin_top = 42
+theme_override_constants/margin_right = 54
+theme_override_constants/margin_bottom = 42
+
+[node name="Column" type="VBoxContainer" parent="TitleOverlay/Center/TitlePanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="GameTitle" type="Label" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.153, 0.192, 0.18, 1)
+theme_override_font_sizes/font_size = 42
+text = "山河有契"
+horizontal_alignment = 1
+
+[node name="ChapterTitle" type="Label" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.475, 0.286, 0.184, 1)
+theme_override_font_sizes/font_size = 18
+text = "序章 · 第一息"
+horizontal_alignment = 1
+
+[node name="Divider" type="HSeparator" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+layout_mode = 2
+
+[node name="TitleStatus" type="Label" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.286, 0.424, 0.38, 1)
+theme_override_font_sizes/font_size = 15
+text = "正在检查本地存档……"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ContinueButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "继续旅程"
+
+[node name="NewGameButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "踏入山河"
+
+[node name="TitleControls" type="Label" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.286, 0.424, 0.38, 0.82)
+theme_override_font_sizes/font_size = 13
+text = "键盘 · 鼠标 · 手柄均可游玩\n存档仅保存在本机"
+horizontal_alignment = 1
+
+[node name="PauseOverlay" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Shade" type="ColorRect" parent="PauseOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.12, 0.11, 0.66)
+
+[node name="Center" type="CenterContainer" parent="PauseOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PausePanel" type="PanelContainer" parent="PauseOverlay/Center"]
+custom_minimum_size = Vector2(460, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StylePaper")
+
+[node name="Margin" type="MarginContainer" parent="PauseOverlay/Center/PausePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 52
+theme_override_constants/margin_top = 34
+theme_override_constants/margin_right = 52
+theme_override_constants/margin_bottom = 34
+
+[node name="Column" type="VBoxContainer" parent="PauseOverlay/Center/PausePanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 13
+
+[node name="PauseTitle" type="Label" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.153, 0.192, 0.18, 1)
+theme_override_font_sizes/font_size = 31
+text = "行旅暂歇"
+horizontal_alignment = 1
+
+[node name="PauseNote" type="Label" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.286, 0.424, 0.38, 1)
+theme_override_font_sizes/font_size = 14
+text = "当前进度已保存到本机。"
+horizontal_alignment = 1
+
+[node name="ResumeButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "继续修行"
+
+[node name="ReturnTitleButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "保存并返回标题"
