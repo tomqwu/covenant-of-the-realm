@@ -41,11 +41,11 @@ func _run() -> void:
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(not game.get_node("%PauseOverlay").visible, "手柄 A 从暂停恢复")
 
-	_expect(game.exploration.restore({"player_x": 0.69, "player_y": 0.62}), "输入验收移动到合法月芽田坐标")
+	_expect(game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.69, "player_y": 0.62}), "输入验收移动到合法月芽田坐标")
 	game._render([])
 	await _trigger_action("interact")
 	_expect(game.journey.gathered_moonleaf, "交互动作在月芽田采集")
-	_expect(game.exploration.restore({"player_x": 0.88, "player_y": 0.18}), "输入验收移动到合法山门坐标")
+	_expect(game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.88, "player_y": 0.18}), "输入验收移动到合法山门坐标")
 	game._render([])
 	await _trigger_action("interact")
 	_expect(game.journey.phase_id() == "battle", "交互动作从山门进入战斗")

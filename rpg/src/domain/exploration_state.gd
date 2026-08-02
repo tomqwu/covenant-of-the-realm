@@ -4,6 +4,7 @@ class_name ExplorationState
 const GATHER_MOONLEAF := "gather_moonleaf"
 const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
+const DEFAULT_MAP_ID := "zhaohe_ferry"
 
 # Positions are normalized world coordinates. Rendering resolution never changes
 # traversal, collision, or interaction outcomes.
@@ -24,6 +25,7 @@ const OBSTACLES: Array[Rect2] = [
 ]
 
 var player_position := START_POSITION
+var map_id := DEFAULT_MAP_ID
 
 
 func move(direction: Vector2, delta: float) -> Vector2:
@@ -51,19 +53,27 @@ func interaction_action(gathered_moonleaf: bool, talked_to_companion: bool = fal
 
 func snapshot() -> Dictionary:
 	return {
+		"map_id": map_id,
 		"player_x": player_position.x,
 		"player_y": player_position.y,
 	}
 
 
 func restore(snapshot_data: Dictionary) -> bool:
-	if not snapshot_data.has("player_x") or not snapshot_data.has("player_y"):
+	if not snapshot_data.has("map_id") or not snapshot_data.has("player_x") or not snapshot_data.has("player_y"):
+		return false
+	if not supports_map_id(snapshot_data["map_id"]):
 		return false
 	var candidate := Vector2(float(snapshot_data["player_x"]), float(snapshot_data["player_y"]))
 	if not _is_walkable(candidate):
 		return false
+	map_id = str(snapshot_data["map_id"])
 	player_position = candidate
 	return true
+
+
+static func supports_map_id(candidate: Variant) -> bool:
+	return typeof(candidate) == TYPE_STRING and candidate == DEFAULT_MAP_ID
 
 
 func is_walkable(position: Vector2) -> bool:

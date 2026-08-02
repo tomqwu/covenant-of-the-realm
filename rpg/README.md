@@ -24,7 +24,8 @@ The development window has a 1152×648 minimum because that is the validated rea
 Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, battle confirmation,
 and pause/resume are exercised as physical input events by `make test-rpg-input`.
 
-启动后可选择新游戏或继续本机的版本化存档。游戏会在成功交互、战斗行动和持续
+启动后可选择新游戏或继续本机的版本化存档。当前 save v5 同时记录稳定地图标识
+与归一化坐标；v1–v4 自动迁移，未知地图不会被静默放进错误场景。游戏会在成功交互、战斗行动和持续
 移动时自动保存；按 `Esc` 或手柄 Start 可暂停、保存并返回标题。损坏或未知版本
 的存档不会被静默载入，主文件写入失败时可从安全备份恢复。
 

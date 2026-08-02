@@ -63,16 +63,17 @@ func _test_exploration_rules() -> void:
 	_expect_false(state.is_walkable(Vector2(0.2, 0.5)), "水域不可行走")
 	_expect_false(state.is_walkable(Vector2(0.56, 0.26)), "建筑占用区不可行走")
 
-	_expect_true(state.restore({"player_x": 0.69, "player_y": 0.62}), "可恢复到合法月芽田位置")
+	_expect_true(state.restore({"map_id": "zhaohe_ferry", "player_x": 0.69, "player_y": 0.62}), "可恢复到合法月芽田位置")
 	_expect_equal(state.interaction_action(false), "gather_moonleaf", "靠近月芽草出现采集交互")
 	_expect_equal(state.interaction_action(true), "", "采集后月芽草不再交互")
-	_expect_true(state.restore({"player_x": 0.88, "player_y": 0.18}), "可恢复到合法山门位置")
+	_expect_true(state.restore({"map_id": "zhaohe_ferry", "player_x": 0.88, "player_y": 0.18}), "可恢复到合法山门位置")
 	_expect_equal(state.interaction_action(false), "enter_spring", "靠近山门出现进山交互")
 	var gate_position: Vector2 = state.player_position
-	_expect_false(state.restore({"player_x": 0.2, "player_y": 0.5}), "拒绝恢复到碰撞区")
+	_expect_false(state.restore({"map_id": "zhaohe_ferry", "player_x": 0.2, "player_y": 0.5}), "拒绝恢复到碰撞区")
 	_expect_equal(state.player_position, gate_position, "无效恢复保留原位置")
 	_expect_false(state.restore({"player_x": 0.5}), "缺失坐标的快照被拒绝")
-	_expect_equal(state.snapshot().keys(), ["player_x", "player_y"], "探索快照只含稳定坐标")
+	_expect_false(state.restore({"map_id": "unknown_map", "player_x": 0.69, "player_y": 0.62}), "未知地图标识被探索规则拒绝")
+	_expect_equal(state.snapshot().keys(), ["map_id", "player_x", "player_y"], "探索快照只含稳定地图标识与坐标")
 
 
 func _test_state_restore() -> void:
@@ -101,13 +102,14 @@ func _test_versioned_save() -> void:
 	var journey = _battle_state()
 	journey.choose("guard")
 	var exploration = ExplorationStateScript.new()
-	_expect_true(exploration.restore({"player_x": 0.88, "player_y": 0.18}), "准备合法探索存档")
+	_expect_true(exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.88, "player_y": 0.18}), "准备合法探索存档")
 	var written: Dictionary = SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)
 	_expect_true(written["ok"], "版本化存档写入成功")
 	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
 	var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(loaded["ok"], "版本化存档读取成功")
-	_expect_equal(loaded["data"]["save_version"], 4.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["save_version"], 5.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["exploration"]["map_id"], "zhaohe_ferry", "新版存档声明稳定地图标识")
 	var restored_journey = JourneyStateScript.new()
 	var restored_exploration = ExplorationStateScript.new()
 	_expect_true(restored_journey.restore(loaded["data"]["journey"]), "读取的规则快照通过业务校验")
@@ -116,6 +118,8 @@ func _test_versioned_save() -> void:
 	_expect_true(restored_exploration.player_position.is_equal_approx(exploration.player_position), "磁盘往返保留玩家位置")
 
 	var legacy_journey: Dictionary = journey.snapshot().duplicate(true)
+	var legacy_exploration := exploration.snapshot().duplicate(true)
+	legacy_exploration.erase("map_id")
 	legacy_journey.erase("companion_supports")
 	legacy_journey.erase("setbacks")
 	legacy_journey.erase("talked_to_companion")
@@ -125,12 +129,13 @@ func _test_versioned_save() -> void:
 		"save_version": 1,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": legacy_journey,
-		"exploration": exploration.snapshot(),
+		"exploration": legacy_exploration,
 	}))
 	var migrated: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated["ok"], "v1 存档可迁移到当前版本")
 	_expect_equal(migrated["migrated_from_version"], 1, "迁移结果声明来源版本")
-	_expect_equal(migrated["data"]["save_version"], 4, "迁移后的内存快照升级为 v4")
+	_expect_equal(migrated["data"]["save_version"], 5, "迁移后的内存快照升级为 v5")
+	_expect_equal(migrated["data"]["exploration"]["map_id"], "zhaohe_ferry", "v1 迁移补入照禾渡口地图标识")
 	_expect_equal(migrated["data"]["journey"]["companion_supports"], 1, "迁移补入同伴援护资源")
 	_expect_equal(migrated["data"]["journey"]["setbacks"], 0, "迁移补入挫败计数")
 	_expect_true(migrated["data"]["journey"]["talked_to_companion"], "战斗中的 v1 存档迁移为已完成简报")
@@ -145,7 +150,7 @@ func _test_versioned_save() -> void:
 		"save_version": 2,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": version_two_journey,
-		"exploration": exploration.snapshot(),
+		"exploration": legacy_exploration,
 	}))
 	var migrated_v2: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated_v2["ok"], "v2 存档可迁移到当前版本")
@@ -160,13 +165,24 @@ func _test_versioned_save() -> void:
 		"save_version": 3,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": version_three_journey,
-		"exploration": exploration.snapshot(),
+		"exploration": legacy_exploration,
 	}))
 	var migrated_v3: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated_v3["ok"], "v3 存档可迁移到当前版本")
 	_expect_equal(migrated_v3["migrated_from_version"], 3, "v3 迁移声明来源版本")
 	_expect_equal(migrated_v3["data"]["journey"]["spring_lamps"], 1, "v3 存档补入战术石灯")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v3 迁移后可写回新版存档")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 4,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": journey.snapshot(),
+		"exploration": legacy_exploration,
+	}))
+	var migrated_v4: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v4["ok"], "v4 存档可迁移到地图感知版本")
+	_expect_equal(migrated_v4["migrated_from_version"], 4, "v4 迁移声明来源版本")
+	_expect_equal(migrated_v4["data"]["exploration"]["map_id"], "zhaohe_ferry", "v4 迁移补入照禾渡口地图标识")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v4 迁移后可写回新版存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -184,6 +200,15 @@ func _test_versioned_save() -> void:
 	var future: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_false(future["ok"], "未知未来版本不会被静默加载")
 	_expect_equal(future["reason"], "unsupported_version", "未知版本返回稳定原因")
+	var unknown_map_exploration := exploration.snapshot().duplicate(true)
+	unknown_map_exploration["map_id"] = "unreleased_secret_realm"
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 5,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": journey.snapshot(),
+		"exploration": unknown_map_exploration,
+	}))
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_map", "未知地图不会恢复到错误场景")
 	_write_test_file(TEST_SAVE_PATH, "{broken")
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_json", "损坏 JSON 被安全拒绝")
 	SaveGameScript.remove(TEST_SAVE_PATH)

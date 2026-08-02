@@ -52,6 +52,11 @@ infer that the required briefing already occurred; ferry saves expose the new co
 Save v4 adds the tactical-deployable slot and remaining effect turns. V1–v3 migrations initialize
 an unused lamp and no invented active effect.
 
+Save v5 adds a stable `map_id` beside normalized coordinates. V1–v4 files migrate to
+`zhaohe_ferry`; current-version files with missing or unknown map identities are rejected before
+domain restoration. This prevents a valid coordinate pair from being silently loaded into the
+wrong scene as the explorable mountain path and later regions are added.
+
 ### 2026-08-01 — Spatial briefing starts the quest
 
 The opening objective first asks the player to approach 砚青 at the ferry marker. The companion

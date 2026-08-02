@@ -1,7 +1,9 @@
 extends RefCounted
 class_name SaveGame
 
-const SAVE_VERSION := 4
+const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
+
+const SAVE_VERSION := 5
 const STORY_ID := "zhaohe_first_breath"
 const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 
@@ -104,6 +106,7 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["journey"]["talked_to_companion"] = migrated["journey"].get("phase") != "riverbank"
 		migrated["journey"]["spring_lamps"] = 1
 		migrated["journey"]["lamp_turns"] = 0
+		migrated["exploration"]["map_id"] = ExplorationStateScript.DEFAULT_MAP_ID
 		var migration_result := _result(true, migrated, "")
 		migration_result["migrated_from_version"] = 1
 		return migration_result
@@ -113,6 +116,7 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["journey"]["talked_to_companion"] = migrated["journey"].get("phase") != "riverbank"
 		migrated["journey"]["spring_lamps"] = 1
 		migrated["journey"]["lamp_turns"] = 0
+		migrated["exploration"]["map_id"] = ExplorationStateScript.DEFAULT_MAP_ID
 		var migration_result := _result(true, migrated, "")
 		migration_result["migrated_from_version"] = 2
 		return migration_result
@@ -121,11 +125,21 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["save_version"] = SAVE_VERSION
 		migrated["journey"]["spring_lamps"] = 1
 		migrated["journey"]["lamp_turns"] = 0
+		migrated["exploration"]["map_id"] = ExplorationStateScript.DEFAULT_MAP_ID
 		var migration_result := _result(true, migrated, "")
 		migration_result["migrated_from_version"] = 3
 		return migration_result
+	if int(version) == 4:
+		var migrated := payload.duplicate(true)
+		migrated["save_version"] = SAVE_VERSION
+		migrated["exploration"]["map_id"] = ExplorationStateScript.DEFAULT_MAP_ID
+		var migration_result := _result(true, migrated, "")
+		migration_result["migrated_from_version"] = 4
+		return migration_result
 	if int(version) != SAVE_VERSION:
 		return _result(false, {}, "unsupported_version")
+	if not ExplorationStateScript.supports_map_id(payload["exploration"].get("map_id")):
+		return _result(false, {}, "invalid_map")
 	return _result(true, payload, "")
 
 
