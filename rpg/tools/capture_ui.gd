@@ -46,6 +46,11 @@ func _capture_flow() -> void:
 	await _save_frame("01-companion-dialogue.png")
 	instance.skip_dialogue_to_response()
 	instance._choose_dialogue_response("careful")
+	instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.43, "player_y": 0.42})
+	instance._render([])
+	await _settle()
+	await _save_frame("01-ferry-watermark.png")
+	instance._on_action("inspect_ferry_watermark")
 	for _step in range(6):
 		instance.move_player(Vector2.RIGHT, 0.08)
 	for _step in range(4):
@@ -68,6 +73,14 @@ func _capture_flow() -> void:
 	instance.get_node("%SceneTransition").finish()
 	await _settle()
 	await _save_frame("02-cangquan-path.png")
+	instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.40, "player_y": 0.30})
+	instance._render([])
+	await _settle()
+	await _save_frame("02-path-discoveries.png")
+	instance._on_action("inspect_spring_seam")
+	instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.68, "player_y": 0.60})
+	instance._render([])
+	instance._on_action("inspect_abandoned_basket")
 
 	instance._on_action("approach_enemy")
 	instance._on_action("deploy_spring_lamp")

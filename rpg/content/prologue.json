@@ -18,6 +18,11 @@
       "description": "河水绕过石堤，薄雾贴着芦苇缓缓散去。砚青正在渡碑旁等你。",
       "actions": [
         {
+          "id": "inspect_ferry_watermark",
+          "label": "辨认旧水痕",
+          "possible_targets": ["riverbank"]
+        },
+        {
           "id": "talk_to_companion",
           "label": "与砚青交谈",
           "possible_targets": ["riverbank"]
@@ -47,6 +52,16 @@
         {
           "id": "inspect_path_marker",
           "label": "查看旧石标",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "inspect_spring_seam",
+          "label": "观察石缝泉纹",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "inspect_abandoned_basket",
+          "label": "翻看弃置药篓",
           "possible_targets": ["mountain_path"]
         },
         {
@@ -178,6 +193,10 @@
     "need_moonleaf": "山道灵雾刺骨。砚青建议先去月芽田准备一株护脉灵草。",
     "path_entered": "你与砚青越过山门。溪声掩住了林间的碎甲声，退路仍在身后。",
     "path_marker_inspected": "石标背面刻着旧猎户的箭记：逆溪三步可避开第一轮冲撞。",
+    "ferry_watermark_discovered": "石堤内侧留着三层旧水痕。最高一层被人刻成短横：照禾人曾在涨水前整夜转移药苗。",
+    "spring_seam_discovered": "青白泉纹在石缝里向低处分叉。砚青辨出其中一支通往旧药圃，说明藏泉并非无人照料。",
+    "abandoned_basket_discovered": "破药篓里只剩干苔与一段换过两次的提绳。弃篓者带走药材，却把还能用的绳结留给后来人。",
+    "already_discovered": "这处见闻已经记入行旅札记。",
     "returned_to_ferry": "你与砚青沿石阶回到渡口，山道中的动静并未追来。",
     "battle_started_rock_armor_young": "你循着碎甲声靠近，岩甲兽幼体压低肩背，未闭合的甲缝露出微光。",
     "battle_started_spring_moss_shell": "你触到潮湿空壳，泉苔沿壳缘收紧，孢雾正从缝隙里鼓起。",

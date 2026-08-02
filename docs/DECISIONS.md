@@ -4,6 +4,17 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Environmental discoveries are finite history, not hidden power
+
+The prologue now has three stable optional discovery IDs: the ferry flood marks, a branching
+spring seam, and an abandoned herb basket. Each requires proximity, emits original authored
+history, saves once, changes its map residue, disappears from available actions, and contributes
+one point to the `见闻 n/3` chapter summary. Discoveries do not change health, damage, resources,
+routes, or ending access, so players are not mechanically punished for missing optional reading.
+Unknown, duplicate, or phase-impossible IDs fail domain restoration. Replay clears the list.
+Save v10 stores only those stable IDs; v1–v9 migrate to an empty list rather than inventing history
+that older builds never recorded.
+
 ### 2026-08-02 — Chapter companions follow bounded player footprints
 
 After the ferry briefing, 砚青 follows the player's already-traversed normalized positions rather
@@ -152,6 +163,11 @@ its earned damage. Current files with an unknown enemy ID are rejected before do
 Save v8 adds bounded remaining-turn counters for armor break and focused breath. V1–v7 files
 migrate both to zero. Non-battle snapshots cannot retain either status, and leaving battle through
 victory, retreat, rescue, bypass, or chapter reset clears them explicitly.
+
+Save v9 adds the explicit moonleaf harvest method. V1–v8 infer the conservative whole-plant method
+only when their existing state proves the herb was already gathered or consumed. Save v10 adds the
+bounded environmental-discovery list. V1–v9 migrate that list to empty; current snapshots reject
+unknown, duplicate, or journey-inconsistent discovery IDs before replacing live state.
 
 ### 2026-08-02 — Enemy profiles share one deterministic resolver
 

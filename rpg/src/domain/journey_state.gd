@@ -10,6 +10,9 @@ const GATHER_MOONLEAF_CUTTING := "gather_moonleaf_cutting"
 const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
 const INSPECT_PATH_MARKER := "inspect_path_marker"
+const INSPECT_FERRY_WATERMARK := "inspect_ferry_watermark"
+const INSPECT_SPRING_SEAM := "inspect_spring_seam"
+const INSPECT_ABANDONED_BASKET := "inspect_abandoned_basket"
 const APPROACH_ENEMY := "approach_enemy"
 const APPROACH_MOSS_SHELL := "approach_moss_shell"
 const APPROACH_STONE_PUPPET := "approach_stone_puppet"
@@ -33,6 +36,10 @@ const MOONLEAF_UNSELECTED := "unselected"
 const MOONLEAF_WHOLE_PLANT := "whole_plant"
 const MOONLEAF_CUTTING := "cutting"
 const MOONLEAF_METHODS := [MOONLEAF_UNSELECTED, MOONLEAF_WHOLE_PLANT, MOONLEAF_CUTTING]
+const DISCOVERY_FERRY_WATERMARK := "ferry_watermark"
+const DISCOVERY_SPRING_SEAM := "spring_seam"
+const DISCOVERY_ABANDONED_BASKET := "abandoned_basket"
+const DISCOVERY_IDS := [DISCOVERY_FERRY_WATERMARK, DISCOVERY_SPRING_SEAM, DISCOVERY_ABANDONED_BASKET]
 
 var phase := Phase.RIVERBANK
 var gathered_moonleaf := false
@@ -51,6 +58,7 @@ var briefing_response := RESPONSE_UNANSWERED
 var moonleaf_method := MOONLEAF_UNSELECTED
 var armor_break_turns := 0
 var focus_turns := 0
+var discoveries: Array[String] = []
 
 
 func phase_id() -> String:
@@ -71,6 +79,8 @@ func available_actions() -> PackedStringArray:
 	match phase:
 		Phase.RIVERBANK:
 			var actions := PackedStringArray()
+			if not discoveries.has(DISCOVERY_FERRY_WATERMARK):
+				actions.append(INSPECT_FERRY_WATERMARK)
 			if not talked_to_companion:
 				actions.append(TALK_TO_COMPANION)
 			if not gathered_moonleaf:
@@ -79,14 +89,19 @@ func available_actions() -> PackedStringArray:
 			actions.append(ENTER_SPRING)
 			return actions
 		Phase.MOUNTAIN_PATH:
-			return PackedStringArray([
-				INSPECT_PATH_MARKER,
+			var path_actions := PackedStringArray([INSPECT_PATH_MARKER])
+			if not discoveries.has(DISCOVERY_SPRING_SEAM):
+				path_actions.append(INSPECT_SPRING_SEAM)
+			if not discoveries.has(DISCOVERY_ABANDONED_BASKET):
+				path_actions.append(INSPECT_ABANDONED_BASKET)
+			path_actions.append_array(PackedStringArray([
 				APPROACH_ENEMY,
 				APPROACH_MOSS_SHELL,
 				APPROACH_STONE_PUPPET,
 				BYPASS_ENEMY,
 				RETURN_TO_FERRY,
-			])
+			]))
+			return path_actions
 		Phase.BATTLE:
 			var battle_actions := PackedStringArray([USE_ART])
 			if talismans > 0:
@@ -111,6 +126,10 @@ func choose(action_id: String) -> Dictionary:
 		Phase.MOUNTAIN_PATH:
 			if action_id == INSPECT_PATH_MARKER:
 				return _result(true, ["path_marker_inspected"])
+			if action_id == INSPECT_SPRING_SEAM:
+				return _record_discovery(DISCOVERY_SPRING_SEAM, "spring_seam_discovered")
+			if action_id == INSPECT_ABANDONED_BASKET:
+				return _record_discovery(DISCOVERY_ABANDONED_BASKET, "abandoned_basket_discovered")
 			var encounter_id := _enemy_for_approach_action(action_id)
 			if not encounter_id.is_empty():
 				enemy_id = encounter_id
@@ -165,6 +184,7 @@ func snapshot() -> Dictionary:
 		"moonleaf_method": moonleaf_method,
 		"armor_break_turns": armor_break_turns,
 		"focus_turns": focus_turns,
+		"discoveries": discoveries.duplicate(),
 	}
 
 
@@ -187,6 +207,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		"moonleaf_method",
 		"armor_break_turns",
 		"focus_turns",
+		"discoveries",
 	]
 	for key in required_keys:
 		if not snapshot_data.has(key):
@@ -202,6 +223,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if typeof(snapshot_data["briefing_response"]) != TYPE_STRING:
 		return false
 	if typeof(snapshot_data["moonleaf_method"]) != TYPE_STRING:
+		return false
+	if not _valid_discoveries(snapshot_data["discoveries"]):
 		return false
 	if not EnemyCatalogScript.supports(snapshot_data["enemy_id"]):
 		return false
@@ -257,6 +280,9 @@ func restore(snapshot_data: Dictionary) -> bool:
 	var next_moonleaf_method: String = snapshot_data["moonleaf_method"]
 	var next_armor_break_turns := int(snapshot_data["armor_break_turns"])
 	var next_focus_turns := int(snapshot_data["focus_turns"])
+	var next_discoveries: Array[String] = []
+	for discovery_id in snapshot_data["discoveries"]:
+		next_discoveries.append(discovery_id)
 	if not _valid_phase_invariants(
 		next_phase,
 		next_gathered,
@@ -274,7 +300,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_briefing_response,
 		next_moonleaf_method,
 		next_armor_break_turns,
-		next_focus_turns
+		next_focus_turns,
+		next_discoveries
 	):
 		return false
 
@@ -295,10 +322,13 @@ func restore(snapshot_data: Dictionary) -> bool:
 	moonleaf_method = next_moonleaf_method
 	armor_break_turns = next_armor_break_turns
 	focus_turns = next_focus_turns
+	discoveries = next_discoveries
 	return true
 
 
 func _choose_riverbank(action_id: String) -> Dictionary:
+	if action_id == INSPECT_FERRY_WATERMARK:
+		return _record_discovery(DISCOVERY_FERRY_WATERMARK, "ferry_watermark_discovered")
 	if action_id == TALK_TO_COMPANION:
 		return complete_companion_briefing(RESPONSE_CAREFUL)
 	if action_id in [GATHER_MOONLEAF, GATHER_MOONLEAF_CUTTING]:
@@ -407,6 +437,13 @@ func _result(ok: bool, events: Array[String]) -> Dictionary:
 	return {"ok": ok, "events": events, "snapshot": snapshot()}
 
 
+func _record_discovery(discovery_id: String, event_id: String) -> Dictionary:
+	if discoveries.has(discovery_id):
+		return _result(false, ["already_discovered"])
+	discoveries.append(discovery_id)
+	return _result(true, [event_id])
+
+
 func complete_companion_briefing(response_id: String) -> Dictionary:
 	if phase != Phase.RIVERBANK or talked_to_companion:
 		return _result(false, ["already_briefed"])
@@ -467,6 +504,7 @@ func _reset_chapter() -> void:
 	moonleaf_method = MOONLEAF_UNSELECTED
 	armor_break_turns = 0
 	focus_turns = 0
+	discoveries.clear()
 
 
 func _integer_in_range(value: Variant, minimum: int, maximum: int) -> bool:
@@ -493,8 +531,16 @@ func _valid_phase_invariants(
 	next_briefing_response: String,
 	next_moonleaf_method: String,
 	next_armor_break_turns: int,
-	next_focus_turns: int
+	next_focus_turns: int,
+	next_discoveries: Array[String]
 ) -> bool:
+	if not _valid_discoveries(next_discoveries):
+		return false
+	if (
+		(next_discoveries.has(DISCOVERY_SPRING_SEAM) or next_discoveries.has(DISCOVERY_ABANDONED_BASKET))
+		and (not next_talked or next_moonleaf_method == MOONLEAF_UNSELECTED)
+	):
+		return false
 	if next_briefing_response not in [RESPONSE_UNANSWERED, RESPONSE_CAREFUL, RESPONSE_TRUSTING]:
 		return false
 	if next_talked != (next_briefing_response != RESPONSE_UNANSWERED):
@@ -516,6 +562,17 @@ func _valid_phase_invariants(
 	if next_phase == Phase.SPRING:
 		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
 	return next_realm == "引息境一层" and not next_gathered and next_enemy_hp == 0 and next_setbacks >= 0 and next_armor_break_turns == 0 and next_focus_turns == 0
+
+
+func _valid_discoveries(candidate: Variant) -> bool:
+	if typeof(candidate) != TYPE_ARRAY:
+		return false
+	var seen: Array[String] = []
+	for discovery_id in candidate:
+		if typeof(discovery_id) != TYPE_STRING or discovery_id not in DISCOVERY_IDS or seen.has(discovery_id):
+			return false
+		seen.append(discovery_id)
+	return true
 
 
 func _enemy_for_approach_action(action_id: String) -> String:

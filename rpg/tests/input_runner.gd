@@ -36,6 +36,12 @@ func _run() -> void:
 	_expect(response_focus is Button and response_focus.text == "先看退路，再进山。", "回应选择默认聚焦第一项")
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(game.journey.talked_to_companion and game.journey.briefing_response == "careful", "手柄 A 确认对话回应")
+	_expect(game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.43, "player_y": 0.42}), "输入验收到达渡口旧水痕")
+	game._render([])
+	await _trigger_key(KEY_E)
+	_expect(game.journey.discoveries == ["ferry_watermark"], "键盘 E 记录近距离环境见闻")
+	_expect(game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51}), "输入验收调查后回到同行起点")
+	game._render([])
 
 	var before_move: Vector2 = game.exploration.player_position
 	await _hold_key(KEY_S, 0.12)

@@ -5,6 +5,9 @@ const GATHER_MOONLEAF := "gather_moonleaf"
 const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
 const INSPECT_PATH_MARKER := "inspect_path_marker"
+const INSPECT_FERRY_WATERMARK := "inspect_ferry_watermark"
+const INSPECT_SPRING_SEAM := "inspect_spring_seam"
+const INSPECT_ABANDONED_BASKET := "inspect_abandoned_basket"
 const APPROACH_ENEMY := "approach_enemy"
 const APPROACH_MOSS_SHELL := "approach_moss_shell"
 const APPROACH_STONE_PUPPET := "approach_stone_puppet"
@@ -19,9 +22,12 @@ const START_POSITION := Vector2(0.47, 0.51)
 const MOONLEAF_POSITION := Vector2(0.69, 0.62)
 const SPRING_GATE_POSITION := Vector2(0.88, 0.18)
 const COMPANION_POSITION := Vector2(0.53, 0.51)
+const FERRY_WATERMARK_POSITION := Vector2(0.43, 0.42)
 const PATH_START_POSITION := Vector2(0.16, 0.68)
 const PATH_RETURN_POSITION := Vector2(0.10, 0.68)
 const PATH_MARKER_POSITION := Vector2(0.43, 0.57)
+const PATH_SPRING_SEAM_POSITION := Vector2(0.40, 0.30)
+const PATH_ABANDONED_BASKET_POSITION := Vector2(0.68, 0.60)
 const PATH_ENEMY_POSITION := Vector2(0.73, 0.34)
 const PATH_MOSS_POSITION := Vector2(0.56, 0.48)
 const PATH_PUPPET_POSITION := Vector2(0.80, 0.25)
@@ -64,12 +70,16 @@ func move(direction: Vector2, delta: float) -> Vector2:
 	return player_position
 
 
-func interaction_action(gathered_moonleaf: bool, talked_to_companion: bool = false) -> String:
+func interaction_action(gathered_moonleaf: bool, talked_to_companion: bool = false, discoveries: Array = []) -> String:
 	if map_id == MOUNTAIN_PATH_MAP_ID:
 		if player_position.distance_to(PATH_RETURN_POSITION) <= INTERACTION_RADIUS:
 			return RETURN_TO_FERRY
 		if player_position.distance_to(PATH_MARKER_POSITION) <= INTERACTION_RADIUS:
 			return INSPECT_PATH_MARKER
+		if not discoveries.has("spring_seam") and player_position.distance_to(PATH_SPRING_SEAM_POSITION) <= INTERACTION_RADIUS:
+			return INSPECT_SPRING_SEAM
+		if not discoveries.has("abandoned_basket") and player_position.distance_to(PATH_ABANDONED_BASKET_POSITION) <= INTERACTION_RADIUS:
+			return INSPECT_ABANDONED_BASKET
 		if player_position.distance_to(PATH_MOSS_POSITION) <= INTERACTION_RADIUS:
 			return APPROACH_MOSS_SHELL
 		if player_position.distance_to(PATH_ENEMY_POSITION) <= INTERACTION_RADIUS:
@@ -79,6 +89,8 @@ func interaction_action(gathered_moonleaf: bool, talked_to_companion: bool = fal
 		if player_position.distance_to(PATH_BYPASS_POSITION) <= INTERACTION_RADIUS:
 			return BYPASS_ENEMY
 		return ""
+	if not discoveries.has("ferry_watermark") and player_position.distance_to(FERRY_WATERMARK_POSITION) <= INTERACTION_RADIUS:
+		return INSPECT_FERRY_WATERMARK
 	if not talked_to_companion and player_position.distance_to(COMPANION_POSITION) <= INTERACTION_RADIUS:
 		return TALK_TO_COMPANION
 	if not gathered_moonleaf and player_position.distance_to(MOONLEAF_POSITION) <= INTERACTION_RADIUS:

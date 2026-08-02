@@ -29,6 +29,7 @@ func _run() -> void:
 	_test_versioned_save()
 	_test_settings_store()
 	_test_companion_trail()
+	_test_environment_discoveries()
 	_test_gathering_and_gate()
 	_test_combat_paths()
 	_test_enemy_profile_combat()
@@ -53,6 +54,8 @@ func _test_initial_state() -> void:
 	_expect_true(state.available_actions().has("talk_to_companion"), "初始可与同伴交谈")
 	_expect_true(state.available_actions().has("gather_moonleaf"), "初始可采集")
 	_expect_true(state.available_actions().has("gather_moonleaf_cutting"), "初始可选择剪叶留根")
+	_expect_true(state.available_actions().has("inspect_ferry_watermark"), "初始渡口包含可选环境调查")
+	_expect_equal(state.snapshot()["discoveries"], [], "新旅程没有伪造已读见闻")
 	_expect_equal(state.snapshot()["moonleaf_method"], "unselected", "采集前没有伪造取药方式")
 	_expect_true(state.available_actions().has("enter_spring"), "初始可尝试进山")
 	_expect_false(state.choose("unknown")["ok"], "未知行动不改变状态")
@@ -107,6 +110,9 @@ func _test_exploration_rules() -> void:
 	_expect_false(state.restore({"player_x": 0.5}), "缺失坐标的快照被拒绝")
 	_expect_false(state.restore({"map_id": "unknown_map", "player_x": 0.69, "player_y": 0.62}), "未知地图标识被探索规则拒绝")
 	_expect_equal(state.snapshot().keys(), ["map_id", "player_x", "player_y"], "探索快照只含稳定地图标识与坐标")
+	_expect_true(state.restore({"map_id": "zhaohe_ferry", "player_x": 0.43, "player_y": 0.42}), "渡口旧水痕坐标可达")
+	_expect_equal(state.interaction_action(false, true), "inspect_ferry_watermark", "未读旧水痕提供近距离调查")
+	_expect_equal(state.interaction_action(false, true, ["ferry_watermark"]), "", "已读旧水痕不重复占用交互")
 	_expect_true(state.restore({"map_id": "cangquan_path", "player_x": 0.73, "player_y": 0.34}), "山道坐标按山道碰撞而非渡口建筑恢复")
 	_expect_equal(state.map_id, "cangquan_path", "恢复后切换稳定地图标识")
 	_expect_equal(state.interaction_action(true, true), "approach_enemy", "岩甲幼兽有独立接近行动")
@@ -114,6 +120,12 @@ func _test_exploration_rules() -> void:
 	_expect_equal(state.interaction_action(true, true), "approach_moss_shell", "泉苔寄壳有独立接近行动")
 	_expect_true(state.restore({"map_id": "cangquan_path", "player_x": 0.64, "player_y": 0.44}), "旧石标撤退点可达")
 	_expect_equal(state.interaction_action(true, true), "", "撤退安全点不落在任一敌人交互半径内")
+	_expect_true(state.restore({"map_id": "cangquan_path", "player_x": 0.40, "player_y": 0.30}), "石缝泉纹坐标可达")
+	_expect_equal(state.interaction_action(true, true), "inspect_spring_seam", "未读泉纹提供近距离调查")
+	_expect_equal(state.interaction_action(true, true, ["spring_seam"]), "", "已读泉纹不重复占用交互")
+	_expect_true(state.restore({"map_id": "cangquan_path", "player_x": 0.68, "player_y": 0.60}), "弃置药篓坐标可达")
+	_expect_equal(state.interaction_action(true, true), "inspect_abandoned_basket", "未读药篓提供近距离调查")
+	_expect_equal(state.interaction_action(true, true, ["abandoned_basket"]), "", "已读药篓不重复占用交互")
 	_expect_true(state.restore({"map_id": "cangquan_path", "player_x": 0.80, "player_y": 0.25}), "失衡石傀坐标可达")
 	_expect_equal(state.interaction_action(true, true), "approach_stone_puppet", "失衡石傀有独立接近行动")
 
@@ -152,6 +164,15 @@ func _test_state_restore() -> void:
 	var inactive_status: Dictionary = JourneyStateScript.new().snapshot()
 	inactive_status["armor_break_turns"] = 1
 	_expect_false(restored.restore(inactive_status), "非战斗阶段不能保留破甲状态")
+	var unknown_discovery: Dictionary = JourneyStateScript.new().snapshot()
+	unknown_discovery["discoveries"] = ["licensed_secret"]
+	_expect_false(restored.restore(unknown_discovery), "未知见闻标识被规则层拒绝")
+	var duplicate_discovery: Dictionary = JourneyStateScript.new().snapshot()
+	duplicate_discovery["discoveries"] = ["ferry_watermark", "ferry_watermark"]
+	_expect_false(restored.restore(duplicate_discovery), "重复见闻标识不进入存档状态")
+	var impossible_path_discovery: Dictionary = JourneyStateScript.new().snapshot()
+	impossible_path_discovery["discoveries"] = ["spring_seam"]
+	_expect_false(restored.restore(impossible_path_discovery), "未进山的初始状态不能伪造山道见闻")
 
 
 func _test_dialogue_state() -> void:
@@ -186,7 +207,7 @@ func _test_versioned_save() -> void:
 	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
 	var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(loaded["ok"], "版本化存档读取成功")
-	_expect_equal(loaded["data"]["save_version"], 9.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["save_version"], 10.0, "存档声明当前版本")
 	_expect_equal(loaded["data"]["journey"]["moonleaf_method"], "whole_plant", "新版存档保留取药方式")
 	_expect_equal(loaded["data"]["journey"]["enemy_id"], "rock_armor_young", "新版存档声明稳定敌人标识")
 	_expect_equal(loaded["data"]["exploration"]["map_id"], "zhaohe_ferry", "新版存档声明稳定地图标识")
@@ -218,7 +239,7 @@ func _test_versioned_save() -> void:
 	var migrated: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated["ok"], "v1 存档可迁移到当前版本")
 	_expect_equal(migrated["migrated_from_version"], 1, "迁移结果声明来源版本")
-	_expect_equal(migrated["data"]["save_version"], 9, "迁移后的内存快照升级为 v9")
+	_expect_equal(migrated["data"]["save_version"], 10, "迁移后的内存快照升级为 v10")
 	_expect_equal(migrated["data"]["journey"]["enemy_id"], "rock_armor_young", "旧版迁移补入默认敌人标识")
 	_expect_equal(migrated["data"]["exploration"]["map_id"], "zhaohe_ferry", "v1 迁移补入照禾渡口地图标识")
 	_expect_equal(migrated["data"]["journey"]["companion_supports"], 1, "迁移补入同伴援护资源")
@@ -228,6 +249,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated["data"]["journey"]["lamp_turns"], 0, "v1 迁移不虚构持续效果")
 	_expect_equal(migrated["data"]["journey"]["briefing_response"], "careful", "旧版已交谈存档迁移为谨慎回应")
 	_expect_equal(migrated["data"]["journey"]["moonleaf_method"], "whole_plant", "旧版持药存档迁移为保守整株记录")
+	_expect_equal(migrated["data"]["journey"]["discoveries"], [], "旧版存档不虚构环境见闻")
 	_expect_equal(migrated["data"]["dialogue"], DialogueStateScript.default_snapshot(), "旧版迁移补入空闲对话状态")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "迁移后可写回新版存档")
 	var version_two_journey: Dictionary = journey.snapshot().duplicate(true)
@@ -329,6 +351,20 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v8["migrated_from_version"], 8, "v8 迁移声明来源版本")
 	_expect_equal(migrated_v8["data"]["journey"]["moonleaf_method"], "whole_plant", "v8 持药状态迁移为保守整株记录")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v8 迁移后可写回新版存档")
+	var version_nine_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_nine_journey.erase("discoveries")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 9,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": version_nine_journey,
+		"exploration": exploration.snapshot(),
+		"dialogue": DialogueStateScript.default_snapshot(),
+	}))
+	var migrated_v9: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v9["ok"], "v9 采集存档可迁移到环境见闻版本")
+	_expect_equal(migrated_v9["migrated_from_version"], 9, "v9 迁移声明来源版本")
+	_expect_equal(migrated_v9["data"]["journey"]["discoveries"], [], "v9 迁移不虚构未记录见闻")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v9 迁移后可写回新版存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -349,7 +385,7 @@ func _test_versioned_save() -> void:
 	var unknown_map_exploration := exploration.snapshot().duplicate(true)
 	unknown_map_exploration["map_id"] = "unreleased_secret_realm"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 9,
+		"save_version": 10,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": unknown_map_exploration,
@@ -357,7 +393,7 @@ func _test_versioned_save() -> void:
 	}))
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_map", "未知地图不会恢复到错误场景")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 9,
+		"save_version": 10,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": exploration.snapshot(),
@@ -367,7 +403,7 @@ func _test_versioned_save() -> void:
 	var unknown_enemy_journey: Dictionary = journey.snapshot().duplicate(true)
 	unknown_enemy_journey["enemy_id"] = "unreleased_enemy"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 9,
+		"save_version": 10,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": unknown_enemy_journey,
 		"exploration": exploration.snapshot(),
@@ -437,6 +473,32 @@ func _test_companion_trail() -> void:
 	trail.record("mountain_path", Vector2(0.16, 0.68), Vector2(-0.040, 0.012))
 	_expect_equal(trail.visual_contract()["context_id"], "mountain_path", "换图清空旧地图脚印上下文")
 	_expect_true(trail.visual_contract()["point_count"] <= trail.visual_contract()["max_points"], "同行轨迹受固定点数预算约束")
+
+
+func _test_environment_discoveries() -> void:
+	var state = JourneyStateScript.new()
+	var ferry_discovery: Dictionary = state.choose("inspect_ferry_watermark")
+	_expect_true(ferry_discovery["ok"], "渡口旧水痕可以调查")
+	_expect_equal(ferry_discovery["events"], ["ferry_watermark_discovered"], "渡口调查返回稳定语义事件")
+	_expect_equal(state.discoveries, ["ferry_watermark"], "渡口见闻进入有序持久列表")
+	_expect_false(state.choose("inspect_ferry_watermark")["ok"], "同一见闻不能重复记入")
+	_expect_false(state.available_actions().has("inspect_ferry_watermark"), "已读渡口见闻从可用行动隐藏")
+	state.choose("talk_to_companion")
+	state.choose("gather_moonleaf")
+	state.choose("enter_spring")
+	_expect_true(state.choose("inspect_spring_seam")["ok"], "山道泉纹可以调查")
+	_expect_true(state.choose("inspect_abandoned_basket")["ok"], "弃置药篓可以调查")
+	_expect_equal(state.discoveries, ["ferry_watermark", "spring_seam", "abandoned_basket"], "三处见闻按发现顺序保存")
+	_expect_false(state.available_actions().has("inspect_spring_seam"), "已读泉纹从山道行动隐藏")
+	_expect_false(state.available_actions().has("inspect_abandoned_basket"), "已读药篓从山道行动隐藏")
+	var restored = JourneyStateScript.new()
+	_expect_true(restored.restore(state.snapshot()), "三处见闻可以随规则快照恢复")
+	_expect_equal(restored.discoveries, state.discoveries, "恢复保持环境见闻顺序")
+	state.choose("bypass_enemy")
+	state.choose("breakthrough")
+	_expect_true(state.snapshot()["discoveries"].size() == 3, "完成章节保留本轮见闻用于结算")
+	state.choose("replay_chapter")
+	_expect_equal(state.discoveries, [], "重游序章清空上一轮见闻")
 
 
 func _test_gathering_and_gate() -> void:
@@ -815,6 +877,17 @@ func _test_scene_smoke() -> void:
 	_expect_equal(initial_follow["point_count"], 2, "同行开始时只建立安全休息位与主角脚印")
 	_expect_false(instance.interact()["ok"], "完成交谈后原地没有重复奖励")
 	_expect_true(instance.get_node("%EventLabel").text.contains("附近没有"), "无目标交互给出中文反馈")
+	_expect_true(instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.43, "player_y": 0.42}), "场景测试到达渡口旧水痕")
+	instance._render([])
+	_expect_equal(_action_button_count(instance), 1, "旧水痕近旁只显示对应调查")
+	await _press_action(instance, "辨认旧水痕")
+	_expect_true(instance.get_node("%EventLabel").text.contains("三层旧水痕"), "渡口调查呈现原创环境历史")
+	_expect_equal(instance.journey.discoveries, ["ferry_watermark"], "渡口调查进入规则见闻")
+	_expect_equal(instance.get_node("%MapCanvas").discovery_visual_contract()["read_count"], 1, "地图表现收到已读渡口见闻")
+	_expect_equal(_action_button_count(instance), 0, "一次性渡口见闻读后隐藏行动")
+	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["journey"]["discoveries"], ["ferry_watermark"], "渡口见闻立即自动保存")
+	_expect_true(instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51}), "调查后返回同行起点")
+	instance._render([])
 
 	for _step in range(4):
 		instance.move_player(Vector2.DOWN, 0.10)
@@ -871,6 +944,18 @@ func _test_scene_smoke() -> void:
 	_expect_equal(path_contract["tile_counts"]["water"], 100, "山道溪流宽度由固定地图数据约束")
 	_expect_true(path_contract["tile_counts"]["path"] > 40, "山道存在连续可读石路")
 	_expect_true(path_contract["tile_counts"]["stone"] > 3, "山道敌区与调查点使用石地标记")
+	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.40, "player_y": 0.30}), "场景测试移动到石缝泉纹")
+	instance._render([])
+	await _press_action(instance, "观察石缝泉纹")
+	_expect_true(instance.get_node("%EventLabel").text.contains("旧药圃"), "泉纹调查揭示山道曾有人照料")
+	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.68, "player_y": 0.60}), "场景测试移动到弃置药篓")
+	instance._render([])
+	await _press_action(instance, "翻看弃置药篓")
+	_expect_true(instance.get_node("%EventLabel").text.contains("提绳"), "药篓调查提供生活痕迹而非战斗奖励")
+	var discovery_visual: Dictionary = instance.get_node("%MapCanvas").discovery_visual_contract()
+	_expect_equal(discovery_visual["read_count"], 3, "地图表现呈现三处已读环境见闻")
+	_expect_equal(discovery_visual["total"], 3, "本章见闻总数有稳定合同")
+	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["journey"]["discoveries"].size(), 3, "山道见闻立即自动保存")
 	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.43, "player_y": 0.57}), "场景测试移动到旧石标")
 	var resets_before_restore := int(instance.get_node("%MapCanvas").companion_follow_contract()["reset_count"])
 	instance._render([])
@@ -941,6 +1026,7 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "complete", "结算切换明亮突破画面")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("本节结算"), "完成画面显示战绩结算")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("依旧规取药"), "结算回显本轮采集选择")
+	_expect_true(instance.get_node("%DescriptionLabel").text.contains("见闻 3/3"), "结算回显环境探索完成度")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("经历 1 次"), "结算记录实际撤退次数")
 	_expect_equal(_action_button_count(instance), 3, "结算提供回顾、返回标题和重游")
 	await _press_action(instance, "完成本节并返回标题")
@@ -969,6 +1055,7 @@ func _test_scene_smoke() -> void:
 	_expect_equal(resumed.get_node("%LocationLabel").text, "照禾渡口", "结算页可重游序章")
 	_expect_equal(resumed.get_node("%MapCanvas").current_visual_mode(), "riverbank", "重游恢复渡口地图")
 	_expect_equal(resumed.exploration.player_position, ExplorationStateScript.START_POSITION, "重游重置玩家位置")
+	_expect_equal(resumed.journey.discoveries, [], "重游清空上一轮环境见闻")
 	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["journey"]["phase"], "riverbank", "重游结果写入存档")
 	resumed.get_node("%AudioManager").set_audio_enabled(false)
 	resumed.queue_free()

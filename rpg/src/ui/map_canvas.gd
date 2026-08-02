@@ -42,6 +42,7 @@ var companion_trail = CompanionTrailScript.new()
 var companion_position := Vector2(0.53, 0.51)
 var companion_motion := Vector2.ZERO
 var companion_trail_needs_reset := true
+var discoveries: Array[String] = []
 
 
 func set_story_state(
@@ -50,7 +51,8 @@ func set_story_state(
 	talked: bool,
 	active_lamp_turns: int,
 	next_enemy_id: String,
-	next_moonleaf_method: String
+	next_moonleaf_method: String,
+	next_discoveries: Array
 ) -> void:
 	if next_phase != phase_id or talked != talked_to_companion:
 		companion_trail_needs_reset = true
@@ -60,6 +62,9 @@ func set_story_state(
 	talked_to_companion = talked
 	lamp_turns = active_lamp_turns
 	enemy_id = next_enemy_id
+	discoveries.clear()
+	for discovery_id in next_discoveries:
+		discoveries.append(str(discovery_id))
 	_sync_actor_visuals()
 	queue_redraw()
 
@@ -168,6 +173,19 @@ func companion_follow_contract() -> Dictionary:
 	contract["sprite_position"] = companion_sprite.position
 	contract["motion"] = companion_motion
 	return contract
+
+
+func discovery_visual_contract() -> Dictionary:
+	return {
+		"discovered": discoveries.duplicate(),
+		"read_count": discoveries.size(),
+		"total": 3,
+		"positions": {
+			"ferry_watermark": Vector2(0.43, 0.42),
+			"spring_seam": Vector2(0.40, 0.30),
+			"abandoned_basket": Vector2(0.68, 0.60),
+		},
+	}
 
 
 func depth_for_y(feet_y: float) -> int:
@@ -375,6 +393,9 @@ func _draw_riverbank() -> void:
 		_draw_plant(plant, not gathered_moonleaf, gathered_moonleaf and moonleaf_method == "cutting")
 
 	_draw_spring_gate(Vector2(size.x * 0.88, size.y * 0.18))
+	_draw_ferry_watermark(Vector2(size.x * 0.43, size.y * 0.42), discoveries.has("ferry_watermark"))
+	if not discoveries.has("ferry_watermark"):
+		_draw_interaction_marker(Vector2(size.x * 0.43, size.y * 0.42), nearby_action == "inspect_ferry_watermark")
 	if not talked_to_companion:
 		_draw_interaction_marker(Vector2(size.x * 0.53, size.y * 0.51), nearby_action == "talk_to_companion")
 	if not gathered_moonleaf:
@@ -426,8 +447,14 @@ func _draw_mountain_path() -> void:
 		_draw_tree(tree_position)
 	_draw_cave(Vector2(size.x * 0.84, size.y * 0.12), Vector2(128, 90))
 	_draw_spring_gate(Vector2(size.x * 0.10, size.y * 0.68))
+	_draw_spring_seam(Vector2(size.x * 0.40, size.y * 0.30), discoveries.has("spring_seam"))
+	_draw_abandoned_basket(Vector2(size.x * 0.68, size.y * 0.60), discoveries.has("abandoned_basket"))
 	_draw_interaction_marker(Vector2(size.x * 0.10, size.y * 0.68), nearby_action == "return_to_ferry")
 	_draw_interaction_marker(Vector2(size.x * 0.43, size.y * 0.57), nearby_action == "inspect_path_marker")
+	if not discoveries.has("spring_seam"):
+		_draw_interaction_marker(Vector2(size.x * 0.40, size.y * 0.30), nearby_action == "inspect_spring_seam")
+	if not discoveries.has("abandoned_basket"):
+		_draw_interaction_marker(Vector2(size.x * 0.68, size.y * 0.60), nearby_action == "inspect_abandoned_basket")
 	_draw_interaction_marker(Vector2(size.x * 0.56, size.y * 0.48), nearby_action == "approach_moss_shell")
 	_draw_interaction_marker(Vector2(size.x * 0.73, size.y * 0.34), nearby_action == "approach_enemy")
 	_draw_interaction_marker(Vector2(size.x * 0.80, size.y * 0.25), nearby_action == "approach_stone_puppet")
@@ -567,6 +594,34 @@ func _draw_spring_lamp(feet: Vector2) -> void:
 	]), SPIRIT_GOLD.darkened(0.16))
 	draw_circle(feet + Vector2(0, -17), 7.0, Color(0.70, 0.94, 0.86, 0.82))
 	draw_circle(feet + Vector2(0, -17), 19.0, Color(0.70, 0.94, 0.86, 0.18), false, 3.0)
+
+
+func _draw_ferry_watermark(center: Vector2, discovered: bool) -> void:
+	var stone_color := Color("849088") if discovered else Color("9da49a")
+	draw_rect(Rect2(center + Vector2(-12, -21), Vector2(24, 34)), stone_color)
+	for index in range(3):
+		var width := 7.0 + float(index) * 3.0
+		var y := center.y - 12.0 + float(index) * 8.0
+		draw_line(Vector2(center.x - width, y), Vector2(center.x + width, y), RIVER_JADE.darkened(0.18), 2.0)
+	if discovered:
+		draw_circle(center + Vector2(0, -25), 4.0, FRESH_CELADON)
+
+
+func _draw_spring_seam(center: Vector2, discovered: bool) -> void:
+	var vein_color := Color("b9ded4") if discovered else Color("d9f0dc")
+	draw_line(center + Vector2(-24, 12), center + Vector2(0, -10), vein_color, 4.0)
+	draw_line(center + Vector2(0, -10), center + Vector2(23, -20), vein_color, 3.0)
+	draw_line(center + Vector2(0, -10), center + Vector2(18, 14), vein_color.darkened(0.08), 2.0)
+
+
+func _draw_abandoned_basket(center: Vector2, discovered: bool) -> void:
+	var basket_color := Color("927a52") if discovered else Color("b28c55")
+	draw_rect(Rect2(center + Vector2(-18, -10), Vector2(36, 22)), basket_color)
+	for offset in [-10.0, 0.0, 10.0]:
+		draw_line(center + Vector2(offset, -9), center + Vector2(offset, 11), Color("d0b477"), 2.0)
+	draw_arc(center + Vector2(0, -10), 15.0, PI, TAU, 12, basket_color.darkened(0.2), 3.0)
+	if discovered:
+		draw_line(center + Vector2(10, -18), center + Vector2(21, -27), FRESH_CELADON.darkened(0.15), 3.0)
 
 
 func _draw_interaction_marker(center: Vector2, active: bool) -> void:

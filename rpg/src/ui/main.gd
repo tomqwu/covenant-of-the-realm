@@ -178,9 +178,10 @@ func _render(event_ids: Array) -> void:
 		snapshot["talked_to_companion"],
 		snapshot["lamp_turns"],
 		snapshot["enemy_id"],
-		snapshot["moonleaf_method"]
+		snapshot["moonleaf_method"],
+		snapshot["discoveries"]
 	)
-	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"])
+	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"], snapshot["discoveries"])
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	map_canvas.show_battle_feedback(
 		event_ids,
@@ -289,7 +290,8 @@ func _chapter_summary(snapshot: Dictionary) -> String:
 	var lamp_text := "石灯未布" if snapshot["spring_lamps"] > 0 else "石灯已护阵"
 	var response_text := "你与砚青先认清了退路" if snapshot["briefing_response"] == "careful" else "你与砚青以信任同行"
 	var harvest_text := "月芽留根" if snapshot["moonleaf_method"] == "cutting" else "依旧规取药"
-	return "本节结算　%s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, response_text]
+	var discovery_text := "见闻 %d/3" % snapshot["discoveries"].size()
+	return "本节结算　%s · %s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, discovery_text, response_text]
 
 
 func _build_actions(node: Dictionary) -> void:
@@ -392,7 +394,7 @@ func move_player(direction: Vector2, delta: float) -> Vector2:
 	var previous_position: Vector2 = exploration.player_position
 	exploration.move(direction, delta)
 	map_canvas.set_player_motion(direction if not exploration.player_position.is_equal_approx(previous_position) else Vector2.ZERO)
-	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion)
+	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion, journey.discoveries)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	if nearby_action_id != previous_action:
 		_build_actions(content["nodes"][journey.phase_id()])
