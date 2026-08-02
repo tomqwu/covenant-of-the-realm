@@ -25,6 +25,8 @@ def test_rejects_non_object_and_missing_contract() -> None:
     assert "story.messages must be an object" in failures
     assert "story.dialogues must be an object" in failures
     assert "story.dialogues must not be empty" in failures
+    assert "story.journal_entries must be an object" in failures
+    assert any("journal_entries is missing" in failure for failure in failures)
     assert "story.start_node must be non-empty text" in failures
 
 
@@ -95,6 +97,11 @@ def test_reachability_handles_converging_paths() -> None:
                 ],
             }
         },
+        "journal_entries": {
+            "ferry_watermark": {"title": "水痕", "summary": "旧日水位。"},
+            "spring_seam": {"title": "泉纹", "summary": "分流泉脉。"},
+            "abandoned_basket": {"title": "药篓", "summary": "修补提绳。"},
+        },
     }
     assert validate_story(data) == []
 
@@ -152,6 +159,35 @@ def test_validates_optional_transition_prose_and_references() -> None:
         "story.transitions.missing_transition must reference a node or message id"
         in failures
     )
+
+
+def test_validates_finite_journal_entries() -> None:
+    data = story()
+    data["journal_entries"].pop("spring_seam")
+    data["journal_entries"]["licensed_secret"] = {
+        "title": "不应出现",
+        "summary": "外部设定不得混入。",
+    }
+    failures = validate_story(data)
+    assert "story.journal_entries is missing: spring_seam" in failures
+    assert "story.journal_entries has unknown ids: licensed_secret" in failures
+
+    data = story()
+    data["journal_entries"]["unused_note"] = {
+        "title": "多余条目",
+        "summary": "没有规则消费者的内容也应被拒绝。",
+    }
+    failures = validate_story(data)
+    assert not any("journal_entries is missing" in failure for failure in failures)
+    assert "story.journal_entries has unknown ids: unused_note" in failures
+
+    data = story()
+    data["journal_entries"]["ferry_watermark"] = []
+    data["journal_entries"]["spring_seam"]["summary"] = ""
+    failures = validate_story(data)
+    assert "story.journal_entries.ferry_watermark must be an object" in failures
+    assert "story.journal_entries.ferry_watermark.title must be non-empty text" in failures
+    assert "story.journal_entries.spring_seam.summary must be non-empty text" in failures
 
 
 def test_rejects_malformed_dialogue_contract() -> None:

@@ -59,6 +59,10 @@ func _capture_flow() -> void:
 	await _settle()
 	await _save_frame("01-ferry-watermark.png")
 	instance._on_action("inspect_ferry_watermark")
+	instance.open_journal()
+	await _settle()
+	await _save_frame("01-journey-journal.png")
+	instance.close_journal()
 	for _step in range(6):
 		instance.move_player(Vector2.RIGHT, 0.08)
 	for _step in range(4):

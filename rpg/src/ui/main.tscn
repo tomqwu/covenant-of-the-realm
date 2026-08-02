@@ -226,6 +226,18 @@ horizontal_alignment = 2
 vertical_alignment = 1
 autowrap_mode = 2
 
+[node name="JournalButton" type="Button" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 65
+layout_mode = 0
+offset_left = 28.0
+offset_top = 114.0
+offset_right = 188.0
+offset_bottom = 156.0
+focus_mode = 2
+text = "行旅札记　J / Y"
+
 [node name="ScaleNote" type="Label" parent="."]
 layout_mode = 1
 anchors_preset = 3
@@ -521,6 +533,103 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(116, 38)
 layout_mode = 2
 text = "继续"
+
+[node name="JournalOverlay" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 90
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Shade" type="ColorRect" parent="JournalOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.08, 0.12, 0.11, 0.64)
+
+[node name="Center" type="CenterContainer" parent="JournalOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Paper" type="PanelContainer" parent="JournalOverlay/Center"]
+custom_minimum_size = Vector2(820, 520)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StylePaper")
+
+[node name="Margin" type="MarginContainer" parent="JournalOverlay/Center/Paper"]
+layout_mode = 2
+theme_override_constants/margin_left = 42
+theme_override_constants/margin_top = 30
+theme_override_constants/margin_right = 42
+theme_override_constants/margin_bottom = 28
+
+[node name="Column" type="VBoxContainer" parent="JournalOverlay/Center/Paper/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 9
+
+[node name="JournalTitle" type="Label" parent="JournalOverlay/Center/Paper/Margin/Column"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.153, 0.192, 0.18, 1)
+theme_override_font_sizes/font_size = 31
+text = "行旅札记"
+horizontal_alignment = 1
+
+[node name="JournalLocationLabel" type="Label" parent="JournalOverlay/Center/Paper/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.475, 0.286, 0.184, 1)
+theme_override_font_sizes/font_size = 16
+text = "照禾渡口 · 序章第一息"
+horizontal_alignment = 1
+
+[node name="JournalObjectiveLabel" type="Label" parent="JournalOverlay/Center/Paper/Margin/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.153, 0.192, 0.18, 1)
+theme_override_font_sizes/font_size = 18
+text = "与渡碑旁的砚青交谈"
+autowrap_mode = 2
+
+[node name="DiscoveryRule" type="HSeparator" parent="JournalOverlay/Center/Paper/Margin/Column"]
+layout_mode = 2
+
+[node name="JournalCountLabel" type="Label" parent="JournalOverlay/Center/Paper/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.475, 0.286, 0.184, 1)
+theme_override_font_sizes/font_size = 16
+text = "照禾见闻 · 0/3"
+
+[node name="JournalEntriesLabel" type="Label" parent="JournalOverlay/Center/Paper/Margin/Column"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 230)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.216, 0.286, 0.275, 1)
+theme_override_font_sizes/font_size = 16
+text = "◇ 未记之事 1\n靠近可疑的生活痕迹，亲自辨认后才会写入。"
+autowrap_mode = 2
+
+[node name="JournalCloseButton" type="Button" parent="JournalOverlay/Center/Paper/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 2
+text = "合上札记　J / 手柄 Y"
 
 [node name="TitleOverlay" type="Control" parent="."]
 unique_name_in_owner = true

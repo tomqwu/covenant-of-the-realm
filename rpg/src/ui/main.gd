@@ -42,6 +42,13 @@ const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 @onready var dialogue_skip_button: Button = %DialogueSkipButton
 @onready var dialogue_next_button: Button = %DialogueNextButton
 @onready var scene_transition: Control = %SceneTransition
+@onready var journal_button: Button = %JournalButton
+@onready var journal_overlay: Control = %JournalOverlay
+@onready var journal_location_label: Label = %JournalLocationLabel
+@onready var journal_objective_label: Label = %JournalObjectiveLabel
+@onready var journal_count_label: Label = %JournalCountLabel
+@onready var journal_entries_label: Label = %JournalEntriesLabel
+@onready var journal_close_button: Button = %JournalCloseButton
 
 var content: Dictionary = {}
 var journey = JourneyStateScript.new()
@@ -55,6 +62,7 @@ var is_playing := false
 var autosave_elapsed := 0.0
 var dialogue_history_visible := false
 var dialogue_reveal_elapsed := 0.0
+var journal_previous_focus: Control = null
 
 
 func _ready() -> void:
@@ -77,6 +85,9 @@ func _ready() -> void:
 	_style_settings_button(dialogue_history_button)
 	_style_settings_button(dialogue_skip_button)
 	_style_settings_button(dialogue_next_button)
+	_style_action_button(journal_button)
+	journal_button.focus_mode = Control.FOCUS_ALL
+	_style_menu_button(journal_close_button)
 	new_game_button.pressed.connect(start_new_game)
 	continue_button.pressed.connect(continue_game)
 	resume_button.pressed.connect(toggle_pause_menu)
@@ -92,10 +103,14 @@ func _ready() -> void:
 	dialogue_history_button.pressed.connect(toggle_dialogue_history)
 	dialogue_skip_button.pressed.connect(skip_dialogue_to_response)
 	dialogue_next_button.pressed.connect(advance_dialogue)
+	journal_button.pressed.connect(toggle_journal)
+	journal_close_button.pressed.connect(close_journal)
 	scene_transition.transition_finished.connect(_restore_action_focus)
 	_apply_audio_settings()
 	pause_overlay.hide()
 	dialogue_overlay.hide()
+	journal_overlay.hide()
+	journal_button.hide()
 	_refresh_title_state()
 	title_overlay.show()
 	if continue_button.disabled:
@@ -106,6 +121,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if scene_transition.is_transitioning():
+		return
+	if journal_overlay.visible:
 		return
 	if dialogue.active and dialogue_overlay.visible and not pause_overlay.visible:
 		_process_dialogue_reveal(delta)
@@ -127,6 +144,15 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if scene_transition.is_transitioning():
+		get_viewport().set_input_as_handled()
+		return
+	if journal_overlay.visible:
+		if event.is_action_pressed("open_journal") or event.is_action_pressed("pause_menu"):
+			close_journal()
+		get_viewport().set_input_as_handled()
+		return
+	if is_playing and event.is_action_pressed("open_journal") and _can_open_journal():
+		open_journal()
 		get_viewport().set_input_as_handled()
 		return
 	if is_playing and event.is_action_pressed("pause_menu"):
@@ -163,6 +189,7 @@ func _render(event_ids: Array) -> void:
 	var previous_phase: String = map_canvas.current_visual_mode()
 	var snapshot := journey.snapshot()
 	var node: Dictionary = content["nodes"][snapshot["phase"]]
+	journal_button.visible = is_playing and not title_overlay.visible
 	chapter_label.text = "序章 · 第一息"
 	objective_label.text = _objective_text(snapshot)
 	location_label.text = node["title"]
@@ -171,6 +198,8 @@ func _render(event_ids: Array) -> void:
 		description_label.text += "\n" + str(journey.current_enemy_profile().get("description", ""))
 	if snapshot["phase"] == "complete":
 		description_label.text += "\n\n" + _chapter_summary(snapshot)
+	if journal_overlay.visible:
+		_render_journal()
 	status_label.text = _status_text(snapshot)
 	event_label.text = _event_text(event_ids)
 	map_canvas.set_story_state(
@@ -326,7 +355,7 @@ func _build_actions(node: Dictionary) -> void:
 		actions.add_child(guidance)
 	if first_button != null and not _is_exploration_phase():
 		_focus_first_action.call_deferred()
-	input_hint.text = "WASD / 方向键移动 · E / 空格 / 手柄 A 交互" if _is_exploration_phase() else "鼠标点击 · 方向键选择 · Enter / 手柄 A 确认"
+	input_hint.text = "WASD / 方向键移动 · E / 空格 / 手柄 A 交互 · J / 手柄 Y 札记" if _is_exploration_phase() else "鼠标点击 · 方向键选择 · Enter / 手柄 A 确认 · J / 手柄 Y 札记"
 
 
 func _style_action_button(button: Button) -> void:
@@ -517,6 +546,7 @@ func start_new_game() -> void:
 	title_overlay.hide()
 	pause_overlay.hide()
 	dialogue_overlay.hide()
+	journal_overlay.hide()
 	_render([])
 	_save_game()
 
@@ -534,6 +564,7 @@ func continue_game() -> bool:
 	autosave_elapsed = 0.0
 	title_overlay.hide()
 	pause_overlay.hide()
+	journal_overlay.hide()
 	var load_event := "save_loaded"
 	if loaded["recovered_from_backup"]:
 		load_event = "save_loaded_backup"
@@ -548,6 +579,8 @@ func continue_game() -> bool:
 func toggle_pause_menu() -> void:
 	if not is_playing or title_overlay.visible:
 		return
+	if journal_overlay.visible:
+		close_journal()
 	pause_overlay.visible = not pause_overlay.visible
 	if pause_overlay.visible:
 		_save_game()
@@ -563,6 +596,8 @@ func return_to_title() -> void:
 	is_playing = false
 	pause_overlay.hide()
 	dialogue_overlay.hide()
+	journal_overlay.hide()
+	journal_button.hide()
 	_refresh_title_state()
 	title_overlay.show()
 	if continue_button.disabled:
@@ -781,6 +816,82 @@ func _set_dialogue_portrait(portrait_id: String) -> void:
 	}.get(stable_id, "行旅札记 · 最近四句")
 
 
+func _can_open_journal() -> bool:
+	return (
+		is_playing
+		and not title_overlay.visible
+		and not pause_overlay.visible
+		and not dialogue_overlay.visible
+		and not scene_transition.is_transitioning()
+	)
+
+
+func toggle_journal() -> void:
+	if journal_overlay.visible:
+		close_journal()
+	elif _can_open_journal():
+		open_journal()
+
+
+func open_journal() -> void:
+	if not _can_open_journal():
+		return
+	journal_previous_focus = get_viewport().gui_get_focus_owner()
+	_render_journal()
+	journal_overlay.show()
+	journal_close_button.grab_focus.call_deferred()
+
+
+func close_journal() -> void:
+	if not journal_overlay.visible:
+		return
+	journal_overlay.hide()
+	if is_instance_valid(journal_previous_focus) and journal_previous_focus.is_visible_in_tree():
+		journal_previous_focus.grab_focus.call_deferred()
+	elif _is_exploration_phase():
+		get_viewport().gui_release_focus()
+	else:
+		_focus_first_action.call_deferred()
+	journal_previous_focus = null
+
+
+func _render_journal() -> void:
+	var snapshot: Dictionary = journey.snapshot()
+	journal_location_label.text = "%s · 序章第一息" % _phase_display_name(snapshot["phase"])
+	journal_objective_label.text = _objective_text(snapshot)
+	journal_count_label.text = "照禾见闻 · %d/3" % snapshot["discoveries"].size()
+	var entry_content: Dictionary = content.get("journal_entries", {})
+	var lines: Array[String] = []
+	var locked_index := 0
+	for discovery_id in JourneyStateScript.DISCOVERY_IDS:
+		if snapshot["discoveries"].has(discovery_id):
+			var entry: Dictionary = entry_content.get(discovery_id, {})
+			lines.append("◆ %s\n%s" % [entry.get("title", "未命名见闻"), entry.get("summary", "这段记忆暂时无法辨认。")])
+		else:
+			locked_index += 1
+			lines.append("◇ 未记之事 %d\n靠近可疑的生活痕迹，亲自辨认后才会写入。" % locked_index)
+	journal_entries_label.text = "\n\n".join(lines)
+
+
+func journal_contract() -> Dictionary:
+	var entries: Dictionary = content.get("journal_entries", {})
+	var unlocked_titles: Array[String] = []
+	for discovery_id in journey.discoveries:
+		if entries.has(discovery_id):
+			unlocked_titles.append(str(entries[discovery_id].get("title", "")))
+	return {
+		"visible": journal_overlay.visible,
+		"discovered_count": journey.discoveries.size(),
+		"total": JourneyStateScript.DISCOVERY_IDS.size(),
+		"locked_count": JourneyStateScript.DISCOVERY_IDS.size() - journey.discoveries.size(),
+		"unlocked_titles": unlocked_titles,
+		"objective": journal_objective_label.text,
+		"entries_text": journal_entries_label.text,
+		"blocks_input": journal_overlay.mouse_filter == Control.MOUSE_FILTER_STOP,
+		"depth": journal_overlay.z_index,
+	}
+
+
 func _process_dialogue_reveal(delta: float) -> void:
 	if dialogue_history_visible or _dialogue_at_choices() or dialogue_label.visible_characters == -1:
 		return
@@ -813,12 +924,14 @@ func _ensure_input_actions() -> void:
 	_add_key_action("move_down", [KEY_S, KEY_DOWN])
 	_add_key_action("interact", [KEY_E, KEY_SPACE])
 	_add_key_action("pause_menu", [KEY_ESCAPE])
+	_add_key_action("open_journal", [KEY_J])
 	_add_joy_axis("move_left", JOY_AXIS_LEFT_X, -1.0)
 	_add_joy_axis("move_right", JOY_AXIS_LEFT_X, 1.0)
 	_add_joy_axis("move_up", JOY_AXIS_LEFT_Y, -1.0)
 	_add_joy_axis("move_down", JOY_AXIS_LEFT_Y, 1.0)
 	_add_joy_button("interact", JOY_BUTTON_A)
 	_add_joy_button("pause_menu", JOY_BUTTON_START)
+	_add_joy_button("open_journal", JOY_BUTTON_Y)
 	_add_joy_button("ui_accept", JOY_BUTTON_A)
 
 

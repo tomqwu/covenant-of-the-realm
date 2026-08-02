@@ -4,6 +4,17 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — The journey journal reviews known history without revealing unknown history
+
+The in-game `行旅札记` reads the current objective and save-v10 discovery IDs but owns no
+progress. J, controller Y, and a visible map button open the same z-90 paper modal; closing returns
+the prior focus, while movement, interaction, and battle input cannot pass through it. Each known
+ID resolves through validated original `journal_entries` content. Undiscovered slots show only a
+numbered `未记之事` prompt, never their title, location, reward, or summary. The journal remains
+available across exploration, battle, spring, completion, and save restoration, but cannot open
+over a scene transition, dialogue, title, or pause modal. It does not add a save field because the
+deterministic discovery list already contains all persistent truth.
+
 ### 2026-08-02 — Dialogue portraits are finite motion-free painted-paper presentation
 
 The prologue dialogue uses three stable presentation IDs: `protagonist`, `yanqing`, and

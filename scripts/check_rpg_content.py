@@ -11,6 +11,11 @@ ROOT = Path(__file__).resolve().parents[1]
 CONTENT_DIR = ROOT / "rpg" / "content"
 KINDS = {"battle", "cultivation", "dialogue", "ending", "explore"}
 FORBIDDEN_KEYS = {"reference_excerpt", "source_chapter", "source_text"}
+REQUIRED_JOURNAL_IDS = {
+    "abandoned_basket",
+    "ferry_watermark",
+    "spring_seam",
+}
 
 
 def _mapping(value: Any, label: str, failures: list[str]) -> dict[str, Any]:
@@ -54,6 +59,9 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
     nodes = _mapping(story.get("nodes"), f"{source}.nodes", failures)
     messages = _mapping(story.get("messages"), f"{source}.messages", failures)
     dialogues = _mapping(story.get("dialogues"), f"{source}.dialogues", failures)
+    journal_entries = _mapping(
+        story.get("journal_entries"), f"{source}.journal_entries", failures
+    )
     raw_transitions = story.get("transitions", {})
     transitions = _mapping(raw_transitions, f"{source}.transitions", failures)
     start_node = _text(story.get("start_node"), f"{source}.start_node", failures)
@@ -157,6 +165,25 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
             failures.append(
                 f"{source}.transitions.{transition_id} must reference a node or message id"
             )
+
+    journal_ids = set(journal_entries)
+    if journal_ids != REQUIRED_JOURNAL_IDS:
+        missing = sorted(REQUIRED_JOURNAL_IDS - journal_ids)
+        unknown = sorted(journal_ids - REQUIRED_JOURNAL_IDS)
+        if missing:
+            failures.append(
+                f"{source}.journal_entries is missing: {', '.join(missing)}"
+            )
+        if unknown:
+            failures.append(
+                f"{source}.journal_entries has unknown ids: {', '.join(unknown)}"
+            )
+    for entry_id, raw_entry in journal_entries.items():
+        label = f"{source}.journal_entries.{entry_id}"
+        _text(entry_id, f"{source}.journal_entries.id", failures)
+        entry = _mapping(raw_entry, label, failures)
+        _text(entry.get("title"), f"{label}.title", failures)
+        _text(entry.get("summary"), f"{label}.summary", failures)
 
     if start_node in nodes:
         reachable: set[str] = set()

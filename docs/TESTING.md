@@ -4,10 +4,10 @@
 
 | Boundary | Gate | Current result |
 | --- | --- | --- |
-| Deterministic cultivation rules and package manifest | pytest + branch coverage, minimum 99% | 60 tests; 100% statements and branches |
-| Godot RPG rules and scenes | headless GDScript harness | 566 assertions passing, including stable paper-portrait switching, three persistent discoveries/save v10, bounded companion footprints, focus-blocking/reduced-motion transitions, Y-depth occlusion, selectable harvesting, enemy-atlas selection, presentation independence, shared-resolver boss, dialogue, and exploration contracts |
-| Godot RPG chapter path | independent headless E2E | 68 checks: companion/protagonist portrait switching → dialogue interruption → persistent ferry/path discoveries → old-rule harvest → mountain/companion restore → enemy/boss restore → ending → replay cutting/regrowth → bypass |
-| Godot keyboard/controller path | physical events + focus assertions | 29 checks: title/dialogue/portrait focus safety → keyboard discovery → movement/companion trail → stable one-button harvest → pause preferences → two-map interaction → battle focus |
+| Deterministic cultivation rules and package manifest | pytest + branch coverage, minimum 99% | 61 tests; 100% statements and branches |
+| Godot RPG rules and scenes | headless GDScript harness | 588 assertions passing, including modal journal/no-spoiler content, stable paper-portrait switching, three persistent discoveries/save v10, bounded companion footprints, focus-blocking/reduced-motion transitions, Y-depth occlusion, selectable harvesting, enemy-atlas selection, presentation independence, shared-resolver boss, dialogue, and exploration contracts |
+| Godot RPG chapter path | independent headless E2E | 71 checks: saved journal restoration → companion/protagonist portrait switching → dialogue interruption → persistent ferry/path discoveries → old-rule harvest → mountain/companion restore → enemy/boss restore → ending → replay cutting/regrowth → bypass |
+| Godot keyboard/controller path | physical events + focus assertions | 33 checks: J/Y journal and movement blocking → title/dialogue/portrait focus safety → keyboard discovery → movement/companion trail → stable one-button harvest → pause preferences → two-map interaction → battle focus |
 | Godot performance and lifecycle | versioned headless budget | 100,000 collision moves, 50,000 bounded companion-trail updates, and 2,000 complete battle-rule loops each under 2.5 s; 20 scene create/destroy cycles under 5 s; ≤120 nodes and zero root-child leaks |
 | Godot RPG package | double PCK/manifest export + packed-namespace/boot smoke | byte-reproducible artifact and manifest; SHA-256/size/source state verified; five runtime resources present and nine `tests/`/`tools/` resources absent |
 | Evennia commands and world bootstrap | Evennia isolated database harness | command, localization, and bootstrap integration tests passing |
