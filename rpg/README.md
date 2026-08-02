@@ -8,6 +8,7 @@ make setup-rpg
 make play-rpg
 make test-rpg
 make test-rpg-e2e
+make test-rpg-input
 make check-rpg-package
 make play-rpg-package
 ```
@@ -17,6 +18,10 @@ make play-rpg-package
 Godot entrypoint. The package gate exports twice, requires byte-identical results, and boots the
 pack headlessly. A native `.app`/`.exe` is intentionally deferred until platform export templates,
 signing identity, product icon, and distribution target are confirmed.
+
+The development window has a 1152×648 minimum because that is the validated readable layout.
+Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, battle confirmation,
+and pause/resume are exercised as physical input events by `make test-rpg-input`.
 
 启动后可选择新游戏或继续本机的版本化存档。游戏会在成功交互、战斗行动和持续
 移动时自动保存；按 `Esc` 或手柄 Start 可暂停、保存并返回标题。损坏或未知版本

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup setup-rpg setup-prototype play play-rpg package-rpg play-rpg-package capture-rpg-ui stop prototype lint docs-check rpg-content-check test test-unit test-rpg test-rpg-e2e check-rpg-package test-integration test-multiplayer-e2e check check-mud check-rpg check-prototype
+.PHONY: help setup setup-rpg setup-prototype play play-rpg package-rpg play-rpg-package capture-rpg-ui stop prototype lint docs-check rpg-content-check test test-unit test-rpg test-rpg-e2e test-rpg-input check-rpg-package test-integration test-multiplayer-e2e check check-mud check-rpg check-prototype
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-24s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -60,6 +60,9 @@ test-rpg: ## Run the headless Godot domain and scene tests
 test-rpg-e2e: ## Play the complete Godot chapter path headlessly, including save resume and replay
 	@./scripts/godot --headless --path rpg --script res://tests/e2e_runner.gd
 
+test-rpg-input: ## Exercise real semantic input events, focus navigation, movement, interaction, and pause
+	@./scripts/godot --headless --path rpg --script res://tests/input_runner.gd
+
 check-rpg-package: ## Export the Godot pack twice, compare bytes, and boot it headlessly
 	@./scripts/check_rpg_package
 
@@ -71,7 +74,7 @@ test-multiplayer-e2e: ## Run a real two-client Telnet journey against a live ser
 
 check-mud: lint test ## Run all multiplayer quality gates
 
-check-rpg: rpg-content-check test-rpg test-rpg-e2e check-rpg-package ## Run RPG content, rules, full-flow, and package gates
+check-rpg: rpg-content-check test-rpg test-rpg-e2e test-rpg-input check-rpg-package ## Run RPG content, rules, input, full-flow, and package gates
 
 check-prototype: ## Run the preserved journey's full unit/E2E/build evidence suite
 	@cd prototypes/journey && make check

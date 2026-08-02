@@ -69,6 +69,7 @@ Open `http://127.0.0.1:4001/webclient/`. Create an account with:
 ```sh
 make test-rpg                # Godot domain and scene tests
 make test-rpg-e2e            # complete Godot new-game → ending → resume → replay path
+make test-rpg-input          # keyboard/controller events, focus, movement, interact, pause
 make check-rpg-package       # byte-reproducible PCK export and boot smoke
 make rpg-content-check       # original story-graph integrity
 make test                    # rules, Evennia integration, real two-client E2E
@@ -79,7 +80,8 @@ make test-multiplayer-e2e    # live server + real two-client journey only
 
 The deterministic multiplayer domain rules have an enforced 99% statement/branch minimum and
 currently reach 100%. Godot behavior is covered by 205 headless rule/scene assertions plus an
-independent 17-check chapter E2E. The MUD adapter has isolated Evennia tests, and its release path
+independent 17-check chapter E2E and 16-check physical-input/focus path. The MUD adapter has
+isolated Evennia tests, and its release path
 is exercised through two real concurrent Telnet clients. The preserved browser prototype retains
 its own 100% unit result and 53-execution Playwright matrix. See [testing](docs/TESTING.md),
 [architecture](docs/ARCHITECTURE.md), and the [vertical-slice contract](docs/VERTICAL_SLICE.md).

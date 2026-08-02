@@ -461,6 +461,7 @@ func _ensure_input_actions() -> void:
 	_add_joy_axis("move_down", JOY_AXIS_LEFT_Y, 1.0)
 	_add_joy_button("interact", JOY_BUTTON_A)
 	_add_joy_button("pause_menu", JOY_BUTTON_START)
+	_add_joy_button("ui_accept", JOY_BUTTON_A)
 
 
 func _add_key_action(action_name: StringName, keycodes: Array) -> void:

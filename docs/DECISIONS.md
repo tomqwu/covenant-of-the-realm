@@ -64,6 +64,15 @@ is visible on the battlefield and in the HUD. Retreat or companion rescue resets
 restores the lamp; victory records whether it was used in chapter settlement. This establishes a
 real tactical-slot contract without introducing a general inventory or equipment framework.
 
+### 2026-08-01 — Physical input and minimum-readable-window gate
+
+The 1152×648 reference viewport is also the minimum development window until a responsive-layout
+pass proves something smaller. A dedicated headless acceptance path sends raw keyboard E/S and
+controller A/Start events, checks UI focus ownership, moves the character, interacts with world
+targets, opens and resumes pause, navigates the combat grid, and confirms an action. Controller A
+is explicitly bound to `ui_accept` as well as world interaction so title and pause buttons share
+the same physical control as gameplay.
+
 ### 2026-08-01 — Recoverable first-combat failure
 
 The first combat teaches preparation without creating a hard fail state. The player may retreat
