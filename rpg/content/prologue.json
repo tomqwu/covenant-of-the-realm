@@ -175,9 +175,24 @@
         {"speaker": "砚青", "text": "到了山门，你来定路线。我守住药囊，也替你记住退路。"}
       ],
       "choices": [
-        {"id": "careful", "label": "先看退路，再进山。"},
-        {"id": "trusting", "label": "我信你的判断，一起走。"}
-      ]
+        {"id": "careful", "label": "先看退路，再进山。", "event_id": "briefing_careful"},
+        {"id": "trusting", "label": "我信你的判断，一起走。", "event_id": "briefing_trusting"}
+      ],
+      "choice_prompt": "砚青等着你的决定。回应只改变同行回声，不会锁死主线。"
+    },
+    "chapter_epilogue": {
+      "lines": [
+        {"speaker": "砚青", "text": "泉声安静下来了。你这一趟{harvest_reflection}，也把{discovery_reflection}写进了札记。"},
+        {"speaker": "你", "text": "第一次引息不像登上高处，倒像终于听见脚下的水往哪里去。"},
+        {"speaker": "砚青", "text": "{setback_reflection}。能走到这里，说明路线与退路都没有白看。"},
+        {"speaker": "你", "text": "下一次出门，我得先知道自己能失去什么，也得知道什么值得留下。"},
+        {"speaker": "砚青", "text": "{companion_reflection}。照禾的河明早还会涨，我们也还来得及再走一段。"}
+      ],
+      "choices": [
+        {"id": "record", "label": "先把所见写进札记。", "event_id": "epilogue_recorded"},
+        {"id": "return", "label": "明日再沿河走一趟。", "event_id": "epilogue_returned"}
+      ],
+      "choice_prompt": "第一息已经稳住。你想怎样收好这段行旅？"
     }
   },
   "journal_entries": {
@@ -200,6 +215,10 @@
     "companion_briefing": "砚青收好渡碑拓片，与你一同离开石碑。",
     "briefing_careful": "你决定先确认退路。砚青点头，把旧石标的位置画在药囊内侧。",
     "briefing_trusting": "你把路线交给砚青判断。她认真应下，也请你在危险时提醒她撤退。",
+    "epilogue_recorded": "你与砚青把药田、山道与泉室逐条写进札记，留待下一次出门前复看。",
+    "epilogue_returned": "你约砚青明早再看一次河势。修行已经开始，日常山河仍要一步步走。",
+    "epilogue_unavailable": "此刻还没有一段完整行旅可以回顾。",
+    "invalid_epilogue_response": "这不是此刻可以作出的余波回应。",
     "invalid_briefing_response": "此刻无法作出这项回应。",
     "already_briefed": "砚青已经说明了山道的风险与退路。",
     "need_briefing": "你还不知道山道异动的详情，先回渡碑旁与砚青商量。",

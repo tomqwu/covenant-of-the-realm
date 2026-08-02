@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import deque
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,13 @@ REQUIRED_JOURNAL_IDS = {
     "ferry_watermark",
     "spring_seam",
 }
+ALLOWED_DIALOGUE_TOKENS = {
+    "companion_reflection",
+    "discovery_reflection",
+    "harvest_reflection",
+    "setback_reflection",
+}
+TOKEN_PATTERN = re.compile(r"\{([^{}]+)\}")
 
 
 def _mapping(value: Any, label: str, failures: list[str]) -> dict[str, Any]:
@@ -135,7 +143,16 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
                 line_label = f"{label}.lines[{index}]"
                 line = _mapping(raw_line, line_label, failures)
                 _text(line.get("speaker"), f"{line_label}.speaker", failures)
-                _text(line.get("text"), f"{line_label}.text", failures)
+                line_text = _text(line.get("text"), f"{line_label}.text", failures)
+                unknown_tokens = sorted(
+                    set(TOKEN_PATTERN.findall(line_text)) - ALLOWED_DIALOGUE_TOKENS
+                )
+                if unknown_tokens:
+                    failures.append(
+                        f"{line_label}.text has unknown tokens: {', '.join(unknown_tokens)}"
+                    )
+
+            _text(dialogue.get("choice_prompt"), f"{label}.choice_prompt", failures)
 
             choices = dialogue.get("choices")
             if not isinstance(choices, list):
@@ -153,9 +170,12 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
                 elif choice_id:
                     choice_ids.add(choice_id)
                 _text(choice.get("label"), f"{choice_label}.label", failures)
-                if choice_id and f"briefing_{choice_id}" not in messages:
+                event_id = _text(
+                    choice.get("event_id"), f"{choice_label}.event_id", failures
+                )
+                if event_id and event_id not in messages:
                     failures.append(
-                        f"{choice_label}.id has no matching message 'briefing_{choice_id}'"
+                        f"{choice_label}.event_id points to missing message '{event_id}'"
                     )
 
     for transition_id, transition_text in transitions.items():

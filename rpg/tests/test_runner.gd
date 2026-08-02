@@ -193,6 +193,14 @@ func _test_dialogue_state() -> void:
 	_expect_equal(restored.snapshot(), snapshot, "恢复保留对话与行号")
 	_expect_true(restored.finish(), "回应后结束对话")
 	_expect_false(restored.finish(), "空闲对话不能重复结束")
+	_expect_true(restored.start("chapter_epilogue"), "完成态余波使用同一结构化对话状态")
+	_expect_true(restored.advance(5), "余波对话可逐句推进")
+	var epilogue_snapshot: Dictionary = restored.snapshot()
+	var restored_epilogue = DialogueStateScript.new()
+	_expect_true(restored_epilogue.restore(epilogue_snapshot), "余波对话行号可以从现有快照结构恢复")
+	_expect_equal(restored_epilogue.dialogue_id, "chapter_epilogue", "恢复保持稳定余波对话标识")
+	_expect_true(restored_epilogue.skip_to_choices(5), "余波可快速显示到收束回应")
+	_expect_true(restored_epilogue.finish(), "余波回应后回到空闲对话状态")
 	_expect_true(restored.restore({"active": true, "dialogue_id": "companion_briefing", "line_index": 8}), "规则状态允许未来内容扩充到第八行")
 	_expect_false(restored.restore({"active": true, "dialogue_id": "companion_briefing", "line_index": 65}), "异常过大的对话行号被拒绝")
 	_expect_false(restored.restore({"active": false, "dialogue_id": "companion_briefing", "line_index": 0}), "空闲状态不能保留对话标识")
@@ -698,6 +706,10 @@ func _test_companion_retreat_and_rescue() -> void:
 
 
 func _test_breakthrough_and_completion() -> void:
+	var incomplete = JourneyStateScript.new()
+	var incomplete_snapshot: Dictionary = incomplete.snapshot()
+	_expect_false(incomplete.complete_epilogue("record")["ok"], "章节完成前不能结算余波回应")
+	_expect_equal(incomplete.snapshot(), incomplete_snapshot, "非法余波回应不修改旅程")
 	var state = _battle_state()
 	state.choose("use_talisman")
 	state.choose("use_art")
@@ -712,6 +724,12 @@ func _test_breakthrough_and_completion() -> void:
 	_expect_equal(result["snapshot"]["moonleaf_method"], "whole_plant", "突破后仍保留采集方式用于结算")
 	_expect_equal(state.available_actions(), PackedStringArray(["review_journey", "return_to_title", "replay_chapter"]), "完成后可回顾、返回标题或重游")
 	_expect_true(state.choose("review_journey")["ok"], "回顾不重复奖励")
+	var complete_snapshot: Dictionary = state.snapshot()
+	var recorded: Dictionary = state.complete_epilogue("record")
+	_expect_true(recorded["ok"] and recorded["events"] == ["epilogue_recorded"], "记录札记回应返回稳定语义事件")
+	_expect_equal(state.snapshot(), complete_snapshot, "余波回应不追加数值、奖励或隐藏状态")
+	_expect_true(state.complete_epilogue("return")["events"].has("epilogue_returned"), "再走一程回应有独立语义回声")
+	_expect_false(state.complete_epilogue("steal_reward")["ok"], "未知余波回应不会进入规则层")
 	_expect_true(state.choose("return_to_title")["ok"], "规则层允许完成本节返回标题")
 	var replay: Dictionary = state.choose("replay_chapter")
 	_expect_true(replay["ok"], "完成后可以重游本章")
@@ -891,6 +909,15 @@ func _test_scene_smoke() -> void:
 		},
 	})
 	_expect_false(invalid_dialogue_position["ok"], "超过当前剧本长度的结构化对话位置仍被拒绝")
+	var premature_epilogue: Dictionary = instance._decode_save({
+		"ok": true,
+		"data": {
+			"journey": instance.journey.snapshot(),
+			"exploration": instance.exploration.snapshot(),
+			"dialogue": {"active": true, "dialogue_id": "chapter_epilogue", "line_index": 1},
+		},
+	})
+	_expect_false(premature_epilogue["ok"], "未完成章节不能伪造活动余波对话")
 	_expect_true(instance.interact()["ok"], "出生点语义交互开启同伴对话")
 	_expect_true(instance.get_node("%DialogueOverlay").visible, "场景显示独立对话层")
 	_expect_false(instance.journey.talked_to_companion, "回应前不提前完成风险简报")
@@ -900,6 +927,8 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.get_node("%DialoguePortraitLabel").text, "砚青 · 照禾药师", "头像保留可读人物身份文字")
 	_expect_true(portrait.size.x >= 134.0 and portrait.size.y >= 154.0, "纸绘头像在最小窗口保留完整可读画幅")
 	_expect_equal(portrait.mouse_filter, Control.MOUSE_FILTER_IGNORE, "头像不拦截对话键鼠操作")
+	_expect_equal(instance._dialogue_choice_event("careful"), "briefing_careful", "开场回应内容事件与规则映射一致")
+	_expect_equal(instance._dialogue_choice_event("missing"), "", "未知回应没有伪造内容事件")
 	_expect_true(instance.get_node("%DialogueLabel").text.contains("泉眼昨夜"), "场景呈现砚青的第一句风险简报")
 	_expect_equal(instance.get_node("%DialogueLabel").visible_characters, 0, "新对话从逐字显示开始")
 	instance.show_full_dialogue_line()
@@ -1089,6 +1118,22 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("见闻 3/3"), "结算回显环境探索完成度")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("经历 1 次"), "结算记录实际撤退次数")
 	_expect_equal(_action_button_count(instance), 3, "结算提供回顾、返回标题和重游")
+	_expect_true(instance._resolved_dialogue_text("{setback_reflection}").contains("退过一次"), "余波文本把一次撤退写成知道何时回头")
+	instance.journey.setbacks = 2
+	_expect_true(instance._resolved_dialogue_text("{setback_reflection}").contains("经历2次"), "余波文本可以归纳多次撤退或救援")
+	instance.journey.setbacks = 1
+	await _press_action(instance, "回顾此行")
+	_expect_true(instance.dialogue.active and instance.dialogue.dialogue_id == "chapter_epilogue", "结算回顾开启可保存的余波对话")
+	_expect_true(instance.get_node("%DialogueLabel").text.contains("依旧规只取了一株"), "余波回显本轮整株采集方式")
+	_expect_true(instance.get_node("%DialogueLabel").text.contains("沿途3处生活痕迹"), "余波回显本轮见闻数量")
+	_expect_equal(instance.get_node("%DialoguePortrait").visual_contract()["portrait_id"], "yanqing", "余波首句显示砚青纸绘头像")
+	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["dialogue"]["dialogue_id"], "chapter_epilogue", "余波开启后立即保存结构化位置")
+	_expect_equal(instance._dialogue_choice_event("record"), "epilogue_recorded", "余波回应内容事件与规则映射一致")
+	instance.skip_dialogue_to_response()
+	_expect_true(instance.get_node("%DialogueLabel").text.contains("怎样收好"), "余波回应提示来自原创内容而非开场硬编码")
+	await _press_dialogue_choice(instance, "明日再沿河走一趟。")
+	_expect_false(instance.get_node("%DialogueOverlay").visible, "余波回应后关闭对话层")
+	_expect_true(instance.get_node("%EventLabel").text.contains("明早再看一次河势"), "余波选择产生独立中文回声")
 	await _press_action(instance, "完成本节并返回标题")
 	await process_frame
 	_expect_true(instance.get_node("%TitleOverlay").visible, "完成后可以保存并返回标题")

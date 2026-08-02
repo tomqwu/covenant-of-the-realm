@@ -125,7 +125,7 @@ Nakama may be evaluated later if the product grows into match-based content, ext
 Expand the executable RPG graybox into a complete 90-minute original chapter:
 
 1. top-down movement, collision, proximity interaction, and a 32 px TileMapLayer ground in 照禾渡口 (implemented; foreground asset refinement remains);
-2. resumable seven-line companion briefing, two attitude responses, and dynamic quest-state presentation (implemented);
+2. resumable seven-line companion briefing, two attitude responses, dynamic quest-state presentation, and a resumable five-line chapter epilogue reflecting the played route (implemented);
 3. 月芽田两种不会锁死主线的采集方式、可见余留与结算回声（implemented）;
 4. 藏泉山道 free exploration, warning, optional stone-marker investigation, return/retreat, no-combat bypass, mid-map save, and companion rescue path (implemented);
 5. three regular enemy profiles plus a shared-resolver boss, telegraphed intents, material weaknesses, armor-break and focus states (implemented);

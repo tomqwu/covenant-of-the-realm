@@ -3,7 +3,8 @@ class_name DialogueState
 
 const NONE := ""
 const COMPANION_BRIEFING := "companion_briefing"
-const SUPPORTED_DIALOGUES := [COMPANION_BRIEFING]
+const CHAPTER_EPILOGUE := "chapter_epilogue"
+const SUPPORTED_DIALOGUES := [COMPANION_BRIEFING, CHAPTER_EPILOGUE]
 const MAX_SAVED_LINE_INDEX := 64
 
 var active := false

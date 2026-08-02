@@ -4,6 +4,17 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Chapter epilogue reuses structured dialogue and reflects the played route
+
+`回顾此行` now starts the stable `chapter_epilogue` dialogue only after the first breakthrough.
+Its five original lines resolve four bounded presentation tokens from the deterministic snapshot:
+whole-plant/cutting harvest, discovery count, setback count, and careful/trusting briefing
+response. The existing save-v10 dialogue object can already store dialogue ID and line index, so
+this compatible content expansion needs no schema bump; restoration additionally requires the
+journey to remain complete. Two closing responses emit independently tested semantic events but
+grant no resource, reward, relationship score, or new permanent state, and the review may be
+repeated. Content-declared choice event IDs must match the domain event returned at runtime.
+
 ### 2026-08-02 — The journey journal reviews known history without revealing unknown history
 
 The in-game `行旅札记` reads the current objective and save-v10 discovery IDs but owns no

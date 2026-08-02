@@ -92,9 +92,10 @@ def test_reachability_handles_converging_paths() -> None:
             "briefing": {
                 "lines": [{"speaker": "同行者", "text": "两路终将汇合。"}],
                 "choices": [
-                    {"id": "continue", "label": "继续"},
-                    {"id": "wait", "label": "等待"},
+                    {"id": "continue", "label": "继续", "event_id": "briefing_continue"},
+                    {"id": "wait", "label": "等待", "event_id": "briefing_wait"},
                 ],
+                "choice_prompt": "选择一条路。",
             }
         },
         "journal_entries": {
@@ -215,8 +216,8 @@ def test_rejects_malformed_dialogue_lines_and_choices() -> None:
     dialogue = data["dialogues"]["companion_briefing"]
     dialogue["lines"] = [[]]
     dialogue["choices"] = [
-        {"id": "ghost", "label": ""},
-        {"id": "ghost", "label": "重复"},
+        {"id": "ghost", "label": "", "event_id": "missing_event"},
+        {"id": "ghost", "label": "重复", "event_id": "briefing_careful"},
         [],
     ]
     failures = validate_story(data)
@@ -225,9 +226,20 @@ def test_rejects_malformed_dialogue_lines_and_choices() -> None:
     assert "story.dialogues.companion_briefing.lines[0].text must be non-empty text" in failures
     assert any("choices must contain exactly two" in failure for failure in failures)
     assert any("duplicates 'ghost'" in failure for failure in failures)
-    assert any("has no matching message 'briefing_ghost'" in failure for failure in failures)
+    assert any(
+        "event_id points to missing message 'missing_event'" in failure
+        for failure in failures
+    )
+    assert any("event_id must be non-empty text" in failure for failure in failures)
     assert "story.dialogues.companion_briefing.choices[0].label must be non-empty text" in failures
     assert "story.dialogues.companion_briefing.choices[2] must be an object" in failures
+
+    data = story()
+    data["dialogues"]["chapter_epilogue"]["lines"][0]["text"] = "{unknown_echo}"
+    assert any(
+        "text has unknown tokens: unknown_echo" in failure
+        for failure in validate_story(data)
+    )
 
 
 def test_main_reports_invalid_json_and_empty_directory(tmp_path: Path, monkeypatch, capsys) -> None:

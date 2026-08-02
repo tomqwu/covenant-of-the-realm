@@ -32,6 +32,9 @@ const RESPONSE_UNANSWERED := "unanswered"
 const RESPONSE_CAREFUL := "careful"
 const RESPONSE_TRUSTING := "trusting"
 const BRIEFING_RESPONSES := [RESPONSE_CAREFUL, RESPONSE_TRUSTING]
+const EPILOGUE_RECORD := "record"
+const EPILOGUE_RETURN := "return"
+const EPILOGUE_RESPONSES := [EPILOGUE_RECORD, EPILOGUE_RETURN]
 const MOONLEAF_UNSELECTED := "unselected"
 const MOONLEAF_WHOLE_PLANT := "whole_plant"
 const MOONLEAF_CUTTING := "cutting"
@@ -452,6 +455,15 @@ func complete_companion_briefing(response_id: String) -> Dictionary:
 	talked_to_companion = true
 	briefing_response = response_id
 	return _result(true, ["companion_briefing", "briefing_%s" % response_id])
+
+
+func complete_epilogue(response_id: String) -> Dictionary:
+	if phase != Phase.COMPLETE:
+		return _result(false, ["epilogue_unavailable"])
+	if response_id not in EPILOGUE_RESPONSES:
+		return _result(false, ["invalid_epilogue_response"])
+	var event_id := "epilogue_recorded" if response_id == EPILOGUE_RECORD else "epilogue_returned"
+	return _result(true, [event_id])
 
 
 func current_enemy_profile() -> Dictionary:

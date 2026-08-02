@@ -407,6 +407,9 @@ func _on_action(action_id: String) -> void:
 	if action_id == JourneyStateScript.TALK_TO_COMPANION and not journey.talked_to_companion:
 		_start_companion_dialogue()
 		return
+	if action_id == JourneyStateScript.REVIEW_JOURNEY and journey.phase_id() == "complete":
+		_start_chapter_epilogue()
+		return
 	var result: Dictionary = journey.choose(action_id)
 	if result["ok"]:
 		_sync_exploration_after_action(action_id, result["events"])
@@ -647,8 +650,13 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 	if not restored_dialogue.restore(loaded["data"]["dialogue"]):
 		return {"ok": false, "reason": "存档中的对话状态无效"}
 	if restored_dialogue.active:
-		if restored_journey.talked_to_companion or restored_journey.phase_id() != "riverbank":
-			return {"ok": false, "reason": "存档中的对话与剧情进度不一致"}
+		match restored_dialogue.dialogue_id:
+			DialogueStateScript.COMPANION_BRIEFING:
+				if restored_journey.talked_to_companion or restored_journey.phase_id() != "riverbank":
+					return {"ok": false, "reason": "存档中的对话与剧情进度不一致"}
+			DialogueStateScript.CHAPTER_EPILOGUE:
+				if restored_journey.phase_id() != "complete":
+					return {"ok": false, "reason": "存档中的对话与剧情进度不一致"}
 		var dialogue_data: Dictionary = content.get("dialogues", {}).get(restored_dialogue.dialogue_id, {})
 		if dialogue_data.is_empty() or restored_dialogue.line_index > dialogue_data.get("lines", []).size():
 			return {"ok": false, "reason": "存档中的对话位置无效"}
@@ -664,6 +672,15 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 func _start_companion_dialogue() -> Dictionary:
 	if not dialogue.start(DialogueStateScript.COMPANION_BRIEFING):
 		return {"ok": false, "events": ["already_briefed"], "snapshot": journey.snapshot()}
+	dialogue_history_visible = false
+	_render_dialogue_overlay()
+	_save_game()
+	return {"ok": true, "events": ["dialogue_started"], "snapshot": journey.snapshot()}
+
+
+func _start_chapter_epilogue() -> Dictionary:
+	if journey.phase_id() != "complete" or not dialogue.start(DialogueStateScript.CHAPTER_EPILOGUE):
+		return {"ok": false, "events": ["epilogue_unavailable"], "snapshot": journey.snapshot()}
 	dialogue_history_visible = false
 	_render_dialogue_overlay()
 	_save_game()
@@ -711,8 +728,19 @@ func toggle_dialogue_history() -> void:
 func _choose_dialogue_response(response_id: String) -> void:
 	if not _dialogue_at_choices():
 		return
-	var result: Dictionary = journey.complete_companion_briefing(response_id)
+	var result: Dictionary
+	match dialogue.dialogue_id:
+		DialogueStateScript.COMPANION_BRIEFING:
+			result = journey.complete_companion_briefing(response_id)
+		DialogueStateScript.CHAPTER_EPILOGUE:
+			result = journey.complete_epilogue(response_id)
+		_:
+			return
 	if not result["ok"]:
+		return
+	var expected_event_id := _dialogue_choice_event(response_id)
+	if expected_event_id.is_empty() or not result["events"].has(expected_event_id):
+		push_error("对话回应与规则事件不一致：%s" % response_id)
 		return
 	dialogue.finish()
 	dialogue_history_visible = false
@@ -723,6 +751,14 @@ func _choose_dialogue_response(response_id: String) -> void:
 
 func _current_dialogue_data() -> Dictionary:
 	return content.get("dialogues", {}).get(dialogue.dialogue_id, {})
+
+
+func _dialogue_choice_event(response_id: String) -> String:
+	for raw_choice in _current_dialogue_data().get("choices", []):
+		var choice: Dictionary = raw_choice
+		if choice.get("id") == response_id:
+			return str(choice.get("event_id", ""))
+	return ""
 
 
 func _dialogue_at_choices() -> bool:
@@ -755,7 +791,7 @@ func _render_dialogue_overlay() -> void:
 	var speaker := str(line.get("speaker", ""))
 	dialogue_speaker_label.text = speaker
 	_set_dialogue_portrait("protagonist" if speaker == "你" else "yanqing" if speaker == "砚青" else "journal")
-	dialogue_label.text = str(line.get("text", ""))
+	dialogue_label.text = _resolved_dialogue_text(str(line.get("text", "")))
 	dialogue_label.visible_characters = 0
 	dialogue_reveal_elapsed = 0.0
 	dialogue_skip_button.show()
@@ -767,7 +803,7 @@ func _render_dialogue_overlay() -> void:
 func _render_dialogue_choices(choices: Array) -> void:
 	dialogue_speaker_label.text = "你的回应"
 	_set_dialogue_portrait("protagonist")
-	dialogue_label.text = "砚青等着你的决定。回应只改变同行回声，不会锁死主线。"
+	dialogue_label.text = str(_current_dialogue_data().get("choice_prompt", "请选择回应。"))
 	dialogue_label.visible_characters = -1
 	dialogue_skip_button.hide()
 	dialogue_next_button.hide()
@@ -795,7 +831,7 @@ func _render_dialogue_history(lines: Array) -> void:
 	var history_lines: Array[String] = []
 	for index in range(first_index, seen_count):
 		var line: Dictionary = lines[index]
-		history_lines.append("%s：%s" % [line.get("speaker", ""), line.get("text", "")])
+		history_lines.append("%s：%s" % [line.get("speaker", ""), _resolved_dialogue_text(str(line.get("text", "")))])
 	dialogue_speaker_label.text = "对话回顾"
 	_set_dialogue_portrait("journal")
 	dialogue_label.text = "\n".join(history_lines)
@@ -814,6 +850,24 @@ func _set_dialogue_portrait(portrait_id: String) -> void:
 		"yanqing": "砚青 · 照禾药师",
 		"journal": "行旅札记 · 最近四句",
 	}.get(stable_id, "行旅札记 · 最近四句")
+
+
+func _resolved_dialogue_text(source_text: String) -> String:
+	var snapshot: Dictionary = journey.snapshot()
+	var harvest_reflection := "剪下成熟叶、把月芽留了根" if snapshot["moonleaf_method"] == "cutting" else "依旧规只取了一株月芽"
+	var discovery_count: int = snapshot["discoveries"].size()
+	var discovery_reflection := "沿途尚未看清的空处" if discovery_count == 0 else "沿途%d处生活痕迹" % discovery_count
+	var setback_count := int(snapshot["setbacks"])
+	var setback_reflection := "你没有因求快而失手"
+	if setback_count == 1:
+		setback_reflection = "你在山道退过一次，却知道何时回头"
+	elif setback_count > 1:
+		setback_reflection = "你经历%d次撤退或救援，仍肯重新准备" % setback_count
+	var companion_reflection := "你先认清退路再迈步" if snapshot["briefing_response"] == "careful" else "你肯把判断交给同伴，也肯在危险时提醒我"
+	return source_text.replace("{harvest_reflection}", harvest_reflection) \
+		.replace("{discovery_reflection}", discovery_reflection) \
+		.replace("{setback_reflection}", setback_reflection) \
+		.replace("{companion_reflection}", companion_reflection)
 
 
 func _can_open_journal() -> bool:
