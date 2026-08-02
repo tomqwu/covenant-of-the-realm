@@ -135,6 +135,10 @@ Expand the executable RPG graybox into a complete 90-minute original chapter:
 9. original visual direction and opt-in procedural ambience with recorded provenance (functional implementation complete; final assets remain);
 10. new-game-to-ending-to-save-resume-to-replay automated Godot acceptance path (implemented).
 
+The next production milestone is a 15–20 minute asset-backed sample chapter before expanding to
+the full 90-minute target. The ordered implementation and decision boundaries are recorded in
+[Next Production Plan v0.1](design/NEXT_PRODUCTION_PLAN_v0.1.md).
+
 ## Open decisions
 
 Do not assume answers without recording them:
