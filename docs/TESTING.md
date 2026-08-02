@@ -5,7 +5,7 @@
 | Boundary | Gate | Current result |
 | --- | --- | --- |
 | Deterministic cultivation rules | pytest + branch coverage, minimum 99% | 50 tests; 100% statements and branches |
-| Godot RPG rules and scenes | headless GDScript harness | 205 assertions passing |
+| Godot RPG rules and scenes | headless GDScript harness | 214 assertions passing, including pixel-asset animation contracts |
 | Godot RPG chapter path | independent headless E2E | 17 checks: briefing → exploration → retreat → deployable → battle → breakthrough → resume → replay |
 | Godot keyboard/controller path | physical events + focus assertions | 16 checks: title confirm → interaction → movement → pause → battle focus |
 | Godot RPG package | double PCK export + boot smoke | byte-reproducible pack; headless main scene boot passing |
@@ -22,6 +22,7 @@ make test-unit              # rules and coverage gate
 make test-integration       # Evennia command/database fixtures
 make test-multiplayer-e2e   # migrate, boot, two clients, stop
 make test-rpg               # Godot rules and scene integration
+make rpg-asset-check        # pixel dimensions, animation layout, and source metadata
 make test-rpg-e2e           # complete Godot chapter path and persistence
 make test-rpg-input         # raw keyboard/controller events and focus navigation
 make check-rpg-package      # export twice, compare bytes, boot packed main scene

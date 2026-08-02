@@ -11,12 +11,16 @@ const WARM_PAPER := Color("f2e6cb")
 const SPIRIT_GOLD := Color("e4c36e")
 const DAWN_PEACH := Color("e7a76f")
 
+@onready var player_sprite = %PlayerSprite
+@onready var companion_sprite = %CompanionSprite
+
 var phase_id := "riverbank"
 var gathered_moonleaf := false
 var talked_to_companion := false
 var lamp_turns := 0
 var player_position := Vector2(0.47, 0.51)
 var nearby_action := ""
+var player_motion := Vector2.ZERO
 
 
 func set_story_state(next_phase: String, gathered: bool, talked: bool, active_lamp_turns: int) -> void:
@@ -24,13 +28,24 @@ func set_story_state(next_phase: String, gathered: bool, talked: bool, active_la
 	gathered_moonleaf = gathered
 	talked_to_companion = talked
 	lamp_turns = active_lamp_turns
+	_sync_actor_visuals()
 	queue_redraw()
 
 
 func set_exploration_state(next_position: Vector2, next_nearby_action: String) -> void:
+	player_motion = next_position - player_position
 	player_position = next_position
 	nearby_action = next_nearby_action
+	_sync_actor_visuals()
 	queue_redraw()
+
+
+func set_player_motion(direction: Vector2) -> void:
+	player_motion = direction
+	if is_instance_valid(player_sprite):
+		player_sprite.set_motion(direction, not direction.is_zero_approx())
+	if is_instance_valid(companion_sprite):
+		companion_sprite.set_motion(direction, talked_to_companion and not direction.is_zero_approx())
 
 
 func actor_height_px() -> float:
@@ -39,6 +54,39 @@ func actor_height_px() -> float:
 
 func current_visual_mode() -> String:
 	return phase_id
+
+
+func uses_animated_actor_sprites() -> bool:
+	return player_sprite is AnimatedSprite2D and companion_sprite is AnimatedSprite2D
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED and is_node_ready():
+		_sync_actor_visuals()
+
+
+func _sync_actor_visuals() -> void:
+	if not is_node_ready() or not is_instance_valid(player_sprite) or not is_instance_valid(companion_sprite):
+		return
+	var size := get_rect().size
+	player_sprite.visible = true
+	companion_sprite.visible = true
+	match phase_id:
+		"riverbank":
+			var protagonist_feet := Vector2(player_position.x * size.x, player_position.y * size.y).round()
+			player_sprite.position = protagonist_feet
+			companion_sprite.position = (protagonist_feet + Vector2(48, 7) if talked_to_companion else Vector2(size.x * 0.53, size.y * 0.51)).round()
+			set_player_motion(player_motion)
+		"battle":
+			player_sprite.position = Vector2(size.x * 0.43, size.y * 0.58).round()
+			companion_sprite.position = Vector2(size.x * 0.36, size.y * 0.54).round()
+			player_sprite.set_motion(Vector2.RIGHT, false)
+			companion_sprite.set_motion(Vector2.RIGHT, false)
+		_:
+			player_sprite.position = Vector2(size.x * 0.47, size.y * 0.66).round()
+			companion_sprite.position = Vector2(size.x * 0.69, size.y * 0.65).round()
+			player_sprite.set_motion(Vector2.RIGHT, false)
+			companion_sprite.set_motion(Vector2.LEFT, false)
 
 
 func _draw() -> void:
@@ -98,10 +146,6 @@ func _draw_riverbank() -> void:
 	for tree_position in [Vector2(455, 115), Vector2(978, 130), Vector2(1030, 340), Vector2(468, 420)]:
 		_draw_tree(tree_position)
 
-	var protagonist_feet := Vector2(player_position.x * size.x, player_position.y * size.y)
-	_draw_actor(protagonist_feet, CLEAR_INDIGO, true)
-	var companion_feet := protagonist_feet + Vector2(48, 7) if talked_to_companion else Vector2(size.x * 0.53, size.y * 0.51)
-	_draw_actor(companion_feet, WARM_RUST, false)
 
 
 func _draw_battle_path() -> void:
@@ -130,8 +174,6 @@ func _draw_battle_path() -> void:
 		_draw_tree(tree_position)
 
 	_draw_cave(Vector2(size.x * 0.86, size.y * 0.16), Vector2(126, 88))
-	_draw_actor(Vector2(size.x * 0.43, size.y * 0.58), CLEAR_INDIGO, true)
-	_draw_actor(Vector2(size.x * 0.36, size.y * 0.54), WARM_RUST, false)
 	if lamp_turns > 0:
 		_draw_spring_lamp(Vector2(size.x * 0.48, size.y * 0.62))
 	_draw_beast(Vector2(size.x * 0.66, size.y * 0.43))
@@ -172,9 +214,6 @@ func _draw_spring_chamber(completed: bool) -> void:
 
 	draw_circle(Vector2(size.x * 0.53, size.y * 0.62), 82.0, RIVER_JADE.lightened(0.25))
 	draw_circle(Vector2(size.x * 0.53, size.y * 0.62), 68.0, RIVER_JADE)
-	_draw_actor(Vector2(size.x * 0.47, size.y * 0.66), CLEAR_INDIGO, true)
-	_draw_actor(Vector2(size.x * 0.69, size.y * 0.65), WARM_RUST, false)
-
 	var energy_end := Vector2(size.x * 0.54, size.y * 0.16)
 	var energy_start := Vector2(size.x * 0.48, size.y * 0.59)
 	draw_line(energy_start, energy_end, SPIRIT_GOLD, 4.0)
@@ -276,28 +315,6 @@ func _draw_interaction_marker(center: Vector2, active: bool) -> void:
 	draw_circle(center, 24.0 if active else 18.0, color, false, 3.0 if active else 2.0)
 	if active:
 		draw_circle(center, 31.0, Color(color.r, color.g, color.b, 0.28), false, 2.0)
-
-
-func _draw_actor(feet: Vector2, robe_color: Color, is_protagonist: bool) -> void:
-	var top := feet - Vector2(0, ACTOR_HEIGHT)
-	_draw_oval(top + Vector2(0, 13), Vector2(10, 12), Color("d9b895"))
-	draw_colored_polygon(PackedVector2Array([
-		top + Vector2(-13, 22),
-		top + Vector2(13, 22),
-		feet + Vector2(16, -5),
-		feet + Vector2(-16, -5),
-	]), robe_color)
-	draw_line(feet + Vector2(-7, -5), feet + Vector2(-9, 4), INK_ROOT, 5.0)
-	draw_line(feet + Vector2(7, -5), feet + Vector2(9, 4), INK_ROOT, 5.0)
-	if is_protagonist:
-		draw_colored_polygon(PackedVector2Array([
-			top + Vector2(-19, 23),
-			top + Vector2(0, 17),
-			feet + Vector2(-3, -7),
-		]), Color("b89b63"))
-	else:
-		draw_rect(Rect2(top + Vector2(11, 27), Vector2(13, 24)), Color("73533d"))
-	draw_circle(top + Vector2(0, 2), 6.0, INK_ROOT)
 
 
 func _draw_oval(center: Vector2, radii: Vector2, color: Color) -> void:

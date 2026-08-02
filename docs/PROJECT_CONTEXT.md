@@ -132,7 +132,7 @@ Expand the executable RPG graybox into a complete 90-minute original chapter:
 6. an active chapter companion and a visible two-turn tactical deployable (implemented);
 7. versioned save/load, title/continue, and safe backup recovery (implemented; chapter replay remains);
 8. mouse, keyboard, and controller parity with physical-event/focus acceptance coverage (implemented);
-9. original visual direction and opt-in procedural ambience with recorded provenance (functional implementation complete; final assets remain);
+9. original visual direction and opt-in procedural ambience with recorded provenance (first reproducible character atlases and animation pipeline implemented; map/final assets remain);
 10. new-game-to-ending-to-save-resume-to-replay automated Godot acceptance path (implemented).
 
 The next production milestone is a 15–20 minute asset-backed sample chapter before expanding to

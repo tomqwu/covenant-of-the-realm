@@ -82,6 +82,8 @@ func _process(delta: float) -> void:
 			if autosave_elapsed >= 1.0:
 				_save_game()
 				autosave_elapsed = 0.0
+	else:
+		map_canvas.set_player_motion(Vector2.ZERO)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -275,7 +277,9 @@ func move_player(direction: Vector2, delta: float) -> Vector2:
 	if journey.phase_id() != "riverbank":
 		return exploration.player_position
 	var previous_action := nearby_action_id
+	var previous_position: Vector2 = exploration.player_position
 	exploration.move(direction, delta)
+	map_canvas.set_player_motion(direction if not exploration.player_position.is_equal_approx(previous_position) else Vector2.ZERO)
 	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	if nearby_action_id != previous_action:
