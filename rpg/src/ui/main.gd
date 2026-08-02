@@ -2,6 +2,7 @@ extends Control
 
 const CONTENT_PATH := "res://content/prologue.json"
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
+const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 
 @onready var map_canvas: Control = %MapCanvas
 @onready var chapter_label: Label = %ChapterLabel
@@ -11,14 +12,32 @@ const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 @onready var status_label: Label = %StatusLabel
 @onready var event_label: Label = %EventLabel
 @onready var actions: VBoxContainer = %Actions
+@onready var input_hint: Label = %InputHint
 
 var content: Dictionary = {}
 var journey = JourneyStateScript.new()
+var exploration = ExplorationStateScript.new()
+var nearby_action_id := ""
 
 
 func _ready() -> void:
+	_ensure_input_actions()
 	content = _load_content()
 	_render([])
+
+
+func _process(delta: float) -> void:
+	if journey.phase_id() != "riverbank":
+		return
+	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	if not direction.is_zero_approx():
+		move_player(direction, delta)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if journey.phase_id() == "riverbank" and event.is_action_pressed("interact"):
+		interact()
+		get_viewport().set_input_as_handled()
 
 
 func _load_content() -> Dictionary:
@@ -45,6 +64,8 @@ func _render(event_ids: Array) -> void:
 	status_label.text = _status_text(snapshot)
 	event_label.text = _event_text(event_ids)
 	map_canvas.set_story_state(snapshot["phase"], snapshot["gathered_moonleaf"])
+	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"])
+	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	_build_actions(node)
 
 
@@ -75,6 +96,8 @@ func _objective_text(phase_id: String) -> String:
 
 func _event_text(event_ids: Array) -> String:
 	if event_ids.is_empty():
+		if journey.phase_id() == "riverbank":
+			return "沿路寻找发光的月芽草；金色圆环会提示可交互地点。"
 		return "选择行动。所有结果由确定性规则结算。"
 	var messages: Array[String] = []
 	for event_id in event_ids:
@@ -90,17 +113,28 @@ func _build_actions(node: Dictionary) -> void:
 	for action: Dictionary in node["actions"]:
 		if not available.has(action["id"]):
 			continue
+		if journey.phase_id() == "riverbank" and action["id"] != nearby_action_id:
+			continue
 		var button := Button.new()
 		button.text = action["label"]
 		button.custom_minimum_size = Vector2(0, 48)
-		button.focus_mode = Control.FOCUS_ALL
+		button.focus_mode = Control.FOCUS_NONE if journey.phase_id() == "riverbank" else Control.FOCUS_ALL
 		_style_action_button(button)
 		button.pressed.connect(_on_action.bind(action["id"]))
 		actions.add_child(button)
 		if first_button == null:
 			first_button = button
-	if first_button != null:
+	if first_button == null and journey.phase_id() == "riverbank":
+		var guidance := Label.new()
+		guidance.text = "附近暂无可交互目标"
+		guidance.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		guidance.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		guidance.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		guidance.add_theme_color_override("font_color", Color("5f674f"))
+		actions.add_child(guidance)
+	if first_button != null and journey.phase_id() != "riverbank":
 		first_button.grab_focus.call_deferred()
+	input_hint.text = "WASD / 方向键移动 · E / 空格 / 手柄 A 交互" if journey.phase_id() == "riverbank" else "鼠标点击 · 方向键选择 · Enter / 手柄 A 确认"
 
 
 func _style_action_button(button: Button) -> void:
@@ -138,3 +172,63 @@ func _style_action_button(button: Button) -> void:
 func _on_action(action_id: String) -> void:
 	var result: Dictionary = journey.choose(action_id)
 	_render(result["events"])
+
+
+func move_player(direction: Vector2, delta: float) -> Vector2:
+	if journey.phase_id() != "riverbank":
+		return exploration.player_position
+	var previous_action := nearby_action_id
+	exploration.move(direction, delta)
+	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf)
+	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
+	if nearby_action_id != previous_action:
+		_build_actions(content["nodes"]["riverbank"])
+	return exploration.player_position
+
+
+func interact() -> Dictionary:
+	if journey.phase_id() != "riverbank" or nearby_action_id.is_empty():
+		var no_target := {"ok": false, "events": ["nothing_nearby"], "snapshot": journey.snapshot()}
+		_render(no_target["events"])
+		return no_target
+	var result: Dictionary = journey.choose(nearby_action_id)
+	_render(result["events"])
+	return result
+
+
+func _ensure_input_actions() -> void:
+	_add_key_action("move_left", [KEY_A, KEY_LEFT])
+	_add_key_action("move_right", [KEY_D, KEY_RIGHT])
+	_add_key_action("move_up", [KEY_W, KEY_UP])
+	_add_key_action("move_down", [KEY_S, KEY_DOWN])
+	_add_key_action("interact", [KEY_E, KEY_SPACE])
+	_add_joy_axis("move_left", JOY_AXIS_LEFT_X, -1.0)
+	_add_joy_axis("move_right", JOY_AXIS_LEFT_X, 1.0)
+	_add_joy_axis("move_up", JOY_AXIS_LEFT_Y, -1.0)
+	_add_joy_axis("move_down", JOY_AXIS_LEFT_Y, 1.0)
+	_add_joy_button("interact", JOY_BUTTON_A)
+
+
+func _add_key_action(action_name: StringName, keycodes: Array) -> void:
+	if not InputMap.has_action(action_name):
+		InputMap.add_action(action_name)
+	for keycode in keycodes:
+		var event := InputEventKey.new()
+		event.physical_keycode = keycode
+		if not InputMap.action_has_event(action_name, event):
+			InputMap.action_add_event(action_name, event)
+
+
+func _add_joy_axis(action_name: StringName, axis: JoyAxis, value: float) -> void:
+	var event := InputEventJoypadMotion.new()
+	event.axis = axis
+	event.axis_value = value
+	if not InputMap.action_has_event(action_name, event):
+		InputMap.action_add_event(action_name, event)
+
+
+func _add_joy_button(action_name: StringName, button_index: JoyButton) -> void:
+	var event := InputEventJoypadButton.new()
+	event.button_index = button_index
+	if not InputMap.action_has_event(action_name, event):
+		InputMap.action_add_event(action_name, event)

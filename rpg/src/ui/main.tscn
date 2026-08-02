@@ -229,8 +229,9 @@ size_flags_vertical = 3
 theme_override_constants/separation = 6
 
 [node name="InputHint" type="Label" parent="StoryPanel/StoryMargin/StoryRow/ActionColumn"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.286, 0.424, 0.38, 0.9)
 theme_override_font_sizes/font_size = 12
-text = "鼠标点击 · Tab 选择 · Enter 确认"
+text = "WASD / 方向键移动 · E / 空格 / 手柄 A 交互"
 horizontal_alignment = 2

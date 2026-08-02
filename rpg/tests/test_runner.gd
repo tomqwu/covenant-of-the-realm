@@ -1,6 +1,7 @@
 extends SceneTree
 
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
+const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 
 var assertions := 0
 var failures: Array[String] = []
@@ -12,6 +13,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_test_initial_state()
+	_test_exploration_rules()
 	_test_gathering_and_gate()
 	_test_combat_paths()
 	_test_breakthrough_and_completion()
@@ -33,6 +35,32 @@ func _test_initial_state() -> void:
 	_expect_true(state.available_actions().has("gather_moonleaf"), "初始可采集")
 	_expect_true(state.available_actions().has("enter_spring"), "初始可尝试进山")
 	_expect_false(state.choose("unknown")["ok"], "未知行动不改变状态")
+
+
+func _test_exploration_rules() -> void:
+	var state = ExplorationStateScript.new()
+	_expect_equal(state.player_position, ExplorationStateScript.START_POSITION, "探索使用确定的起点")
+	_expect_true(state.is_walkable(state.player_position), "初始位置可以行走")
+	_expect_equal(state.interaction_action(false), "", "出生点不能隔空交互")
+
+	var start: Vector2 = state.player_position
+	var idle_position: Vector2 = state.move(Vector2.ZERO, 1.0)
+	_expect_equal(idle_position, start, "无方向输入不移动")
+	state.move(Vector2.LEFT, 5.0)
+	_expect_true(state.player_position.x >= 0.37, "河岸边界阻止角色进入水面")
+	_expect_false(state.is_walkable(Vector2(0.2, 0.5)), "水域不可行走")
+	_expect_false(state.is_walkable(Vector2(0.56, 0.26)), "建筑占用区不可行走")
+
+	_expect_true(state.restore({"player_x": 0.69, "player_y": 0.62}), "可恢复到合法月芽田位置")
+	_expect_equal(state.interaction_action(false), "gather_moonleaf", "靠近月芽草出现采集交互")
+	_expect_equal(state.interaction_action(true), "", "采集后月芽草不再交互")
+	_expect_true(state.restore({"player_x": 0.88, "player_y": 0.18}), "可恢复到合法山门位置")
+	_expect_equal(state.interaction_action(false), "enter_spring", "靠近山门出现进山交互")
+	var gate_position: Vector2 = state.player_position
+	_expect_false(state.restore({"player_x": 0.2, "player_y": 0.5}), "拒绝恢复到碰撞区")
+	_expect_equal(state.player_position, gate_position, "无效恢复保留原位置")
+	_expect_false(state.restore({"player_x": 0.5}), "缺失坐标的快照被拒绝")
+	_expect_equal(state.snapshot().keys(), ["player_x", "player_y"], "探索快照只含稳定坐标")
 
 
 func _test_gathering_and_gate() -> void:
@@ -100,16 +128,34 @@ func _test_scene_smoke() -> void:
 	root.add_child(instance)
 	await process_frame
 	_expect_equal(instance.get_node("%LocationLabel").text, "照禾渡口", "主场景读取内容")
-	_expect_equal(instance.get_node("%Actions").get_child_count(), 2, "主场景渲染可选行动")
+	_expect_equal(_action_button_count(instance), 0, "出生点不显示远距离行动")
 	_expect_equal(instance.get_node("%MapCanvas").actor_height_px(), 56.0, "角色使用 56 px 生产基准")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "riverbank", "初始地图使用渡口画面")
 	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("护脉灵草"), "探索目标进入抬头信息")
-	_expect_equal(instance.get_node("%Actions").get_child(0).custom_minimum_size.y, 48.0, "行动按钮保持可点击高度")
+	_expect_true(instance.get_node("%InputHint").text.contains("WASD"), "探索显示键盘与手柄输入提示")
+	_expect_true(InputMap.has_action("move_left"), "移动使用语义输入动作")
+	_expect_true(InputMap.has_action("interact"), "交互使用语义输入动作")
+	_expect_true(_action_has_joypad_event("move_left"), "移动动作包含手柄绑定")
+	_expect_true(_action_has_joypad_event("interact"), "交互动作包含手柄绑定")
+	_expect_false(instance.interact()["ok"], "出生点交互不会隔空采集")
+	_expect_true(instance.get_node("%EventLabel").text.contains("附近没有"), "无目标交互给出中文反馈")
+
+	instance.move_player(Vector2.DOWN, 0.40)
+	instance.move_player(Vector2.RIGHT, 0.74)
+	await process_frame
+	_expect_equal(_action_button_count(instance), 1, "靠近月芽草显示一个交互行动")
+	_expect_equal(_first_action_button(instance).custom_minimum_size.y, 48.0, "交互按钮保持可点击高度")
 
 	await _press_action(instance, "查看月芽田")
 	_expect_true(instance.get_node("%EventLabel").text.contains("只取一株"), "场景呈现采集结果")
-	_expect_equal(instance.get_node("%Actions").get_child_count(), 1, "采集按钮完成后隐藏")
+	_expect_equal(_action_button_count(instance), 0, "采集按钮完成后隐藏")
 
+	instance.move_player(Vector2.LEFT, 0.82)
+	instance.move_player(Vector2.UP, 1.56)
+	instance.move_player(Vector2.RIGHT, 1.46)
+	instance.move_player(Vector2.DOWN, 0.06)
+	await process_frame
+	_expect_equal(_action_button_count(instance), 1, "走到山门后显示进入行动")
 	await _press_action(instance, "进入藏泉山道")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉山道", "场景进入战斗")
 	_expect_equal(instance.get_node("%Actions").get_child_count(), 3, "战斗显示三种行动")
@@ -139,6 +185,28 @@ func _press_action(instance: Node, label: String) -> void:
 			await process_frame
 			return
 	failures.append("没有找到场景行动：%s" % label)
+
+
+func _action_button_count(instance: Node) -> int:
+	var count := 0
+	for child in instance.get_node("%Actions").get_children():
+		if child is Button:
+			count += 1
+	return count
+
+
+func _first_action_button(instance: Node) -> Button:
+	for child in instance.get_node("%Actions").get_children():
+		if child is Button:
+			return child
+	return null
+
+
+func _action_has_joypad_event(action_name: StringName) -> bool:
+	for event in InputMap.action_get_events(action_name):
+		if event is InputEventJoypadMotion or event is InputEventJoypadButton:
+			return true
+	return false
 
 
 func _battle_state():

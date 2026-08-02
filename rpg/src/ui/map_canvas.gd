@@ -13,11 +13,19 @@ const DAWN_PEACH := Color("e7a76f")
 
 var phase_id := "riverbank"
 var gathered_moonleaf := false
+var player_position := Vector2(0.47, 0.51)
+var nearby_action := ""
 
 
 func set_story_state(next_phase: String, gathered: bool) -> void:
 	phase_id = next_phase
 	gathered_moonleaf = gathered
+	queue_redraw()
+
+
+func set_exploration_state(next_position: Vector2, next_nearby_action: String) -> void:
+	player_position = next_position
+	nearby_action = next_nearby_action
 	queue_redraw()
 
 
@@ -76,11 +84,17 @@ func _draw_riverbank() -> void:
 		var plant := Vector2(size.x * 0.63 + float(index % 5) * 28.0, size.y * 0.57 + float(index / 5) * 28.0)
 		_draw_plant(plant, not gathered_moonleaf)
 
+	_draw_spring_gate(Vector2(size.x * 0.88, size.y * 0.18))
+	if not gathered_moonleaf:
+		_draw_interaction_marker(Vector2(size.x * 0.69, size.y * 0.62), nearby_action == "gather_moonleaf")
+	_draw_interaction_marker(Vector2(size.x * 0.88, size.y * 0.18), nearby_action == "enter_spring")
+
 	for tree_position in [Vector2(455, 115), Vector2(978, 130), Vector2(1030, 340), Vector2(468, 420)]:
 		_draw_tree(tree_position)
 
-	_draw_actor(Vector2(size.x * 0.48, size.y * 0.49), CLEAR_INDIGO, true)
-	_draw_actor(Vector2(size.x * 0.53, size.y * 0.50), WARM_RUST, false)
+	var protagonist_feet := Vector2(player_position.x * size.x, player_position.y * size.y)
+	_draw_actor(protagonist_feet, CLEAR_INDIGO, true)
+	_draw_actor(protagonist_feet + Vector2(48, 7), WARM_RUST, false)
 
 
 func _draw_battle_path() -> void:
@@ -228,6 +242,20 @@ func _draw_cave(position: Vector2, cave_size: Vector2) -> void:
 	]), COOL_SHADOW.darkened(0.28))
 	draw_rect(Rect2(position + Vector2(cave_size.x * 0.32, cave_size.y * 0.24), Vector2(cave_size.x * 0.36, cave_size.y * 0.76)), INK_ROOT.darkened(0.2))
 	draw_circle(position + Vector2(cave_size.x * 0.5, cave_size.y * 0.56), 7.0, SPIRIT_GOLD)
+
+
+func _draw_spring_gate(center: Vector2) -> void:
+	draw_line(center + Vector2(-27, 25), center + Vector2(-27, -31), Color("755f43"), 7.0)
+	draw_line(center + Vector2(27, 25), center + Vector2(27, -31), Color("755f43"), 7.0)
+	draw_line(center + Vector2(-34, -31), center + Vector2(34, -31), WARM_RUST.darkened(0.18), 10.0)
+	draw_circle(center + Vector2(0, -31), 5.0, SPIRIT_GOLD)
+
+
+func _draw_interaction_marker(center: Vector2, active: bool) -> void:
+	var color := SPIRIT_GOLD if active else Color(0.95, 0.90, 0.70, 0.64)
+	draw_circle(center, 24.0 if active else 18.0, color, false, 3.0 if active else 2.0)
+	if active:
+		draw_circle(center, 31.0, Color(color.r, color.g, color.b, 0.28), false, 2.0)
 
 
 func _draw_actor(feet: Vector2, robe_color: Color, is_protagonist: bool) -> void:

@@ -4,6 +4,18 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-01 — Playable-slice exploration baseline
+
+Use normalized world coordinates for the first playable map so rendering resolution does not
+change traversal, collision, or interaction outcomes. Keep exploration state and collision in a
+deterministic domain object rather than the scene tree. The 1152×648 development viewport and
+56 px actor height are accepted for this slice; the collision footprint is intentionally smaller
+than the visible silhouette. Keyboard, mouse, and controller input converge on semantic move and
+interact actions, and world interactions require proximity rather than remote menu selection.
+
+This is an implementation baseline for the overnight playable slice, not a release-platform or
+final-sprite commitment.
+
 ### 2026-08-01 — Brighter and more optimistic visual tone
 
 Refine the confirmed hybrid art direction toward clear daylight, fresh air, visible water,
