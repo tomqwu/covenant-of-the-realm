@@ -96,15 +96,15 @@ func _render(event_ids: Array) -> void:
 	var snapshot := journey.snapshot()
 	var node: Dictionary = content["nodes"][snapshot["phase"]]
 	chapter_label.text = "序章 · 第一息"
-	objective_label.text = _objective_text(snapshot["phase"])
+	objective_label.text = _objective_text(snapshot)
 	location_label.text = node["title"]
 	description_label.text = node["description"]
 	if snapshot["phase"] == "complete":
 		description_label.text += "\n\n" + _chapter_summary(snapshot)
 	status_label.text = _status_text(snapshot)
 	event_label.text = _event_text(event_ids)
-	map_canvas.set_story_state(snapshot["phase"], snapshot["gathered_moonleaf"])
-	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"])
+	map_canvas.set_story_state(snapshot["phase"], snapshot["gathered_moonleaf"], snapshot["talked_to_companion"])
+	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"])
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	_build_actions(node)
 
@@ -123,10 +123,14 @@ func _status_text(snapshot: Dictionary) -> String:
 	return "%s　气血 %d/12　月芽草：%s　同行：砚青" % [snapshot["realm"], snapshot["player_hp"], herb]
 
 
-func _objective_text(phase_id: String) -> String:
-	match phase_id:
+func _objective_text(snapshot: Dictionary) -> String:
+	match snapshot["phase"]:
 		"riverbank":
-			return "当前目标　准备护脉灵草，寻找藏泉入口"
+			if not snapshot["talked_to_companion"]:
+				return "当前目标　与渡碑旁的砚青交谈"
+			if not snapshot["gathered_moonleaf"]:
+				return "当前目标　前往月芽田准备护脉灵草"
+			return "当前目标　沿石路寻找藏泉山门"
 		"battle":
 			return "当前目标　看清甲缝，留住退路"
 		"spring":
@@ -240,7 +244,7 @@ func move_player(direction: Vector2, delta: float) -> Vector2:
 		return exploration.player_position
 	var previous_action := nearby_action_id
 	exploration.move(direction, delta)
-	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf)
+	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	if nearby_action_id != previous_action:
 		_build_actions(content["nodes"]["riverbank"])

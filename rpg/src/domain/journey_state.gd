@@ -5,6 +5,7 @@ enum Phase { RIVERBANK, BATTLE, SPRING, COMPLETE }
 
 const GATHER_MOONLEAF := "gather_moonleaf"
 const ENTER_SPRING := "enter_spring"
+const TALK_TO_COMPANION := "talk_to_companion"
 const USE_ART := "use_art"
 const USE_TALISMAN := "use_talisman"
 const GUARD := "guard"
@@ -17,6 +18,7 @@ const REPLAY_CHAPTER := "replay_chapter"
 
 var phase := Phase.RIVERBANK
 var gathered_moonleaf := false
+var talked_to_companion := false
 var player_hp := 12
 var enemy_hp := 9
 var talismans := 1
@@ -41,9 +43,12 @@ func phase_id() -> String:
 func available_actions() -> PackedStringArray:
 	match phase:
 		Phase.RIVERBANK:
-			var actions := PackedStringArray([ENTER_SPRING])
+			var actions := PackedStringArray()
+			if not talked_to_companion:
+				actions.append(TALK_TO_COMPANION)
 			if not gathered_moonleaf:
-				actions.insert(0, GATHER_MOONLEAF)
+				actions.append(GATHER_MOONLEAF)
+			actions.append(ENTER_SPRING)
 			return actions
 		Phase.BATTLE:
 			var battle_actions := PackedStringArray([USE_ART])
@@ -87,6 +92,7 @@ func snapshot() -> Dictionary:
 	return {
 		"phase": phase_id(),
 		"gathered_moonleaf": gathered_moonleaf,
+		"talked_to_companion": talked_to_companion,
 		"player_hp": player_hp,
 		"enemy_hp": enemy_hp,
 		"talismans": talismans,
@@ -101,6 +107,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	var required_keys := [
 		"phase",
 		"gathered_moonleaf",
+		"talked_to_companion",
 		"player_hp",
 		"enemy_hp",
 		"talismans",
@@ -115,6 +122,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if typeof(snapshot_data["phase"]) != TYPE_STRING:
 		return false
 	if typeof(snapshot_data["gathered_moonleaf"]) != TYPE_BOOL:
+		return false
+	if typeof(snapshot_data["talked_to_companion"]) != TYPE_BOOL:
 		return false
 	if typeof(snapshot_data["realm"]) != TYPE_STRING:
 		return false
@@ -145,6 +154,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 			return false
 
 	var next_gathered: bool = snapshot_data["gathered_moonleaf"]
+	var next_talked: bool = snapshot_data["talked_to_companion"]
 	var next_player_hp := int(snapshot_data["player_hp"])
 	var next_enemy_hp := int(snapshot_data["enemy_hp"])
 	var next_talismans := int(snapshot_data["talismans"])
@@ -155,6 +165,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if not _valid_phase_invariants(
 		next_phase,
 		next_gathered,
+		next_talked,
 		next_player_hp,
 		next_enemy_hp,
 		next_talismans,
@@ -167,6 +178,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 
 	phase = next_phase
 	gathered_moonleaf = next_gathered
+	talked_to_companion = next_talked
 	player_hp = next_player_hp
 	enemy_hp = next_enemy_hp
 	talismans = next_talismans
@@ -178,12 +190,19 @@ func restore(snapshot_data: Dictionary) -> bool:
 
 
 func _choose_riverbank(action_id: String) -> Dictionary:
+	if action_id == TALK_TO_COMPANION:
+		if talked_to_companion:
+			return _result(false, ["already_briefed"])
+		talked_to_companion = true
+		return _result(true, ["companion_briefing"])
 	if action_id == GATHER_MOONLEAF:
 		if gathered_moonleaf:
 			return _result(false, ["already_gathered"])
 		gathered_moonleaf = true
 		return _result(true, ["gathered"])
 	if action_id == ENTER_SPRING:
+		if not talked_to_companion:
+			return _result(false, ["need_briefing"])
 		if not gathered_moonleaf:
 			return _result(false, ["need_moonleaf"])
 		phase = Phase.BATTLE
@@ -253,6 +272,7 @@ func _result(ok: bool, events: Array[String]) -> Dictionary:
 func _reset_chapter() -> void:
 	phase = Phase.RIVERBANK
 	gathered_moonleaf = false
+	talked_to_companion = false
 	player_hp = 12
 	enemy_hp = 9
 	talismans = 1
@@ -272,6 +292,7 @@ func _integer_in_range(value: Variant, minimum: int, maximum: int) -> bool:
 func _valid_phase_invariants(
 	next_phase: Phase,
 	next_gathered: bool,
+	next_talked: bool,
 	next_player_hp: int,
 	next_enemy_hp: int,
 	next_talismans: int,
@@ -283,7 +304,7 @@ func _valid_phase_invariants(
 	if next_phase == Phase.RIVERBANK:
 		return next_realm == "凡身" and next_player_hp > 0 and next_enemy_hp == 9 and next_round == 1 and next_companion_supports == 1
 	if next_phase == Phase.BATTLE:
-		return next_realm == "凡身" and next_gathered and next_enemy_hp > 0
+		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp > 0
 	if next_phase == Phase.SPRING:
-		return next_realm == "凡身" and next_gathered and next_enemy_hp == 0
+		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp == 0
 	return next_realm == "引息境一层" and not next_gathered and next_enemy_hp == 0 and next_setbacks >= 0

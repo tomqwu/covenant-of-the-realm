@@ -3,12 +3,14 @@ class_name ExplorationState
 
 const GATHER_MOONLEAF := "gather_moonleaf"
 const ENTER_SPRING := "enter_spring"
+const TALK_TO_COMPANION := "talk_to_companion"
 
 # Positions are normalized world coordinates. Rendering resolution never changes
 # traversal, collision, or interaction outcomes.
 const START_POSITION := Vector2(0.47, 0.51)
 const MOONLEAF_POSITION := Vector2(0.69, 0.62)
 const SPRING_GATE_POSITION := Vector2(0.88, 0.18)
+const COMPANION_POSITION := Vector2(0.53, 0.51)
 const MOVE_SPEED := 0.30
 const MAX_STEP_SECONDS := 0.10
 const INTERACTION_RADIUS := 0.065
@@ -37,7 +39,9 @@ func move(direction: Vector2, delta: float) -> Vector2:
 	return player_position
 
 
-func interaction_action(gathered_moonleaf: bool) -> String:
+func interaction_action(gathered_moonleaf: bool, talked_to_companion: bool = false) -> String:
+	if not talked_to_companion and player_position.distance_to(COMPANION_POSITION) <= INTERACTION_RADIUS:
+		return TALK_TO_COMPANION
 	if not gathered_moonleaf and player_position.distance_to(MOONLEAF_POSITION) <= INTERACTION_RADIUS:
 		return GATHER_MOONLEAF
 	if player_position.distance_to(SPRING_GATE_POSITION) <= INTERACTION_RADIUS:

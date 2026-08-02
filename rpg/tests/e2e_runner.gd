@@ -24,6 +24,10 @@ func _run() -> void:
 	game.get_node("%NewGameButton").pressed.emit()
 	await _settle()
 	_expect(game.get_node("%LocationLabel").text == "照禾渡口", "E2E 新游戏进入照禾渡口")
+	await _trigger_semantic_action("interact")
+	await _settle()
+	_expect(game.journey.talked_to_companion, "E2E 先与砚青完成风险简报")
+	_expect(game.get_node("%ObjectiveLabel").text.contains("月芽田"), "E2E 简报后任务切换到采药")
 
 	game.move_player(Vector2.DOWN, 0.40)
 	game.move_player(Vector2.RIGHT, 0.74)

@@ -38,6 +38,7 @@ func _test_initial_state() -> void:
 	var state = JourneyStateScript.new()
 	_expect_equal(state.phase_id(), "riverbank", "初始地点")
 	_expect_equal(state.snapshot()["realm"], "凡身", "初始境界")
+	_expect_true(state.available_actions().has("talk_to_companion"), "初始可与同伴交谈")
 	_expect_true(state.available_actions().has("gather_moonleaf"), "初始可采集")
 	_expect_true(state.available_actions().has("enter_spring"), "初始可尝试进山")
 	_expect_false(state.choose("unknown")["ok"], "未知行动不改变状态")
@@ -47,7 +48,8 @@ func _test_exploration_rules() -> void:
 	var state = ExplorationStateScript.new()
 	_expect_equal(state.player_position, ExplorationStateScript.START_POSITION, "探索使用确定的起点")
 	_expect_true(state.is_walkable(state.player_position), "初始位置可以行走")
-	_expect_equal(state.interaction_action(false), "", "出生点不能隔空交互")
+	_expect_equal(state.interaction_action(false), "talk_to_companion", "出生点可与等待的同伴交谈")
+	_expect_equal(state.interaction_action(false, true), "", "交谈完成后同伴不重复阻挡交互")
 
 	var start: Vector2 = state.player_position
 	var idle_position: Vector2 = state.move(Vector2.ZERO, 1.0)
@@ -101,7 +103,7 @@ func _test_versioned_save() -> void:
 	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
 	var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(loaded["ok"], "版本化存档读取成功")
-	_expect_equal(loaded["data"]["save_version"], 2.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["save_version"], 3.0, "存档声明当前版本")
 	var restored_journey = JourneyStateScript.new()
 	var restored_exploration = ExplorationStateScript.new()
 	_expect_true(restored_journey.restore(loaded["data"]["journey"]), "读取的规则快照通过业务校验")
@@ -112,6 +114,7 @@ func _test_versioned_save() -> void:
 	var legacy_journey: Dictionary = journey.snapshot().duplicate(true)
 	legacy_journey.erase("companion_supports")
 	legacy_journey.erase("setbacks")
+	legacy_journey.erase("talked_to_companion")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 1,
 		"story_id": SaveGameScript.STORY_ID,
@@ -121,10 +124,24 @@ func _test_versioned_save() -> void:
 	var migrated: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated["ok"], "v1 存档可迁移到当前版本")
 	_expect_equal(migrated["migrated_from_version"], 1, "迁移结果声明来源版本")
-	_expect_equal(migrated["data"]["save_version"], 2, "迁移后的内存快照升级为 v2")
+	_expect_equal(migrated["data"]["save_version"], 3, "迁移后的内存快照升级为 v3")
 	_expect_equal(migrated["data"]["journey"]["companion_supports"], 1, "迁移补入同伴援护资源")
 	_expect_equal(migrated["data"]["journey"]["setbacks"], 0, "迁移补入挫败计数")
+	_expect_true(migrated["data"]["journey"]["talked_to_companion"], "战斗中的 v1 存档迁移为已完成简报")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "迁移后可写回新版存档")
+	var version_two_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_two_journey.erase("talked_to_companion")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 2,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": version_two_journey,
+		"exploration": exploration.snapshot(),
+	}))
+	var migrated_v2: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v2["ok"], "v2 存档可迁移到当前版本")
+	_expect_equal(migrated_v2["migrated_from_version"], 2, "v2 迁移声明来源版本")
+	_expect_true(migrated_v2["data"]["journey"]["talked_to_companion"], "战斗中的 v2 存档补入已交谈状态")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v2 迁移后可写回新版存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -152,6 +169,11 @@ func _test_gathering_and_gate() -> void:
 	var state = JourneyStateScript.new()
 	var blocked: Dictionary = state.choose("enter_spring")
 	_expect_false(blocked["ok"], "缺少灵草时阻止进山")
+	_expect_equal(blocked["events"], ["need_briefing"], "未交谈时先返回任务简报提示")
+	_expect_true(state.choose("talk_to_companion")["ok"], "首次同伴交谈成功")
+	_expect_false(state.choose("talk_to_companion")["ok"], "同伴简报不能重复领取")
+	blocked = state.choose("enter_spring")
+	_expect_false(blocked["ok"], "交谈后仍需准备灵草")
 	_expect_equal(blocked["events"], ["need_moonleaf"], "返回准备提示")
 	_expect_true(state.choose("gather_moonleaf")["ok"], "首次采集成功")
 	_expect_false(state.choose("gather_moonleaf")["ok"], "重复采集无收益")
@@ -233,6 +255,7 @@ func _test_breakthrough_and_completion() -> void:
 	_expect_equal(replay["snapshot"]["realm"], "凡身", "重游重置境界")
 	_expect_equal(replay["snapshot"]["talismans"], 1, "重游重置消耗品")
 	_expect_equal(replay["snapshot"]["setbacks"], 0, "重游重置挫败记录")
+	_expect_false(replay["snapshot"]["talked_to_companion"], "重游重置开场交谈")
 	_expect_false(state.choose("breakthrough")["ok"], "突破不能重复")
 
 
@@ -260,10 +283,10 @@ func _test_scene_smoke() -> void:
 	_expect_false(instance.get_node("%TitleOverlay").visible, "新游戏进入实际地图")
 	_expect_true(SaveGameScript.exists(TEST_SCENE_SAVE_PATH), "新游戏立即建立版本化存档")
 	_expect_equal(instance.get_node("%LocationLabel").text, "照禾渡口", "主场景读取内容")
-	_expect_equal(_action_button_count(instance), 0, "出生点不显示远距离行动")
+	_expect_equal(_action_button_count(instance), 1, "出生点只显示近距离同伴交谈")
 	_expect_equal(instance.get_node("%MapCanvas").actor_height_px(), 56.0, "角色使用 56 px 生产基准")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "riverbank", "初始地图使用渡口画面")
-	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("护脉灵草"), "探索目标进入抬头信息")
+	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("与渡碑旁"), "初始目标引导同伴交谈")
 	_expect_true(instance.get_node("%InputHint").text.contains("WASD"), "探索显示键盘与手柄输入提示")
 	_expect_true(InputMap.has_action("move_left"), "移动使用语义输入动作")
 	_expect_true(InputMap.has_action("interact"), "交互使用语义输入动作")
@@ -274,7 +297,10 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%PauseOverlay").visible, "暂停菜单可由统一动作打开")
 	instance.toggle_pause_menu()
 	_expect_false(instance.get_node("%PauseOverlay").visible, "暂停菜单可继续游戏")
-	_expect_false(instance.interact()["ok"], "出生点交互不会隔空采集")
+	_expect_true(instance.interact()["ok"], "出生点语义交互与同伴交谈")
+	_expect_true(instance.get_node("%EventLabel").text.contains("泉眼昨夜"), "场景呈现砚青的风险简报")
+	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("月芽田"), "交谈后目标切换为采药")
+	_expect_false(instance.interact()["ok"], "完成交谈后原地没有重复奖励")
 	_expect_true(instance.get_node("%EventLabel").text.contains("附近没有"), "无目标交互给出中文反馈")
 
 	instance.move_player(Vector2.DOWN, 0.40)
@@ -391,6 +417,7 @@ func _write_test_file(path: String, contents: String) -> void:
 
 func _battle_state():
 	var state = JourneyStateScript.new()
+	state.choose("talk_to_companion")
 	state.choose("gather_moonleaf")
 	state.choose("enter_spring")
 	return state

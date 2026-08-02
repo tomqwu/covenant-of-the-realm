@@ -125,7 +125,7 @@ Nakama may be evaluated later if the product grows into match-based content, ext
 Expand the executable RPG graybox into a complete 90-minute original chapter:
 
 1. top-down movement, collision, and proximity interaction in 照禾渡口 (implemented);
-2. dialogue and quest-state presentation;
+2. proximity companion briefing and dynamic quest-state presentation (implemented; longer dialogue remains);
 3. 月芽田 resource choice;
 4. 藏泉山道 warning, retreat, and companion rescue path (implemented; free path exploration remains);
 5. three regular enemy profiles and one boss;

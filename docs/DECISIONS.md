@@ -25,8 +25,16 @@ last-known-good backup while promoting a verified temporary file. Starting a new
 explicit operation that replaces an existing or unreadable local save.
 
 Schema changes use explicit forward migrations. Save v2 adds companion-support and setback
-state; v1 files are migrated in memory, validated, then rewritten only after the player chooses
-to continue.
+state; save v3 adds the companion-briefing quest flag. V1/v2 files are migrated in memory,
+validated, then rewritten only after the player chooses to continue. Mid-chapter legacy saves
+infer that the required briefing already occurred; ferry saves expose the new conversation.
+
+### 2026-08-01 — Spatial briefing starts the quest
+
+The opening objective first asks the player to approach 砚青 at the ferry marker. The companion
+stays at the marker until the player receives the risk and retreat briefing, then follows during
+exploration. Quest guidance advances from briefing to herb preparation to the spring gate. This
+uses the same proximity and semantic-action path as every other world interaction.
 
 ### 2026-08-01 — Recoverable first-combat failure
 

@@ -13,13 +13,15 @@ const DAWN_PEACH := Color("e7a76f")
 
 var phase_id := "riverbank"
 var gathered_moonleaf := false
+var talked_to_companion := false
 var player_position := Vector2(0.47, 0.51)
 var nearby_action := ""
 
 
-func set_story_state(next_phase: String, gathered: bool) -> void:
+func set_story_state(next_phase: String, gathered: bool, talked: bool) -> void:
 	phase_id = next_phase
 	gathered_moonleaf = gathered
+	talked_to_companion = talked
 	queue_redraw()
 
 
@@ -85,6 +87,8 @@ func _draw_riverbank() -> void:
 		_draw_plant(plant, not gathered_moonleaf)
 
 	_draw_spring_gate(Vector2(size.x * 0.88, size.y * 0.18))
+	if not talked_to_companion:
+		_draw_interaction_marker(Vector2(size.x * 0.53, size.y * 0.51), nearby_action == "talk_to_companion")
 	if not gathered_moonleaf:
 		_draw_interaction_marker(Vector2(size.x * 0.69, size.y * 0.62), nearby_action == "gather_moonleaf")
 	_draw_interaction_marker(Vector2(size.x * 0.88, size.y * 0.18), nearby_action == "enter_spring")
@@ -94,7 +98,8 @@ func _draw_riverbank() -> void:
 
 	var protagonist_feet := Vector2(player_position.x * size.x, player_position.y * size.y)
 	_draw_actor(protagonist_feet, CLEAR_INDIGO, true)
-	_draw_actor(protagonist_feet + Vector2(48, 7), WARM_RUST, false)
+	var companion_feet := protagonist_feet + Vector2(48, 7) if talked_to_companion else Vector2(size.x * 0.53, size.y * 0.51)
+	_draw_actor(companion_feet, WARM_RUST, false)
 
 
 func _draw_battle_path() -> void:
