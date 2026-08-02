@@ -21,7 +21,7 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["mud/world", "scripts.check_rpg_content"]
+source = ["mud/world", "scripts.check_rpg_content", "scripts.rpg_package_manifest"]
 omit = [
   "mud/world/bootstrap.py",
   "mud/world/help_entries.py",

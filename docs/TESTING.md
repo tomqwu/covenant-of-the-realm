@@ -4,11 +4,11 @@
 
 | Boundary | Gate | Current result |
 | --- | --- | --- |
-| Deterministic cultivation rules | pytest + branch coverage, minimum 99% | 52 tests; 100% statements and branches |
+| Deterministic cultivation rules and package manifest | pytest + branch coverage, minimum 99% | 59 tests; 100% statements and branches |
 | Godot RPG rules and scenes | headless GDScript harness | 430 assertions passing, including enemy-atlas selection, presentation independence, modal layering, shared-resolver boss, persisted combat states, dialogue, exploration, and save v8 contracts |
 | Godot RPG chapter path | independent headless E2E | 51 checks: dialogue interruption → mountain return → retreat → non-default enemy restore → boss status restore → ending → replay bypass |
 | Godot keyboard/controller path | physical events + focus assertions | 22 checks: title/dialogue confirm → movement → pause speed/motion toggles → two-map interaction → battle focus |
-| Godot RPG package | double PCK export + boot smoke | byte-reproducible pack; headless main scene boot passing |
+| Godot RPG package | double PCK/manifest export + packed-namespace/boot smoke | byte-reproducible artifact and manifest; SHA-256/size/source state verified; four runtime resources present and seven `tests/`/`tools/` resources absent |
 | Evennia commands and world bootstrap | Evennia isolated database harness | command, localization, and bootstrap integration tests passing |
 | Multiplayer release path | real server, two real Telnet clients | 中文注册 → 登录 → 采药 → 修炼 → 协作 → 突破 → 重连持久化 |
 | Browser journey prototype | Vitest and Playwright | 100% unit metrics; 53 Playwright executions passing |
@@ -25,7 +25,7 @@ make test-rpg               # Godot rules and scene integration
 make rpg-asset-check        # pixel dimensions, animation layout, and source metadata
 make test-rpg-e2e           # complete Godot chapter path and persistence
 make test-rpg-input         # raw keyboard/controller events and focus navigation
-make check-rpg-package      # export twice, compare bytes, boot packed main scene
+make check-rpg-package      # compare PCK/manifest, probe content exclusions, verify SHA-256, boot
 make lint                   # Ruff and local Markdown links
 make check-mud              # all multiplayer gates
 make check-prototype        # preserved PWA's complete evidence suite

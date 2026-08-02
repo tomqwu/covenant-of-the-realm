@@ -15,9 +15,13 @@ make play-rpg-package
 ```
 
 `make package-rpg` writes the cross-platform game-data pack to the ignored path
-`build/rpg/covenant-of-the-realm.pck`. `make play-rpg-package` launches that pack with the pinned
-Godot entrypoint. The package gate exports twice, requires byte-identical results, and boots the
-pack headlessly. A native `.app`/`.exe` is intentionally deferred until platform export templates,
+`build/rpg/covenant-of-the-realm.pck` plus
+`build/rpg/covenant-of-the-realm.manifest.json`. The manifest records size, SHA-256, Godot/preset,
+nearest Git revision, clean/dirty source state, required runtime resources, and excluded development
+resources. `make play-rpg-package` launches that pack with the pinned Godot entrypoint. The package
+gate exports the PCK and manifest twice, requires byte-identical results, verifies the manifest,
+probes the packed namespace for four runtime resources and seven excluded `tests/`/`tools/` files,
+then boots the pack headlessly. A native `.app`/`.exe` is intentionally deferred until platform export templates,
 signing identity, product icon, and distribution target are confirmed.
 
 The development window has a 1152×648 minimum because that is the validated readable layout.

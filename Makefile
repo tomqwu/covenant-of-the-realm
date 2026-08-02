@@ -23,9 +23,8 @@ play: ## Start the multiplayer server on loopback ports 4000-4002
 play-rpg: ## Open the original single-player RPG graybox
 	@./scripts/godot --path rpg
 
-package-rpg: rpg-import-assets ## Export a reproducible Godot resource pack into ignored build/rpg
-	@mkdir -p build/rpg
-	@./scripts/godot --quiet --headless --path rpg --export-pack "Playable Pack" ../build/rpg/covenant-of-the-realm.pck
+package-rpg: rpg-import-assets ## Export a reproducible Godot pack and SHA-256 manifest into ignored build/rpg
+	@./scripts/package_rpg
 
 play-rpg-package: package-rpg ## Build and launch the same resource pack validated by CI
 	@./scripts/godot --main-pack build/rpg/covenant-of-the-realm.pck

@@ -150,7 +150,12 @@ or blocking menu labels as new presentation nodes are added.
 ### 2026-08-01 — Reproducible PCK as the overnight delivery boundary
 
 The overnight slice exports a cross-platform Godot resource pack and validates it by two
-byte-identical builds plus a headless main-scene boot. Generated `.gd.uid` files are committed as
+byte-identical builds plus a headless main-scene boot. Every build now also emits a deterministic
+JSON manifest containing the exact size, SHA-256, engine and preset, nearest Git revision,
+clean/dirty source state, runtime-resource probes, and development-resource exclusions. The package
+gate compares two manifests, recalculates their artifact fields, opens the PCK as the active
+`res://` namespace, requires four production resources, and rejects seven representative files
+under the excluded `tests/` and `tools/` trees before booting the main scene. Generated `.gd.uid` files are committed as
 intentional Godot resource identity metadata; the `.pck` itself stays under ignored `build/`.
 Native macOS, Windows, or Linux executables wait for a confirmed distribution target, official
 export templates, product icon, signing identity, and platform smoke tests. Local players can

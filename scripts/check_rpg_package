@@ -5,15 +5,28 @@ repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 package_tmp="$(mktemp -d)"
 trap 'rm -rf "$package_tmp"' EXIT
 
-first_pack="$package_tmp/covenant-first.pck"
-second_pack="$package_tmp/covenant-second.pck"
+first_dir="$package_tmp/first"
+second_dir="$package_tmp/second"
+first_pack="$first_dir/covenant-of-the-realm.pck"
+second_pack="$second_dir/covenant-of-the-realm.pck"
+first_manifest="$first_dir/covenant-of-the-realm.manifest.json"
+second_manifest="$second_dir/covenant-of-the-realm.manifest.json"
 
-"$repo_root/scripts/godot" --quiet --headless --path "$repo_root/rpg" --export-pack "Playable Pack" "$first_pack"
-"$repo_root/scripts/godot" --quiet --headless --path "$repo_root/rpg" --export-pack "Playable Pack" "$second_pack"
+"$repo_root/scripts/package_rpg" "$first_dir"
+"$repo_root/scripts/package_rpg" "$second_dir"
 
 test -s "$first_pack"
 cmp "$first_pack" "$second_pack"
+cmp "$first_manifest" "$second_manifest"
+cd "$repo_root"
+uv run python scripts/rpg_package_manifest.py \
+  --pack "$first_pack" \
+  --manifest "$first_manifest" \
+  --verify
+"$repo_root/scripts/godot" --headless --main-pack "$first_pack" \
+  --script "$repo_root/scripts/check_rpg_pack_contents.gd" -- "$first_manifest"
 "$repo_root/scripts/godot" --quiet --headless --main-pack "$first_pack" --quit-after 2
 
 pack_size="$(wc -c < "$first_pack" | tr -d ' ')"
-printf 'RPG package passed: reproducible PCK, %s bytes, boot smoke complete.\n' "$pack_size"
+pack_sha256="$(uv run python -c 'import hashlib, pathlib, sys; print(hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())' "$first_pack")"
+printf 'RPG package passed: reproducible PCK + manifest, %s bytes, sha256 %s, contents and boot smoke complete.\n' "$pack_size" "$pack_sha256"
