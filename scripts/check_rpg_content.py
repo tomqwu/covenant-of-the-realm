@@ -17,8 +17,14 @@ REQUIRED_JOURNAL_IDS = {
     "ferry_watermark",
     "spring_seam",
 }
-REQUIRED_JOURNAL_SIDE_IDS = {"ferryman_record", "ferryman_repair"}
+REQUIRED_JOURNAL_SIDE_IDS = {
+    "basket_return",
+    "basket_trail",
+    "ferryman_record",
+    "ferryman_repair",
+}
 ALLOWED_DIALOGUE_TOKENS = {
+    "basket_reflection",
     "companion_reflection",
     "discovery_reflection",
     "ferryman_reflection",

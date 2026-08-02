@@ -5,7 +5,7 @@ const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
 
-const SAVE_VERSION := 11
+const SAVE_VERSION := 12
 const STORY_ID := "zhaohe_first_breath"
 const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 
@@ -197,6 +197,13 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		var migration_result := _result(true, migrated, "")
 		migration_result["migrated_from_version"] = 10
 		return migration_result
+	if int(version) == 11:
+		var migrated := payload.duplicate(true)
+		migrated["save_version"] = SAVE_VERSION
+		_migrate_basket_snapshot(migrated["journey"])
+		var migration_result := _result(true, migrated, "")
+		migration_result["migrated_from_version"] = 11
+		return migration_result
 	if int(version) != SAVE_VERSION:
 		return _result(false, {}, "unsupported_version")
 	if not ExplorationStateScript.supports_map_id(payload["exploration"].get("map_id")):
@@ -243,6 +250,11 @@ static func _migrate_discovery_snapshot(journey_snapshot: Dictionary) -> void:
 
 static func _migrate_ferryman_snapshot(journey_snapshot: Dictionary) -> void:
 	journey_snapshot["ferryman_response"] = "unanswered"
+	_migrate_basket_snapshot(journey_snapshot)
+
+
+static func _migrate_basket_snapshot(journey_snapshot: Dictionary) -> void:
+	journey_snapshot["basket_response"] = "unanswered"
 
 
 static func _result(ok: bool, data: Dictionary, reason: String) -> Dictionary:

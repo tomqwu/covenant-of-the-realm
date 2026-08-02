@@ -4,6 +4,20 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — A found public basket becomes a bounded cross-map choice
+
+After identifying the abandoned basket's public herb-garden mark on the mountain path, the player
+may carry it back to the reachable herbkeeper 蕙婶 at the ferry. Her four-line original dialogue
+offers exactly two non-power outcomes: return the repaired basket to the herb garden, or leave it
+under the trail's rain shelter for later travellers. Both preserve health, items, combat strength,
+companion resources, routes, discoveries, and ending access. The chosen outcome instead selects a
+visible basket residue, one journal entry, one chapter-summary label, and one epilogue reflection.
+The interaction is proximity-bound, can be interrupted and restored, disappears after one answer,
+and replay clears it. Save v12 stores only `unanswered`, `return`, or `trail`; v1–v11 migrate to
+`unanswered`. A fourth project-generated actor atlas and fifth motion-free painted-paper portrait use
+the stable presentation ID `huishen`, add exactly one scene node, and keep the measured peak at the
+existing 120-node lifecycle ceiling.
+
 ### 2026-08-02 — Starting over never destroys local progress in one activation
 
 When any primary, backup, or interrupted-write journey artifact exists, the title's first
@@ -45,9 +59,9 @@ use the stable presentation ID `liangshu`; neither presentation layer owns the s
 ### 2026-08-02 — Chapter epilogue reuses structured dialogue and reflects the played route
 
 `回顾此行` now starts the stable `chapter_epilogue` dialogue only after the first breakthrough.
-Its five original lines resolve four bounded presentation tokens from the deterministic snapshot:
+Its five original lines resolve bounded presentation tokens from the deterministic snapshot:
 whole-plant/cutting harvest, discovery count, setback count, and careful/trusting briefing
-response. The existing save-v10 dialogue object can already store dialogue ID and line index, so
+response, plus the ferryman and public-basket outcomes when present. The existing save-v10 dialogue object can already store dialogue ID and line index, so
 this compatible content expansion needs no schema bump; restoration additionally requires the
 journey to remain complete. Two closing responses emit independently tested semantic events but
 grant no resource, reward, relationship score, or new permanent state, and the review may be
@@ -66,9 +80,10 @@ deterministic discovery list already contains all persistent truth.
 
 ### 2026-08-02 — Dialogue portraits are finite motion-free painted-paper presentation
 
-The prologue dialogue uses four stable presentation IDs: `protagonist`, `yanqing`, `liangshu`, and
-`journal`. Project-authored Godot drawing code renders the protagonist in clear indigo, 砚青 in
-warm ochre, 梁叔 in levee-shadow teal, and history mode as an unpeopled travel journal over the same bright paper landscape.
+The prologue dialogue uses five stable presentation IDs: `protagonist`, `yanqing`, `liangshu`,
+`huishen`, and `journal`. Project-authored Godot drawing code renders the protagonist in clear
+indigo, 砚青 in warm ochre, 梁叔 in levee-shadow teal, 蕙婶 in herb-garden celadon with a woven
+apron, and history mode as an unpeopled travel journal over the same bright paper landscape.
 The current speaker, player responses, and dialogue history select those IDs; an unknown ID falls
 back to the journal instead of inventing a person. A visible Chinese caption remains beside the
 art for identity and accessibility. Portraits ignore pointer input, contain no animation, do not
@@ -296,7 +311,7 @@ byte-identical builds plus a headless main-scene boot. Every build now also emit
 JSON manifest containing the exact size, SHA-256, engine and preset, nearest Git revision,
 clean/dirty source state, runtime-resource probes, and development-resource exclusions. The package
 gate compares two manifests, recalculates their artifact fields, opens the PCK as the active
-`res://` namespace, requires four production resources, and rejects nine representative files
+`res://` namespace, currently requires seven production resources, and rejects nine representative files
 under the excluded `tests/` and `tools/` trees before booting the main scene. Generated `.gd.uid` files are committed as
 intentional Godot resource identity metadata; the `.pck` itself stays under ignored `build/`.
 Native macOS, Windows, or Linux executables wait for a confirmed distribution target, official

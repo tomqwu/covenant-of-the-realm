@@ -10,6 +10,7 @@ const GATHER_MOONLEAF_CUTTING := "gather_moonleaf_cutting"
 const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
 const TALK_TO_FERRYMAN := "talk_to_ferryman"
+const TALK_TO_HERBKEEPER := "talk_to_herbkeeper"
 const INSPECT_PATH_MARKER := "inspect_path_marker"
 const INSPECT_FERRY_WATERMARK := "inspect_ferry_watermark"
 const INSPECT_SPRING_SEAM := "inspect_spring_seam"
@@ -40,6 +41,10 @@ const FERRYMAN_UNANSWERED := "unanswered"
 const FERRYMAN_REPAIR := "repair"
 const FERRYMAN_RECORD := "record"
 const FERRYMAN_RESPONSES := [FERRYMAN_UNANSWERED, FERRYMAN_REPAIR, FERRYMAN_RECORD]
+const BASKET_UNANSWERED := "unanswered"
+const BASKET_RETURN := "return"
+const BASKET_TRAIL := "trail"
+const BASKET_RESPONSES := [BASKET_UNANSWERED, BASKET_RETURN, BASKET_TRAIL]
 const MOONLEAF_UNSELECTED := "unselected"
 const MOONLEAF_WHOLE_PLANT := "whole_plant"
 const MOONLEAF_CUTTING := "cutting"
@@ -68,6 +73,7 @@ var armor_break_turns := 0
 var focus_turns := 0
 var discoveries: Array[String] = []
 var ferryman_response := FERRYMAN_UNANSWERED
+var basket_response := BASKET_UNANSWERED
 
 
 func phase_id() -> String:
@@ -94,6 +100,8 @@ func available_actions() -> PackedStringArray:
 				actions.append(TALK_TO_COMPANION)
 			if ferryman_response == FERRYMAN_UNANSWERED:
 				actions.append(TALK_TO_FERRYMAN)
+			if discoveries.has(DISCOVERY_ABANDONED_BASKET) and basket_response == BASKET_UNANSWERED:
+				actions.append(TALK_TO_HERBKEEPER)
 			if not gathered_moonleaf:
 				actions.append(GATHER_MOONLEAF)
 				actions.append(GATHER_MOONLEAF_CUTTING)
@@ -197,6 +205,7 @@ func snapshot() -> Dictionary:
 		"focus_turns": focus_turns,
 		"discoveries": discoveries.duplicate(),
 		"ferryman_response": ferryman_response,
+		"basket_response": basket_response,
 	}
 
 
@@ -221,6 +230,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		"focus_turns",
 		"discoveries",
 		"ferryman_response",
+		"basket_response",
 	]
 	for key in required_keys:
 		if not snapshot_data.has(key):
@@ -240,6 +250,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if not _valid_discoveries(snapshot_data["discoveries"]):
 		return false
 	if typeof(snapshot_data["ferryman_response"]) != TYPE_STRING:
+		return false
+	if typeof(snapshot_data["basket_response"]) != TYPE_STRING:
 		return false
 	if not EnemyCatalogScript.supports(snapshot_data["enemy_id"]):
 		return false
@@ -299,6 +311,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	for discovery_id in snapshot_data["discoveries"]:
 		next_discoveries.append(discovery_id)
 	var next_ferryman_response: String = snapshot_data["ferryman_response"]
+	var next_basket_response: String = snapshot_data["basket_response"]
 	if not _valid_phase_invariants(
 		next_phase,
 		next_gathered,
@@ -318,7 +331,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_armor_break_turns,
 		next_focus_turns,
 		next_discoveries,
-		next_ferryman_response
+		next_ferryman_response,
+		next_basket_response
 	):
 		return false
 
@@ -341,6 +355,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	focus_turns = next_focus_turns
 	discoveries = next_discoveries
 	ferryman_response = next_ferryman_response
+	basket_response = next_basket_response
 	return true
 
 
@@ -351,6 +366,8 @@ func _choose_riverbank(action_id: String) -> Dictionary:
 		return complete_companion_briefing(RESPONSE_CAREFUL)
 	if action_id == TALK_TO_FERRYMAN:
 		return complete_ferryman_dialogue(FERRYMAN_REPAIR)
+	if action_id == TALK_TO_HERBKEEPER:
+		return complete_basket_dialogue(BASKET_RETURN)
 	if action_id in [GATHER_MOONLEAF, GATHER_MOONLEAF_CUTTING]:
 		if gathered_moonleaf:
 			return _result(false, ["already_gathered"])
@@ -492,6 +509,19 @@ func complete_ferryman_dialogue(response_id: String) -> Dictionary:
 	return _result(true, ["ferryman_%s" % response_id])
 
 
+func complete_basket_dialogue(response_id: String) -> Dictionary:
+	if (
+		phase != Phase.RIVERBANK
+		or not discoveries.has(DISCOVERY_ABANDONED_BASKET)
+		or basket_response != BASKET_UNANSWERED
+	):
+		return _result(false, ["basket_unavailable"])
+	if response_id not in [BASKET_RETURN, BASKET_TRAIL]:
+		return _result(false, ["invalid_basket_response"])
+	basket_response = response_id
+	return _result(true, ["basket_%s" % response_id])
+
+
 func current_enemy_profile() -> Dictionary:
 	return EnemyCatalogScript.profile(enemy_id)
 
@@ -544,6 +574,7 @@ func _reset_chapter() -> void:
 	focus_turns = 0
 	discoveries.clear()
 	ferryman_response = FERRYMAN_UNANSWERED
+	basket_response = BASKET_UNANSWERED
 
 
 func _integer_in_range(value: Variant, minimum: int, maximum: int) -> bool:
@@ -572,11 +603,16 @@ func _valid_phase_invariants(
 	next_armor_break_turns: int,
 	next_focus_turns: int,
 	next_discoveries: Array[String],
-	next_ferryman_response: String
+	next_ferryman_response: String,
+	next_basket_response: String
 ) -> bool:
 	if next_ferryman_response not in FERRYMAN_RESPONSES:
 		return false
+	if next_basket_response not in BASKET_RESPONSES:
+		return false
 	if not _valid_discoveries(next_discoveries):
+		return false
+	if next_basket_response != BASKET_UNANSWERED and not next_discoveries.has(DISCOVERY_ABANDONED_BASKET):
 		return false
 	if (
 		(next_discoveries.has(DISCOVERY_SPRING_SEAM) or next_discoveries.has(DISCOVERY_ABANDONED_BASKET))

@@ -108,6 +108,8 @@ def test_reachability_handles_converging_paths() -> None:
         "journal_side_entries": {
             "ferryman_repair": {"title": "扶尺", "summary": "水尺立稳。"},
             "ferryman_record": {"title": "记时", "summary": "涨时入簿。"},
+            "basket_return": {"title": "归圃", "summary": "药篓回到药圃。"},
+            "basket_trail": {"title": "留山", "summary": "药篓留给行旅。"},
         },
     }
     assert validate_story(data) == []

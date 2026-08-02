@@ -17,6 +17,7 @@ func _initialize() -> void:
 	_generate_actor("protagonist.png", Color("58738f"), Color("b89b63"), "protagonist")
 	_generate_actor("yanqing.png", Color("c6764f"), Color("73533d"), "yanqing")
 	_generate_actor("liangshu.png", Color("526963"), Color("a88b57"), "liangshu")
+	_generate_actor("huishen.png", Color("82966a"), Color("a9784f"), "huishen")
 	_generate_enemy_atlas()
 	_generate_ferry_tiles()
 	print("Generated original pixel atlases in %s." % OUTPUT_DIR)
@@ -215,10 +216,15 @@ func _draw_frame(image: Image, origin: Vector2i, direction: int, column: int, ro
 	elif role == "yanqing":
 		_fill(image, Rect2i(center_x + 10, body_y + 8, 4, 20), accent)
 		_fill(image, Rect2i(center_x + 14, body_y + 12, 2, 16), accent.darkened(0.22))
-	else:
+	elif role == "liangshu":
 		# The levee keeper carries a measuring staff and a rain-dark shoulder cape.
 		_fill(image, Rect2i(center_x - 13, body_y + 5, 26, 8), accent.darkened(0.22))
 		_fill(image, Rect2i(center_x + 12, body_y + 1, 3, 35), accent.darkened(0.30))
+	else:
+		# The herb keeper wears a woven apron and keeps a seed basket at her hip.
+		_fill(image, Rect2i(center_x - 9, body_y + 11, 18, 16), PAPER.darkened(0.18))
+		_fill(image, Rect2i(center_x + 9, body_y + 15, 7, 12), accent.darkened(0.12))
+		_fill(image, Rect2i(center_x + 8, body_y + 12, 9, 3), accent.lightened(0.10))
 
 	var head_y := origin.y + 7 + bob
 	_fill(image, Rect2i(center_x - 7, head_y, 14, 14), SKIN)
@@ -228,6 +234,12 @@ func _draw_frame(image: Image, origin: Vector2i, direction: int, column: int, ro
 		_fill(image, Rect2i(center_x - 9, head_y - 7, 18, 5), accent.lightened(0.12))
 		_fill(image, Rect2i(center_x - 7, head_y, 14, 3), INK.lightened(0.10))
 		_fill(image, Rect2i(center_x - 5, head_y + 11, 10, 7), Color("b8b3a1"))
+	elif role == "huishen":
+		# A low cloth wrap, small bun and green pin keep Huishen distinct from Yanqing.
+		_fill(image, Rect2i(center_x - 8, head_y - 1, 16, 6), accent.lightened(0.12))
+		_fill(image, Rect2i(center_x - 7, head_y - 5, 14, 5), INK.lightened(0.06))
+		_fill(image, Rect2i(center_x + 5, head_y - 8, 7, 6), INK)
+		_fill(image, Rect2i(center_x - 10, head_y + 1, 3, 10), Color("8ebb83"))
 	else:
 		_fill(image, Rect2i(center_x - 7, head_y, 14, 4), INK)
 		_fill(image, Rect2i(center_x - 4, head_y - 3, 8, 4), INK)

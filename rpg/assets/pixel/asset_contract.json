@@ -28,7 +28,8 @@
   "atlases": [
     "protagonist.png",
     "yanqing.png",
-    "liangshu.png"
+    "liangshu.png",
+    "huishen.png"
   ],
   "enemy_atlas": {
     "file": "enemy_profiles.png",

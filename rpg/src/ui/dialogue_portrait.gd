@@ -4,8 +4,9 @@ class_name DialoguePortrait
 const PROTAGONIST := "protagonist"
 const YANQING := "yanqing"
 const LIANGSHU := "liangshu"
+const HUISHEN := "huishen"
 const JOURNAL := "journal"
-const PORTRAIT_IDS := [PROTAGONIST, YANQING, LIANGSHU, JOURNAL]
+const PORTRAIT_IDS := [PROTAGONIST, YANQING, LIANGSHU, HUISHEN, JOURNAL]
 
 const INK_ROOT := Color("27312e")
 const COOL_SHADOW := Color("355e63")
@@ -36,6 +37,7 @@ func set_portrait(next_id: String) -> bool:
 		PROTAGONIST: "行旅者纸绘头像",
 		YANQING: "砚青纸绘头像",
 		LIANGSHU: "梁叔纸绘头像",
+		HUISHEN: "蕙婶纸绘头像",
 		JOURNAL: "行旅札记纸绘图",
 	}[portrait_id]
 	queue_redraw()
@@ -53,6 +55,7 @@ func visual_contract() -> Dictionary:
 			"protagonist": CLEAR_INDIGO,
 			"yanqing": WARM_OCHRE,
 			"liangshu": COOL_SHADOW,
+			"huishen": FRESH_CELADON.darkened(0.12),
 			"journal": FRESH_CELADON,
 		},
 		"motion_free": true,
@@ -72,6 +75,8 @@ func _draw() -> void:
 			_draw_yanqing(size)
 		LIANGSHU:
 			_draw_liangshu(size)
+		HUISHEN:
+			_draw_huishen(size)
 		_:
 			_draw_journal(size)
 	_draw_frame(size)
@@ -162,6 +167,34 @@ func _draw_liangshu(size: Vector2) -> void:
 	]), Color("b8b3a1"))
 	draw_line(center + Vector2(-27, 32), center + Vector2(-27, 69), Color("927a52"), 5.0)
 	draw_line(center + Vector2(-32, 68), center + Vector2(-22, 68), INK_ROOT, 2.0)
+
+
+func _draw_huishen(size: Vector2) -> void:
+	var center := Vector2(size.x * 0.50, size.y * 0.45)
+	var herb_green := FRESH_CELADON.darkened(0.12)
+	_draw_person_shadow(center, size)
+	_draw_shoulders(center, size, herb_green, Color("6b7358"))
+	_draw_neck_and_face(center, Color("d5a47d"), Color("b8795f"))
+	# A practical head wrap, low bun, leaf pin and woven apron identify the herb-garden keeper.
+	draw_circle(center + Vector2(22, -34), 14.0, INK_ROOT.lightened(0.08))
+	draw_colored_polygon(PackedVector2Array([
+		center + Vector2(-27, -12), center + Vector2(-21, -47),
+		center + Vector2(-4, -58), center + Vector2(22, -46),
+		center + Vector2(27, -13), center + Vector2(10, -28),
+		center + Vector2(-12, -27),
+	]), INK_ROOT.lightened(0.08))
+	draw_line(center + Vector2(-20, -42), center + Vector2(22, -42), WARM_PAPER.darkened(0.16), 5.0)
+	draw_line(center + Vector2(21, -42), center + Vector2(33, -52), herb_green, 3.0)
+	draw_circle(center + Vector2(34, -53), 4.0, FRESH_CELADON.lightened(0.08))
+	_draw_face(center, Color("5d5140"), Vector2(-1, 0))
+	draw_arc(center + Vector2(-1, 7), 7.0, 0.32, 2.62, 10, Color("945746"), 1.5)
+	var apron := Rect2(center + Vector2(-24, 27), Vector2(48, 59))
+	draw_rect(apron, Color("af8d59"))
+	for offset in [8.0, 20.0, 32.0, 44.0]:
+		draw_line(apron.position + Vector2(offset, 0), apron.position + Vector2(offset - 6.0, apron.size.y), Color("dbc083"), 1.5)
+	for offset in [13.0, 28.0, 43.0]:
+		draw_line(apron.position + Vector2(0, offset), apron.position + Vector2(apron.size.x, offset), Color("826946"), 1.5)
+	draw_arc(center + Vector2(0, 29), 23.0, PI, TAU, 16, Color("826946"), 3.0)
 
 
 func _draw_journal(size: Vector2) -> void:

@@ -16,6 +16,7 @@ const DAWN_PEACH := Color("e7a76f")
 @onready var player_sprite = %PlayerSprite
 @onready var companion_sprite = %CompanionSprite
 @onready var ferryman_sprite = %FerrymanSprite
+@onready var herbkeeper_sprite = %HerbkeeperSprite
 @onready var ferry_ground: TileMapLayer = %FerryGround
 @onready var path_ground: TileMapLayer = %PathGround
 @onready var battle_enemy_sprite: AnimatedSprite2D = %BattleEnemySprite
@@ -45,6 +46,7 @@ var companion_motion := Vector2.ZERO
 var companion_trail_needs_reset := true
 var discoveries: Array[String] = []
 var ferryman_response := "unanswered"
+var basket_response := "unanswered"
 
 
 func set_story_state(
@@ -55,7 +57,8 @@ func set_story_state(
 	next_enemy_id: String,
 	next_moonleaf_method: String,
 	next_discoveries: Array,
-	next_ferryman_response: String
+	next_ferryman_response: String,
+	next_basket_response: String
 ) -> void:
 	if next_phase != phase_id or talked != talked_to_companion:
 		companion_trail_needs_reset = true
@@ -69,6 +72,7 @@ func set_story_state(
 	for discovery_id in next_discoveries:
 		discoveries.append(str(discovery_id))
 	ferryman_response = next_ferryman_response
+	basket_response = next_basket_response
 	_sync_actor_visuals()
 	queue_redraw()
 
@@ -146,6 +150,7 @@ func uses_animated_actor_sprites() -> bool:
 		player_sprite is AnimatedSprite2D
 		and companion_sprite is AnimatedSprite2D
 		and ferryman_sprite is AnimatedSprite2D
+		and herbkeeper_sprite is AnimatedSprite2D
 	)
 
 
@@ -208,6 +213,17 @@ func ferryman_visual_contract() -> Dictionary:
 	}
 
 
+func basket_visual_contract() -> Dictionary:
+	return {
+		"response": basket_response,
+		"herbkeeper_visible": herbkeeper_sprite.visible,
+		"herbkeeper_position": herbkeeper_sprite.position,
+		"herbkeeper_depth": herbkeeper_sprite.z_index,
+		"returned_to_ferry": basket_response == "return",
+		"repaired_on_trail": basket_response == "trail",
+	}
+
+
 func depth_for_y(feet_y: float) -> int:
 	var height := maxf(get_rect().size.y, 1.0)
 	return 10 + clampi(int(round(feet_y / height * 50.0)), 0, 50)
@@ -233,6 +249,7 @@ func occlusion_contract() -> Dictionary:
 		"player_depth": player_sprite.z_index,
 		"companion_depth": companion_sprite.z_index,
 		"ferryman_depth": ferryman_sprite.z_index,
+		"herbkeeper_depth": herbkeeper_sprite.z_index,
 		"map_depth_ceiling": 60,
 	}
 
@@ -258,6 +275,7 @@ func _sync_actor_visuals() -> void:
 		or not is_instance_valid(player_sprite)
 		or not is_instance_valid(companion_sprite)
 		or not is_instance_valid(ferryman_sprite)
+		or not is_instance_valid(herbkeeper_sprite)
 	):
 		return
 	var size := get_rect().size
@@ -269,6 +287,7 @@ func _sync_actor_visuals() -> void:
 	path_moss_enemy_sprite.visible = phase_id == "mountain_path"
 	path_puppet_enemy_sprite.visible = phase_id == "mountain_path"
 	ferryman_sprite.visible = phase_id == "riverbank"
+	herbkeeper_sprite.visible = phase_id == "riverbank"
 	battle_enemy_sprite.set_enemy_id(enemy_id)
 	battle_enemy_sprite.position = Vector2(size.x * 0.66, size.y * 0.49).round()
 	path_rock_enemy_sprite.position = Vector2(size.x * 0.76, size.y * 0.36).round()
@@ -276,6 +295,8 @@ func _sync_actor_visuals() -> void:
 	path_puppet_enemy_sprite.position = Vector2(size.x * 0.81, size.y * 0.31).round()
 	ferryman_sprite.position = Vector2(size.x * 0.41, size.y * 0.66).round()
 	ferryman_sprite.set_motion(Vector2.RIGHT, false)
+	herbkeeper_sprite.position = Vector2(size.x * 0.75, size.y * 0.66).round()
+	herbkeeper_sprite.set_motion(Vector2.LEFT, false)
 	player_sprite.visible = true
 	companion_sprite.visible = true
 	match phase_id:
@@ -324,6 +345,7 @@ func _apply_depth_sort() -> void:
 	path_moss_enemy_sprite.z_index = depth_for_y(path_moss_enemy_sprite.position.y)
 	path_puppet_enemy_sprite.z_index = depth_for_y(path_puppet_enemy_sprite.position.y)
 	ferryman_sprite.z_index = depth_for_y(ferryman_sprite.position.y)
+	herbkeeper_sprite.z_index = depth_for_y(herbkeeper_sprite.position.y)
 
 
 func _sync_occluders(size: Vector2) -> void:
@@ -425,12 +447,16 @@ func _draw_riverbank() -> void:
 	_draw_spring_gate(Vector2(size.x * 0.88, size.y * 0.18))
 	_draw_ferry_watermark(Vector2(size.x * 0.43, size.y * 0.42), discoveries.has("ferry_watermark"))
 	_draw_ferryman_water_gauge(Vector2(size.x * 0.385, size.y * 0.66), ferryman_response)
+	if basket_response == "return":
+		_draw_abandoned_basket(Vector2(size.x * 0.79, size.y * 0.68), true, true)
 	if not discoveries.has("ferry_watermark"):
 		_draw_interaction_marker(Vector2(size.x * 0.43, size.y * 0.42), nearby_action == "inspect_ferry_watermark")
 	if not talked_to_companion:
 		_draw_interaction_marker(Vector2(size.x * 0.53, size.y * 0.51), nearby_action == "talk_to_companion")
 	if ferryman_response == "unanswered":
 		_draw_interaction_marker(Vector2(size.x * 0.41, size.y * 0.66), nearby_action == "talk_to_ferryman")
+	if discoveries.has("abandoned_basket") and basket_response == "unanswered":
+		_draw_interaction_marker(Vector2(size.x * 0.75, size.y * 0.66), nearby_action == "talk_to_herbkeeper")
 	if not gathered_moonleaf:
 		_draw_interaction_marker(Vector2(size.x * 0.69, size.y * 0.62), nearby_action == "gather_moonleaf")
 	_draw_interaction_marker(Vector2(size.x * 0.88, size.y * 0.18), nearby_action == "enter_spring")
@@ -481,7 +507,8 @@ func _draw_mountain_path() -> void:
 	_draw_cave(Vector2(size.x * 0.84, size.y * 0.12), Vector2(128, 90))
 	_draw_spring_gate(Vector2(size.x * 0.10, size.y * 0.68))
 	_draw_spring_seam(Vector2(size.x * 0.40, size.y * 0.30), discoveries.has("spring_seam"))
-	_draw_abandoned_basket(Vector2(size.x * 0.68, size.y * 0.60), discoveries.has("abandoned_basket"))
+	if basket_response != "return":
+		_draw_abandoned_basket(Vector2(size.x * 0.68, size.y * 0.60), discoveries.has("abandoned_basket"), basket_response == "trail")
 	_draw_interaction_marker(Vector2(size.x * 0.10, size.y * 0.68), nearby_action == "return_to_ferry")
 	_draw_interaction_marker(Vector2(size.x * 0.43, size.y * 0.57), nearby_action == "inspect_path_marker")
 	if not discoveries.has("spring_seam"):
@@ -664,7 +691,7 @@ func _draw_spring_seam(center: Vector2, discovered: bool) -> void:
 	draw_line(center + Vector2(0, -10), center + Vector2(18, 14), vein_color.darkened(0.08), 2.0)
 
 
-func _draw_abandoned_basket(center: Vector2, discovered: bool) -> void:
+func _draw_abandoned_basket(center: Vector2, discovered: bool, repaired: bool = false) -> void:
 	var basket_color := Color("927a52") if discovered else Color("b28c55")
 	draw_rect(Rect2(center + Vector2(-18, -10), Vector2(36, 22)), basket_color)
 	for offset in [-10.0, 0.0, 10.0]:
@@ -672,6 +699,9 @@ func _draw_abandoned_basket(center: Vector2, discovered: bool) -> void:
 	draw_arc(center + Vector2(0, -10), 15.0, PI, TAU, 12, basket_color.darkened(0.2), 3.0)
 	if discovered:
 		draw_line(center + Vector2(10, -18), center + Vector2(21, -27), FRESH_CELADON.darkened(0.15), 3.0)
+	if repaired:
+		draw_line(center + Vector2(-16, -5), center + Vector2(16, 7), SPIRIT_GOLD.darkened(0.18), 2.0)
+		draw_circle(center + Vector2(0, -27), 4.0, FRESH_CELADON)
 
 
 func _draw_interaction_marker(center: Vector2, active: bool) -> void:

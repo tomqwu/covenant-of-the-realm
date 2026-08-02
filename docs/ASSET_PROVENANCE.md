@@ -18,7 +18,7 @@ by `scripts/setup_rpg`.
 
 ## 2026-08-02 · Deterministic character and ferry pixel atlases
 
-`rpg/assets/pixel/protagonist.png`, `yanqing.png`, and `liangshu.png` are original 128×224 RGBA atlases generated
+`rpg/assets/pixel/protagonist.png`, `yanqing.png`, `liangshu.png`, and `huishen.png` are original 128×224 RGBA atlases generated
 by the project-authored `rpg/tools/generate_pixel_assets.gd`. No model, input image, stock asset,
 external palette, commercial sprite, font, or third-party art library is used. The generator draws
 two idle and two walking frames in four directions from rectangles and the confirmed project
@@ -26,6 +26,8 @@ palette. `asset_contract.json` records the 32×56 frame, foot anchor, collision,
 filter, and pixel-snap contract; `scripts/check_rpg_assets.py` verifies the metadata and PNG headers.
 梁叔's broad reed hat, measuring staff, rain-dark cape, and short grey beard are likewise drawn
 only by that deterministic project-local generator; no external character or image input was used.
+蕙婶's head wrap, low bun, leaf pin, woven apron, and carrying basket use the same deterministic
+rectangles-and-palette pipeline without an external character, costume, or image reference.
 
 The same generator creates `ferry_tiles.png`, an original 256×32 RGBA strip containing eight
 32 px ground tiles for grass, water, bank, road, moonleaf field, stone, deep grass, and water
@@ -93,7 +95,7 @@ license review, in-engine readability validation, and a new provenance entry.
 
 ## 2026-08-01 · Godot functional-art UI screenshots
 
-The five PNG files under `docs/concepts/gameplay-ui-v1/` are direct screenshots of the project's
+The PNG set under `docs/concepts/gameplay-ui-v1/` consists of direct screenshots of the project's
 Godot 4.7.1 functional-art graybox. The scene is drawn at runtime from project-authored GDScript,
 validated original story content, Godot's default font behavior, and the project's v0.2 palette.
 No generated concept image, external image, font, sound, map, UI kit, or plugin is embedded in

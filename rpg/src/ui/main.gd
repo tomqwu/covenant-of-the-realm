@@ -234,9 +234,10 @@ func _render(event_ids: Array) -> void:
 		snapshot["enemy_id"],
 		snapshot["moonleaf_method"],
 		snapshot["discoveries"],
-		snapshot["ferryman_response"]
+		snapshot["ferryman_response"],
+		snapshot["basket_response"]
 	)
-	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"], snapshot["discoveries"], snapshot["ferryman_response"])
+	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"], snapshot["discoveries"], snapshot["ferryman_response"], snapshot["basket_response"])
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	map_canvas.show_battle_feedback(
 		event_ids,
@@ -350,7 +351,11 @@ func _chapter_summary(snapshot: Dictionary) -> String:
 		"repair": "水尺扶正",
 		"record": "涨时入簿",
 	}.get(snapshot["ferryman_response"], "未问守堤")
-	return "本节结算　%s · %s · %s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, discovery_text, ferryman_text, response_text]
+	var basket_text: String = {
+		"return": "药篓归圃",
+		"trail": "药篓留山",
+	}.get(snapshot["basket_response"], "药篓未安置")
+	return "本节结算　%s · %s · %s · %s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, discovery_text, ferryman_text, basket_text, response_text]
 
 
 func _build_actions(node: Dictionary) -> void:
@@ -439,6 +444,9 @@ func _on_action(action_id: String) -> void:
 	if action_id == JourneyStateScript.TALK_TO_FERRYMAN and journey.ferryman_response == JourneyStateScript.FERRYMAN_UNANSWERED:
 		_start_ferryman_dialogue()
 		return
+	if action_id == JourneyStateScript.TALK_TO_HERBKEEPER and journey.basket_response == JourneyStateScript.BASKET_UNANSWERED:
+		_start_herbkeeper_dialogue()
+		return
 	if action_id == JourneyStateScript.REVIEW_JOURNEY and journey.phase_id() == "complete":
 		_start_chapter_epilogue()
 		return
@@ -459,7 +467,7 @@ func move_player(direction: Vector2, delta: float) -> Vector2:
 	var previous_position: Vector2 = exploration.player_position
 	exploration.move(direction, delta)
 	map_canvas.set_player_motion(direction if not exploration.player_position.is_equal_approx(previous_position) else Vector2.ZERO)
-	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion, journey.discoveries, journey.ferryman_response)
+	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion, journey.discoveries, journey.ferryman_response, journey.basket_response)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	if nearby_action_id != previous_action:
 		_build_actions(content["nodes"][journey.phase_id()])
@@ -475,6 +483,8 @@ func interact() -> Dictionary:
 		return _start_companion_dialogue()
 	if nearby_action_id == JourneyStateScript.TALK_TO_FERRYMAN and journey.ferryman_response == JourneyStateScript.FERRYMAN_UNANSWERED:
 		return _start_ferryman_dialogue()
+	if nearby_action_id == JourneyStateScript.TALK_TO_HERBKEEPER and journey.basket_response == JourneyStateScript.BASKET_UNANSWERED:
+		return _start_herbkeeper_dialogue()
 	var result: Dictionary = journey.choose(nearby_action_id)
 	if result["ok"]:
 		_sync_exploration_after_action(nearby_action_id, result["events"])
@@ -835,6 +845,9 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 			DialogueStateScript.FERRYMAN_BRIEFING:
 				if restored_journey.phase_id() != "riverbank" or restored_journey.ferryman_response != JourneyStateScript.FERRYMAN_UNANSWERED:
 					return {"ok": false, "reason": "存档中的对话与剧情进度不一致"}
+			DialogueStateScript.HERBKEEPER_BASKET:
+				if restored_journey.phase_id() != "riverbank" or not restored_journey.discoveries.has(JourneyStateScript.DISCOVERY_ABANDONED_BASKET) or restored_journey.basket_response != JourneyStateScript.BASKET_UNANSWERED:
+					return {"ok": false, "reason": "存档中的对话与剧情进度不一致"}
 		var dialogue_data: Dictionary = content.get("dialogues", {}).get(restored_dialogue.dialogue_id, {})
 		if dialogue_data.is_empty() or restored_dialogue.line_index > dialogue_data.get("lines", []).size():
 			return {"ok": false, "reason": "存档中的对话位置无效"}
@@ -872,6 +885,20 @@ func _start_ferryman_dialogue() -> Dictionary:
 		or not dialogue.start(DialogueStateScript.FERRYMAN_BRIEFING)
 	):
 		return {"ok": false, "events": ["ferryman_already_answered"], "snapshot": journey.snapshot()}
+	dialogue_history_visible = false
+	_render_dialogue_overlay()
+	_save_game()
+	return {"ok": true, "events": ["dialogue_started"], "snapshot": journey.snapshot()}
+
+
+func _start_herbkeeper_dialogue() -> Dictionary:
+	if (
+		journey.phase_id() != "riverbank"
+		or not journey.discoveries.has(JourneyStateScript.DISCOVERY_ABANDONED_BASKET)
+		or journey.basket_response != JourneyStateScript.BASKET_UNANSWERED
+		or not dialogue.start(DialogueStateScript.HERBKEEPER_BASKET)
+	):
+		return {"ok": false, "events": ["basket_unavailable"], "snapshot": journey.snapshot()}
 	dialogue_history_visible = false
 	_render_dialogue_overlay()
 	_save_game()
@@ -927,6 +954,8 @@ func _choose_dialogue_response(response_id: String) -> void:
 			result = journey.complete_epilogue(response_id)
 		DialogueStateScript.FERRYMAN_BRIEFING:
 			result = journey.complete_ferryman_dialogue(response_id)
+		DialogueStateScript.HERBKEEPER_BASKET:
+			result = journey.complete_basket_dialogue(response_id)
 		_:
 			return
 	if not result["ok"]:
@@ -983,7 +1012,7 @@ func _render_dialogue_overlay() -> void:
 	var line: Dictionary = lines[dialogue.line_index]
 	var speaker := str(line.get("speaker", ""))
 	dialogue_speaker_label.text = speaker
-	_set_dialogue_portrait("protagonist" if speaker == "你" else "yanqing" if speaker == "砚青" else "liangshu" if speaker == "梁叔" else "journal")
+	_set_dialogue_portrait("protagonist" if speaker == "你" else "yanqing" if speaker == "砚青" else "liangshu" if speaker == "梁叔" else "huishen" if speaker == "蕙婶" else "journal")
 	dialogue_label.text = _resolved_dialogue_text(str(line.get("text", "")))
 	dialogue_label.visible_characters = 0
 	dialogue_reveal_elapsed = 0.0
@@ -1042,6 +1071,7 @@ func _set_dialogue_portrait(portrait_id: String) -> void:
 		"protagonist": "行旅者 · 初入山河",
 		"yanqing": "砚青 · 照禾药师",
 		"liangshu": "梁叔 · 照禾守堤人",
+		"huishen": "蕙婶 · 照禾药圃守",
 		"journal": "行旅札记 · 最近四句",
 	}.get(stable_id, "行旅札记 · 最近四句")
 
@@ -1062,11 +1092,16 @@ func _resolved_dialogue_text(source_text: String) -> String:
 		"repair": "梁叔的水尺已经重新立稳",
 		"record": "梁叔把你记下的涨水时辰夹进了守堤簿",
 	}.get(snapshot["ferryman_response"], "渡口那根水尺仍等着人去看")
+	var basket_reflection: String = {
+		"return": "蕙婶已把公用药篓挂回圃门",
+		"trail": "补好提绳的药篓仍在山道等后来人",
+	}.get(snapshot["basket_response"], "那只山道药篓还没有找到下一处归宿")
 	return source_text.replace("{harvest_reflection}", harvest_reflection) \
 		.replace("{discovery_reflection}", discovery_reflection) \
 		.replace("{setback_reflection}", setback_reflection) \
 		.replace("{companion_reflection}", companion_reflection) \
-		.replace("{ferryman_reflection}", ferryman_reflection)
+		.replace("{ferryman_reflection}", ferryman_reflection) \
+		.replace("{basket_reflection}", basket_reflection)
 
 
 func _can_open_journal() -> bool:
@@ -1127,6 +1162,10 @@ func _render_journal() -> void:
 		var side_id := "ferryman_%s" % snapshot["ferryman_response"]
 		var side_entry: Dictionary = content.get("journal_side_entries", {}).get(side_id, {})
 		lines.append("◆ %s\n%s" % [side_entry.get("title", "守堤小记"), side_entry.get("summary", "这段守堤记录暂时无法辨认。")])
+	if snapshot["basket_response"] != JourneyStateScript.BASKET_UNANSWERED:
+		var basket_side_id := "basket_%s" % snapshot["basket_response"]
+		var basket_entry: Dictionary = content.get("journal_side_entries", {}).get(basket_side_id, {})
+		lines.append("◆ %s\n%s" % [basket_entry.get("title", "药篓小记"), basket_entry.get("summary", "这段药篓去向暂时无法辨认。")])
 	journal_entries_label.text = "\n\n".join(lines)
 
 
@@ -1141,6 +1180,11 @@ func journal_contract() -> Dictionary:
 		var side_entries: Dictionary = content.get("journal_side_entries", {})
 		if side_entries.has(side_id):
 			unlocked_titles.append(str(side_entries[side_id].get("title", "")))
+	if journey.basket_response != JourneyStateScript.BASKET_UNANSWERED:
+		var basket_side_id := "basket_%s" % journey.basket_response
+		var basket_side_entries: Dictionary = content.get("journal_side_entries", {})
+		if basket_side_entries.has(basket_side_id):
+			unlocked_titles.append(str(basket_side_entries[basket_side_id].get("title", "")))
 	return {
 		"visible": journal_overlay.visible,
 		"discovered_count": journey.discoveries.size(),

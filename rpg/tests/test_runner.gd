@@ -32,6 +32,7 @@ func _run() -> void:
 	_test_companion_trail()
 	_test_dialogue_portraits()
 	_test_ferryman_side_story()
+	_test_basket_side_story()
 	_test_environment_discoveries()
 	_test_gathering_and_gate()
 	_test_combat_paths()
@@ -60,6 +61,8 @@ func _test_initial_state() -> void:
 	_expect_true(state.available_actions().has("inspect_ferry_watermark"), "初始渡口包含可选环境调查")
 	_expect_true(state.available_actions().has("talk_to_ferryman"), "初始渡口包含可选守堤交谈")
 	_expect_equal(state.snapshot()["ferryman_response"], "unanswered", "新旅程不替玩家决定守堤办法")
+	_expect_equal(state.snapshot()["basket_response"], "unanswered", "新旅程不替玩家决定公用药篓去向")
+	_expect_false(state.available_actions().has("talk_to_herbkeeper"), "发现山道药篓前不会提前出现归还行动")
 	_expect_equal(state.snapshot()["discoveries"], [], "新旅程没有伪造已读见闻")
 	_expect_equal(state.snapshot()["moonleaf_method"], "unselected", "采集前没有伪造取药方式")
 	_expect_true(state.available_actions().has("enter_spring"), "初始可尝试进山")
@@ -134,6 +137,9 @@ func _test_exploration_rules() -> void:
 	_expect_true(state.restore({"map_id": "cangquan_path", "player_x": 0.68, "player_y": 0.60}), "弃置药篓坐标可达")
 	_expect_equal(state.interaction_action(true, true), "inspect_abandoned_basket", "未读药篓提供近距离调查")
 	_expect_equal(state.interaction_action(true, true, ["abandoned_basket"]), "", "已读药篓不重复占用交互")
+	_expect_true(state.restore({"map_id": "zhaohe_ferry", "player_x": 0.75, "player_y": 0.66}), "药圃守蕙婶坐标可达")
+	_expect_equal(state.interaction_action(true, true, ["abandoned_basket"], "repair"), "talk_to_herbkeeper", "带回药篓后靠近蕙婶出现交还行动")
+	_expect_equal(state.interaction_action(true, true, ["abandoned_basket"], "repair", "return"), "", "药篓安置后不重复占用交互")
 	_expect_true(state.restore({"map_id": "cangquan_path", "player_x": 0.80, "player_y": 0.25}), "失衡石傀坐标可达")
 	_expect_equal(state.interaction_action(true, true), "approach_stone_puppet", "失衡石傀有独立接近行动")
 
@@ -184,6 +190,12 @@ func _test_state_restore() -> void:
 	var invalid_ferryman: Dictionary = JourneyStateScript.new().snapshot()
 	invalid_ferryman["ferryman_response"] = "take_money"
 	_expect_false(restored.restore(invalid_ferryman), "未知守堤回应不能进入持久规则状态")
+	var invalid_basket: Dictionary = JourneyStateScript.new().snapshot()
+	invalid_basket["basket_response"] = "keep_private"
+	_expect_false(restored.restore(invalid_basket), "未知药篓回应不能进入持久规则状态")
+	var impossible_basket: Dictionary = JourneyStateScript.new().snapshot()
+	impossible_basket["basket_response"] = "return"
+	_expect_false(restored.restore(impossible_basket), "没有发现公用印记时不能伪造药篓已安置")
 
 
 func _test_dialogue_state() -> void:
@@ -216,6 +228,13 @@ func _test_dialogue_state() -> void:
 	var restored_ferryman_dialogue = DialogueStateScript.new()
 	_expect_true(restored_ferryman_dialogue.restore(ferryman_dialogue_snapshot), "守堤对话可在选择前恢复")
 	_expect_equal(restored_ferryman_dialogue.dialogue_id, "ferryman_briefing", "守堤恢复保持稳定对话标识")
+	_expect_true(restored_ferryman_dialogue.finish(), "守堤回应后释放结构化对话")
+	_expect_true(restored_ferryman_dialogue.start("herbkeeper_basket"), "药篓支线复用可恢复结构化对话")
+	_expect_true(restored_ferryman_dialogue.advance(4), "蕙婶对话可逐句推进")
+	var basket_dialogue_snapshot: Dictionary = restored_ferryman_dialogue.snapshot()
+	var restored_basket_dialogue = DialogueStateScript.new()
+	_expect_true(restored_basket_dialogue.restore(basket_dialogue_snapshot), "药篓对话可在选择前恢复")
+	_expect_equal(restored_basket_dialogue.dialogue_id, "herbkeeper_basket", "药篓恢复保持稳定对话标识")
 	_expect_true(restored.restore({"active": true, "dialogue_id": "companion_briefing", "line_index": 8}), "规则状态允许未来内容扩充到第八行")
 	_expect_false(restored.restore({"active": true, "dialogue_id": "companion_briefing", "line_index": 65}), "异常过大的对话行号被拒绝")
 	_expect_false(restored.restore({"active": false, "dialogue_id": "companion_briefing", "line_index": 0}), "空闲状态不能保留对话标识")
@@ -232,7 +251,7 @@ func _test_versioned_save() -> void:
 	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
 	var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(loaded["ok"], "版本化存档读取成功")
-	_expect_equal(loaded["data"]["save_version"], 11.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["save_version"], 12.0, "存档声明当前版本")
 	_expect_equal(loaded["data"]["journey"]["moonleaf_method"], "whole_plant", "新版存档保留取药方式")
 	_expect_equal(loaded["data"]["journey"]["enemy_id"], "rock_armor_young", "新版存档声明稳定敌人标识")
 	_expect_equal(loaded["data"]["exploration"]["map_id"], "zhaohe_ferry", "新版存档声明稳定地图标识")
@@ -264,7 +283,7 @@ func _test_versioned_save() -> void:
 	var migrated: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated["ok"], "v1 存档可迁移到当前版本")
 	_expect_equal(migrated["migrated_from_version"], 1, "迁移结果声明来源版本")
-	_expect_equal(migrated["data"]["save_version"], 11, "迁移后的内存快照升级为 v11")
+	_expect_equal(migrated["data"]["save_version"], 12, "迁移后的内存快照升级为 v12")
 	_expect_equal(migrated["data"]["journey"]["enemy_id"], "rock_armor_young", "旧版迁移补入默认敌人标识")
 	_expect_equal(migrated["data"]["exploration"]["map_id"], "zhaohe_ferry", "v1 迁移补入照禾渡口地图标识")
 	_expect_equal(migrated["data"]["journey"]["companion_supports"], 1, "迁移补入同伴援护资源")
@@ -276,6 +295,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated["data"]["journey"]["moonleaf_method"], "whole_plant", "旧版持药存档迁移为保守整株记录")
 	_expect_equal(migrated["data"]["journey"]["discoveries"], [], "旧版存档不虚构环境见闻")
 	_expect_equal(migrated["data"]["journey"]["ferryman_response"], "unanswered", "旧版存档不虚构守堤选择")
+	_expect_equal(migrated["data"]["journey"]["basket_response"], "unanswered", "旧版存档不虚构药篓去向")
 	_expect_equal(migrated["data"]["dialogue"], DialogueStateScript.default_snapshot(), "旧版迁移补入空闲对话状态")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "迁移后可写回新版存档")
 	var version_two_journey: Dictionary = journey.snapshot().duplicate(true)
@@ -405,6 +425,20 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v10["migrated_from_version"], 10, "v10 迁移声明来源版本")
 	_expect_equal(migrated_v10["data"]["journey"]["ferryman_response"], "unanswered", "v10 迁移不替玩家作守堤选择")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v10 迁移后可写回新版存档")
+	var version_eleven_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_eleven_journey.erase("basket_response")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 11,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": version_eleven_journey,
+		"exploration": exploration.snapshot(),
+		"dialogue": DialogueStateScript.default_snapshot(),
+	}))
+	var migrated_v11: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v11["ok"], "v11 守堤存档可迁移到药篓选择版本")
+	_expect_equal(migrated_v11["migrated_from_version"], 11, "v11 迁移声明来源版本")
+	_expect_equal(migrated_v11["data"]["journey"]["basket_response"], "unanswered", "v11 迁移不替玩家作药篓选择")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v11 迁移后可写回新版存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -425,7 +459,7 @@ func _test_versioned_save() -> void:
 	var unknown_map_exploration := exploration.snapshot().duplicate(true)
 	unknown_map_exploration["map_id"] = "unreleased_secret_realm"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 11,
+		"save_version": 12,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": unknown_map_exploration,
@@ -433,7 +467,7 @@ func _test_versioned_save() -> void:
 	}))
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_map", "未知地图不会恢复到错误场景")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 11,
+		"save_version": 12,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": exploration.snapshot(),
@@ -443,7 +477,7 @@ func _test_versioned_save() -> void:
 	var unknown_enemy_journey: Dictionary = journey.snapshot().duplicate(true)
 	unknown_enemy_journey["enemy_id"] = "unreleased_enemy"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 11,
+		"save_version": 12,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": unknown_enemy_journey,
 		"exploration": exploration.snapshot(),
@@ -552,9 +586,11 @@ func _test_dialogue_portraits() -> void:
 	_expect_equal(portrait.visual_contract()["portrait_id"], "yanqing", "砚青头像与主角拥有不同表现标识")
 	_expect_true(portrait.set_portrait("liangshu"), "纸绘头像接受稳定梁叔标识")
 	_expect_equal(portrait.visual_contract()["palette"]["liangshu"], Color("355e63"), "梁叔头像使用守堤冷青识别色")
+	_expect_true(portrait.set_portrait("huishen"), "纸绘头像接受稳定蕙婶标识")
+	_expect_equal(portrait.visual_contract()["palette"]["huishen"], Color("8ebb83").darkened(0.12), "蕙婶头像使用明快药圃青识别色")
 	_expect_false(portrait.set_portrait("licensed_character"), "未知或外部人物标识不会直接进入头像表现")
 	_expect_equal(portrait.visual_contract()["portrait_id"], "journal", "未知头像安全回退为无人物的行旅札记")
-	_expect_equal(portrait.visual_contract()["supported_ids"].size(), 4, "切片只声明四个有限头像表现标识")
+	_expect_equal(portrait.visual_contract()["supported_ids"].size(), 5, "切片只声明五个有限头像表现标识")
 	portrait.free()
 
 
@@ -582,6 +618,50 @@ func _test_ferryman_side_story() -> void:
 	record_state.choose("gather_moonleaf")
 	record_state.choose("enter_spring")
 	_expect_false(record_state.complete_ferryman_dialogue("repair")["ok"], "离开渡口不能远程改变守堤选择")
+
+
+func _test_basket_side_story() -> void:
+	var unavailable = JourneyStateScript.new()
+	_expect_false(unavailable.complete_basket_dialogue("return")["ok"], "发现山道药篓前不能远程决定去向")
+	_expect_equal(unavailable.complete_basket_dialogue("return")["events"], ["basket_unavailable"], "未发现药篓返回稳定不可用事件")
+
+	var returned = _basket_ready_state()
+	_expect_true(returned.available_actions().has("talk_to_herbkeeper"), "带药篓回渡口后出现蕙婶交谈行动")
+	var before_return: Dictionary = returned.snapshot()
+	_expect_false(returned.complete_basket_dialogue("keep_private")["ok"], "私占等未知药篓选择被规则拒绝")
+	_expect_equal(returned.snapshot(), before_return, "非法药篓选择不部分修改状态")
+	var return_result: Dictionary = returned.complete_basket_dialogue("return")
+	_expect_true(return_result["ok"], "公用药篓可归还渡口药圃")
+	_expect_equal(return_result["events"], ["basket_return"], "归圃返回稳定语义事件")
+	var after_return: Dictionary = returned.snapshot()
+	for key in before_return:
+		if key != "basket_response":
+			_expect_equal(after_return[key], before_return[key], "归还药篓不暗中奖励或修改 %s" % key)
+	_expect_false(returned.available_actions().has("talk_to_herbkeeper"), "药篓安置后交谈行动隐藏")
+	_expect_false(returned.complete_basket_dialogue("trail")["ok"], "药篓去向不能重复选择")
+	var restored_return = JourneyStateScript.new()
+	_expect_true(restored_return.restore(returned.snapshot()), "归圃结果可从规则快照恢复")
+	_expect_equal(restored_return.basket_response, "return", "恢复保持药篓归圃结果")
+
+	var trailed = _basket_ready_state()
+	var before_trail: Dictionary = trailed.snapshot()
+	var trail_result: Dictionary = trailed.complete_basket_dialogue("trail")
+	_expect_true(trail_result["ok"], "公用药篓可补绳后留在山道")
+	_expect_equal(trail_result["events"], ["basket_trail"], "留山返回稳定语义事件")
+	var after_trail: Dictionary = trailed.snapshot()
+	for key in before_trail:
+		if key != "basket_response":
+			_expect_equal(after_trail[key], before_trail[key], "留山药篓不暗中奖励或修改 %s" % key)
+
+
+func _basket_ready_state():
+	var state = JourneyStateScript.new()
+	state.choose("talk_to_companion")
+	state.choose("gather_moonleaf")
+	state.choose("enter_spring")
+	state.choose("inspect_abandoned_basket")
+	state.choose("return_to_ferry")
+	return state
 
 
 func _test_environment_discoveries() -> void:
@@ -935,6 +1015,10 @@ func _test_scene_smoke() -> void:
 	var ferryman_sprite: AnimatedSprite2D = instance.get_node("%FerrymanSprite")
 	_expect_true(ferryman_sprite.visible, "梁叔在渡口以独立地图角色出现")
 	_expect_equal(ferryman_sprite.animation_contract()["frame_size"], Vector2(32, 56), "守堤人复用固定人物动画合同")
+	var herbkeeper_sprite: AnimatedSprite2D = instance.get_node("%HerbkeeperSprite")
+	_expect_true(herbkeeper_sprite.visible, "蕙婶在渡口药圃旁以独立地图角色出现")
+	_expect_equal(herbkeeper_sprite.animation_contract()["frame_size"], Vector2(32, 56), "药圃守复用固定人物动画合同")
+	_expect_equal(herbkeeper_sprite.animation, &"idle_left", "蕙婶以朝向渡口主路的稳定待机帧出现")
 	var initial_ferryman_visual: Dictionary = instance.get_node("%MapCanvas").ferryman_visual_contract()
 	_expect_equal(initial_ferryman_visual["response"], "unanswered", "未交谈时地图不替玩家选择守堤处理")
 	_expect_false(initial_ferryman_visual["gauge_upright"], "初始歪斜水尺可从地图辨认")
@@ -970,6 +1054,7 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%MapCanvas").depth_for_y(120.0) < instance.get_node("%MapCanvas").depth_for_y(520.0), "脚底越靠下显示深度越靠前")
 	_expect_equal(ferry_occlusion["player_depth"], instance.get_node("%MapCanvas").depth_for_y(player_sprite.position.y), "主角显示深度来自脚底 Y 值")
 	_expect_equal(ferry_occlusion["ferryman_depth"], instance.get_node("%MapCanvas").depth_for_y(ferryman_sprite.position.y), "守堤人显示深度来自脚底 Y 值")
+	_expect_equal(ferry_occlusion["herbkeeper_depth"], instance.get_node("%MapCanvas").depth_for_y(herbkeeper_sprite.position.y), "药圃守显示深度来自脚底 Y 值")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "riverbank", "初始地图使用渡口画面")
 	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("与渡碑旁"), "初始目标引导同伴交谈")
 	_expect_true(instance.get_node("%InputHint").text.contains("WASD"), "探索显示键盘与手柄输入提示")
@@ -1101,7 +1186,7 @@ func _test_scene_smoke() -> void:
 	_expect_true(repaired_visual["gauge_upright"], "扶尺后地图永久显示直立水尺")
 	_expect_false(repaired_visual["record_tag"], "扶尺结果不误画记时纸签")
 	_expect_equal(_action_button_count(instance), 0, "完成守堤选择后交互行动隐藏")
-	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["save_version"], 11.0, "守堤选择写入存档 v11")
+	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["save_version"], 12.0, "守堤选择写入当前存档 v12")
 	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["journey"]["ferryman_response"], "repair", "守堤选择立即自动保存")
 	instance.open_journal()
 	await process_frame
@@ -1196,6 +1281,50 @@ func _test_scene_smoke() -> void:
 	_expect_equal(discovery_visual["read_count"], 3, "地图表现呈现三处已读环境见闻")
 	_expect_equal(discovery_visual["total"], 3, "本章见闻总数有稳定合同")
 	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["journey"]["discoveries"].size(), 3, "山道见闻立即自动保存")
+	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.10, "player_y": 0.68}), "场景测试带药篓到达山道退路")
+	instance._render([])
+	await _press_action(instance, "沿石阶返回渡口")
+	transition.finish()
+	_expect_equal(instance.journey.phase_id(), "riverbank", "药篓发现后可返回渡口完成支线")
+	var awaiting_basket_visual: Dictionary = instance.get_node("%MapCanvas").basket_visual_contract()
+	_expect_true(awaiting_basket_visual["herbkeeper_visible"], "返回渡口后蕙婶地图角色可见")
+	_expect_equal(awaiting_basket_visual["response"], "unanswered", "交谈前地图不替玩家决定药篓去向")
+	var expected_herbkeeper_position := Vector2(instance.get_node("%MapCanvas").size.x * 0.75, instance.get_node("%MapCanvas").size.y * 0.66).round()
+	_expect_equal(awaiting_basket_visual["herbkeeper_position"], expected_herbkeeper_position, "蕙婶脚底使用可达且整数对齐的位置")
+	_expect_true(instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.75, "player_y": 0.66}), "场景测试到达蕙婶身旁")
+	instance._render([])
+	await process_frame
+	_expect_equal(_action_button_count(instance), 1, "蕙婶身旁只显示药篓安置行动")
+	_expect_true(instance.interact()["ok"], "近距离语义交互开启药篓支线")
+	_expect_equal(instance.dialogue.dialogue_id, "herbkeeper_basket", "场景启动稳定药篓对话标识")
+	_expect_equal(instance.get_node("%DialoguePortrait").visual_contract()["portrait_id"], "huishen", "蕙婶台词显示独立纸绘头像")
+	_expect_equal(instance.get_node("%DialoguePortraitLabel").text, "蕙婶 · 照禾药圃守", "蕙婶头像保留中文身份说明")
+	_expect_true(instance.get_node("%DialogueLabel").text.contains("双叶印"), "药篓对话回扣已调查的公共印记")
+	instance.skip_dialogue_to_response()
+	await process_frame
+	_expect_equal(_dialogue_choice_count(instance), 2, "药篓支线提供两个无战力差异的选择")
+	_expect_true(instance.get_node("%DialogueLabel").text.contains("不改变战斗强度"), "药篓选择提示明确无隐藏战斗奖励")
+	_expect_equal(instance._dialogue_choice_event("return"), "basket_return", "归圃内容事件与规则映射一致")
+	await _press_dialogue_choice(instance, "把药篓带回圃里。")
+	_expect_equal(instance.journey.basket_response, "return", "场景选择归圃进入持久规则状态")
+	var returned_basket_visual: Dictionary = instance.get_node("%MapCanvas").basket_visual_contract()
+	_expect_true(returned_basket_visual["returned_to_ferry"], "归圃后渡口显示公用药篓余留")
+	_expect_false(returned_basket_visual["repaired_on_trail"], "归圃结果不误画留山药篓")
+	_expect_equal(_action_button_count(instance), 0, "药篓安置后近距离行动隐藏")
+	var basket_save: Dictionary = SaveGameScript.read(TEST_SCENE_SAVE_PATH)
+	_expect_equal(basket_save["data"]["save_version"], 12.0, "药篓选择写入当前存档 v12")
+	_expect_equal(basket_save["data"]["journey"]["basket_response"], "return", "药篓选择立即自动保存")
+	instance.open_journal()
+	await process_frame
+	var basket_journal: Dictionary = instance.journal_contract()
+	_expect_true(basket_journal["unlocked_titles"].has("回到药圃的公用篓"), "归圃结果进入内容驱动札记")
+	_expect_true(basket_journal["entries_text"].contains("下一位采药人"), "药篓札记保留公共后果")
+	instance.close_journal()
+	_expect_true(instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.88, "player_y": 0.18}), "完成药篓支线后再次到达山门")
+	instance._render([])
+	await _press_action(instance, "进入藏泉山道")
+	transition.finish()
+	_expect_equal(instance.journey.phase_id(), "mountain_path", "药篓支线不会锁死主线或山道重返")
 	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.43, "player_y": 0.57}), "场景测试移动到旧石标")
 	var resets_before_restore := int(instance.get_node("%MapCanvas").companion_follow_contract()["reset_count"])
 	instance._render([])
@@ -1266,6 +1395,7 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "complete", "结算切换明亮突破画面")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("本节结算"), "完成画面显示战绩结算")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("水尺扶正"), "结算回显本轮守堤选择")
+	_expect_true(instance.get_node("%DescriptionLabel").text.contains("药篓归圃"), "结算回显本轮药篓去向")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("依旧规取药"), "结算回显本轮采集选择")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("见闻 3/3"), "结算回显环境探索完成度")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("经历 1 次"), "结算记录实际撤退次数")
@@ -1279,6 +1409,7 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%DialogueLabel").text.contains("依旧规只取了一株"), "余波回显本轮整株采集方式")
 	_expect_true(instance.get_node("%DialogueLabel").text.contains("沿途3处生活痕迹"), "余波回显本轮见闻数量")
 	_expect_true(instance._resolved_dialogue_text("{ferryman_reflection}").contains("重新立稳"), "余波回显扶尺结果")
+	_expect_true(instance._resolved_dialogue_text("{basket_reflection}").contains("挂回圃门"), "余波回显药篓归圃结果")
 	_expect_equal(instance.get_node("%DialoguePortrait").visual_contract()["portrait_id"], "yanqing", "余波首句显示砚青纸绘头像")
 	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["dialogue"]["dialogue_id"], "chapter_epilogue", "余波开启后立即保存结构化位置")
 	_expect_equal(instance._dialogue_choice_event("record"), "epilogue_recorded", "余波回应内容事件与规则映射一致")
@@ -1341,6 +1472,7 @@ func _test_scene_smoke() -> void:
 	_expect_equal(resumed.exploration.player_position, ExplorationStateScript.START_POSITION, "重游重置玩家位置")
 	_expect_equal(resumed.journey.discoveries, [], "重游清空上一轮环境见闻")
 	_expect_equal(resumed.journey.ferryman_response, "unanswered", "重游清空上一轮守堤选择")
+	_expect_equal(resumed.journey.basket_response, "unanswered", "重游清空上一轮药篓选择")
 	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["journey"]["phase"], "riverbank", "重游结果写入存档")
 	resumed.journey.setbacks = 3
 	resumed.return_to_title()

@@ -33,6 +33,11 @@
           "possible_targets": ["riverbank"]
         },
         {
+          "id": "talk_to_herbkeeper",
+          "label": "交还山道药篓",
+          "possible_targets": ["riverbank"]
+        },
+        {
           "id": "gather_moonleaf",
           "label": "依旧规取一株",
           "possible_targets": ["riverbank"]
@@ -191,7 +196,7 @@
         {"speaker": "你", "text": "第一次引息不像登上高处，倒像终于听见脚下的水往哪里去。"},
         {"speaker": "砚青", "text": "{setback_reflection}。能走到这里，说明路线与退路都没有白看。"},
         {"speaker": "你", "text": "下一次出门，我得先知道自己能失去什么，也得知道什么值得留下。"},
-        {"speaker": "砚青", "text": "{companion_reflection}。{ferryman_reflection}。照禾的河明早还会涨，我们也还来得及再走一段。"}
+        {"speaker": "砚青", "text": "{companion_reflection}。{ferryman_reflection}。{basket_reflection}。照禾的河明早还会涨，我们也还来得及再走一段。"}
       ],
       "choices": [
         {"id": "record", "label": "先把所见写进札记。", "event_id": "epilogue_recorded"},
@@ -211,6 +216,19 @@
         {"id": "record", "label": "先记下涨水时辰。", "event_id": "ferryman_record"}
       ],
       "choice_prompt": "水尺与守堤簿都能留下证据；两种选择不改变战斗强度。"
+    },
+    "herbkeeper_basket": {
+      "lines": [
+        {"speaker": "蕙婶", "text": "这只篓底的双叶印，是渡口药圃公用的。前年换过一次提绳，没想到落在了山里。"},
+        {"speaker": "你", "text": "篓身还能用。带回圃里，还是补好绳结，放回山道避雨石下？"},
+        {"speaker": "蕙婶", "text": "带回去，采药人能照旧借；留在山里，赶路的人也有地方装散落药材。"},
+        {"speaker": "蕙婶", "text": "它本来就不是谁的私物。你决定它下一次在哪儿帮上忙。"}
+      ],
+      "choices": [
+        {"id": "return", "label": "把药篓带回圃里。", "event_id": "basket_return"},
+        {"id": "trail", "label": "补好提绳，留在山道。", "event_id": "basket_trail"}
+      ],
+      "choice_prompt": "药篓无论归圃还是留山都服务后来人，不改变战斗强度。"
     }
   },
   "journal_entries": {
@@ -224,7 +242,7 @@
     },
     "abandoned_basket": {
       "title": "换过两次的提绳",
-      "summary": "弃篓者带走药材，却把修好的绳结留在原处，像是默许下一位行旅者取用。"
+      "summary": "篓底烙着照禾药圃的双叶印。弃篓者带走药材，却把还能使用的绳结留给后来人。"
     }
   },
   "journal_side_entries": {
@@ -235,6 +253,14 @@
     "ferryman_record": {
       "title": "守堤簿里的涨时",
       "summary": "你记下退水时刻与泥痕高度。梁叔把纸条夹进守堤簿，留给下一班人比较。"
+    },
+    "basket_return": {
+      "title": "回到药圃的公用篓",
+      "summary": "你把山道药篓交给蕙婶。补过的提绳挂回圃门，等下一位采药人借用。"
+    },
+    "basket_trail": {
+      "title": "留在避雨石下的药篓",
+      "summary": "你与蕙婶补紧提绳，再把药篓放回山道，供后来行旅收拢散落药材。"
     }
   },
   "messages": {
@@ -251,6 +277,10 @@
     "ferryman_record": "你把昨夜涨水、今晨退水与泥痕高度逐项写下。梁叔将纸条夹进守堤簿，留给下一班人。",
     "ferryman_already_answered": "水尺与守堤簿已经按你的选择处理妥当。",
     "invalid_ferryman_response": "这不是此刻可以作出的守堤选择。",
+    "basket_return": "你把山道药篓带回渡口。蕙婶补紧提绳，将它重新挂在药圃公用木钩上。",
+    "basket_trail": "你与蕙婶换好提绳，把药篓送回山道避雨石下，留给下一位行旅者。",
+    "basket_unavailable": "你还没有带回能让蕙婶辨认的山道药篓，或它已经安置妥当。",
+    "invalid_basket_response": "这不是此刻可以作出的药篓安排。",
     "invalid_briefing_response": "此刻无法作出这项回应。",
     "already_briefed": "砚青已经说明了山道的风险与退路。",
     "need_briefing": "你还不知道山道异动的详情，先回渡碑旁与砚青商量。",
