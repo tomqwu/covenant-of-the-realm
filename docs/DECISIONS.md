@@ -4,6 +4,17 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Stable enemy IDs select reproducible pixel-atlas rows
+
+The three regular profiles and the rock-armor warden share one original 128×256 RGBA atlas. Each
+stable enemy ID owns one 64×64 row with two looping idle frames, a fixed 32×56 foot anchor,
+nearest filtering, and integer node placement. Mountain-path warning silhouettes and the active
+battle enemy are separate presentation nodes consuming that same atlas; only the battle node
+switches rows when the deterministic resolver replaces a regular profile with the warden. Unknown
+IDs are rejected by the presentation adapter and remain rejected by save validation. Runtime
+enemy-shape drawing has been removed so screenshots, packaged play, and the asset validator inspect
+the same committed source image.
+
 ### 2026-08-02 — Mountain-path warning has three recoverable routes
 
 The visible rock-beast warning supports three player-authored outcomes before the spring chamber:

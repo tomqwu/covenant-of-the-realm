@@ -29,6 +29,20 @@
     "protagonist.png",
     "yanqing.png"
   ],
+  "enemy_atlas": {
+    "file": "enemy_profiles.png",
+    "frame_size_px": [64, 64],
+    "foot_anchor_px": [32, 56],
+    "columns": 2,
+    "rows": 4,
+    "animation": {"columns": [0, 1], "fps": 2.5},
+    "profiles": [
+      "rock_armor_young",
+      "spring_moss_shell",
+      "unbalanced_stone_puppet",
+      "rock_armor_warden"
+    ]
+  },
   "map_atlas": {
     "file": "ferry_tiles.png",
     "tile_size_px": [32, 32],

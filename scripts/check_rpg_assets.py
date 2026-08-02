@@ -76,6 +76,42 @@ def validate_contract(data: Any) -> list[str]:
             continue
         if actual != (width, height):
             failures.append(f"{file_name}: expected {(width, height)}, got {actual}")
+    enemy_atlas = data.get("enemy_atlas")
+    expected_enemy_profiles = [
+        "rock_armor_young",
+        "spring_moss_shell",
+        "unbalanced_stone_puppet",
+        "rock_armor_warden",
+    ]
+    if not isinstance(enemy_atlas, dict):
+        failures.append("enemy_atlas must be an object")
+    else:
+        if enemy_atlas.get("frame_size_px") != [64, 64]:
+            failures.append("enemy_atlas.frame_size_px must be [64, 64]")
+        if enemy_atlas.get("foot_anchor_px") != [32, 56]:
+            failures.append("enemy_atlas.foot_anchor_px must be [32, 56]")
+        if enemy_atlas.get("columns") != 2 or enemy_atlas.get("rows") != 4:
+            failures.append("enemy_atlas must use two columns and four rows")
+        if enemy_atlas.get("animation") != {"columns": [0, 1], "fps": 2.5}:
+            failures.append("enemy_atlas.animation must use columns 0-1 at 2.5 fps")
+        if enemy_atlas.get("profiles") != expected_enemy_profiles:
+            failures.append("enemy_atlas.profiles must match the four stable enemy IDs")
+        enemy_file = enemy_atlas.get("file")
+        if not isinstance(enemy_file, str) or Path(enemy_file).name != enemy_file:
+            failures.append("enemy_atlas.file must be a local file name")
+        else:
+            path = ASSET_DIR / enemy_file
+            if not path.is_file():
+                failures.append(f"missing enemy atlas: {enemy_file}")
+            else:
+                try:
+                    actual = _png_size(path)
+                    if actual != (128, 256):
+                        failures.append(
+                            f"{enemy_file}: expected (128, 256), got {actual}"
+                        )
+                except ValueError as error:
+                    failures.append(f"{enemy_file}: {error}")
     map_atlas = data.get("map_atlas")
     if not isinstance(map_atlas, dict):
         failures.append("map_atlas must be an object")
@@ -129,7 +165,8 @@ def main() -> None:
         raise SystemExit("RPG asset validation failed:\n" + "\n".join(failures))
     print(
         "RPG pixel assets passed: "
-        f"{len(data['atlases'])} actors and one 32 px map atlas validated."
+        f"{len(data['atlases'])} actors, four animated enemies, "
+        "and one 32 px map atlas validated."
     )
 
 

@@ -15,6 +15,10 @@ const DAWN_PEACH := Color("e7a76f")
 @onready var companion_sprite = %CompanionSprite
 @onready var ferry_ground: TileMapLayer = %FerryGround
 @onready var path_ground: TileMapLayer = %PathGround
+@onready var battle_enemy_sprite: AnimatedSprite2D = %BattleEnemySprite
+@onready var path_rock_enemy_sprite: AnimatedSprite2D = %PathRockEnemySprite
+@onready var path_moss_enemy_sprite: AnimatedSprite2D = %PathMossEnemySprite
+@onready var path_puppet_enemy_sprite: AnimatedSprite2D = %PathPuppetEnemySprite
 
 var phase_id := "riverbank"
 var gathered_moonleaf := false
@@ -120,6 +124,15 @@ func uses_mountain_path_tile_layers() -> bool:
 	return path_ground is TileMapLayer and path_ground.tile_set != null
 
 
+func uses_animated_enemy_sprites() -> bool:
+	return (
+		battle_enemy_sprite is AnimatedSprite2D
+		and path_rock_enemy_sprite is AnimatedSprite2D
+		and path_moss_enemy_sprite is AnimatedSprite2D
+		and path_puppet_enemy_sprite is AnimatedSprite2D
+	)
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and is_node_ready():
 		_sync_actor_visuals()
@@ -141,6 +154,15 @@ func _sync_actor_visuals() -> void:
 	var size := get_rect().size
 	ferry_ground.visible = phase_id == "riverbank"
 	path_ground.visible = phase_id == "mountain_path"
+	battle_enemy_sprite.visible = phase_id == "battle"
+	path_rock_enemy_sprite.visible = phase_id == "mountain_path"
+	path_moss_enemy_sprite.visible = phase_id == "mountain_path"
+	path_puppet_enemy_sprite.visible = phase_id == "mountain_path"
+	battle_enemy_sprite.set_enemy_id(enemy_id)
+	battle_enemy_sprite.position = Vector2(size.x * 0.66, size.y * 0.49).round()
+	path_rock_enemy_sprite.position = Vector2(size.x * 0.76, size.y * 0.36).round()
+	path_moss_enemy_sprite.position = Vector2(size.x * 0.54, size.y * 0.52).round()
+	path_puppet_enemy_sprite.position = Vector2(size.x * 0.81, size.y * 0.31).round()
 	player_sprite.visible = true
 	companion_sprite.visible = true
 	match phase_id:
@@ -257,15 +279,6 @@ func _draw_battle_path() -> void:
 	_draw_cave(Vector2(size.x * 0.86, size.y * 0.16), Vector2(126, 88))
 	if lamp_turns > 0:
 		_draw_spring_lamp(Vector2(size.x * 0.48, size.y * 0.62))
-	match enemy_id:
-		"spring_moss_shell":
-			_draw_moss_shell(Vector2(size.x * 0.66, size.y * 0.43))
-		"unbalanced_stone_puppet":
-			_draw_stone_puppet(Vector2(size.x * 0.66, size.y * 0.43))
-		"rock_armor_warden":
-			_draw_boss_beast(Vector2(size.x * 0.66, size.y * 0.43))
-		_:
-			_draw_beast(Vector2(size.x * 0.66, size.y * 0.43))
 	draw_line(Vector2(size.x * 0.40, size.y * 0.49), Vector2(size.x * 0.64, size.y * 0.40), SPIRIT_GOLD, 3.0)
 	draw_circle(Vector2(size.x * 0.64, size.y * 0.40), 6.0, SPIRIT_GOLD, false, 2.0)
 
@@ -285,9 +298,6 @@ func _draw_mountain_path() -> void:
 	_draw_interaction_marker(Vector2(size.x * 0.80, size.y * 0.25), nearby_action == "approach_stone_puppet")
 	_draw_interaction_marker(Vector2(size.x * 0.86, size.y * 0.18), nearby_action == "bypass_enemy")
 	draw_circle(Vector2(size.x * 0.73, size.y * 0.34), 62.0, Color(0.78, 0.35, 0.24, 0.18), false, 3.0)
-	_draw_beast(Vector2(size.x * 0.76, size.y * 0.31))
-	_draw_moss_shell(Vector2(size.x * 0.54, size.y * 0.47))
-	_draw_stone_puppet(Vector2(size.x * 0.81, size.y * 0.24))
 
 
 func _draw_spring_chamber(completed: bool) -> void:
@@ -424,53 +434,6 @@ func _draw_interaction_marker(center: Vector2, active: bool) -> void:
 	draw_circle(center, 24.0 if active else 18.0, color, false, 3.0 if active else 2.0)
 	if active:
 		draw_circle(center, 31.0, Color(color.r, color.g, color.b, 0.28), false, 2.0)
-
-
-func _draw_oval(center: Vector2, radii: Vector2, color: Color) -> void:
-	var points := PackedVector2Array()
-	for index in range(20):
-		var angle := TAU * float(index) / 20.0
-		points.append(center + Vector2(cos(angle) * radii.x, sin(angle) * radii.y))
-	draw_colored_polygon(points, color)
-
-
-func _draw_beast(center: Vector2) -> void:
-	for offset_and_radius in [
-		[Vector2(-22, -8), 25.0],
-		[Vector2(4, -18), 31.0],
-		[Vector2(28, -4), 24.0],
-		[Vector2(-16, 21), 20.0],
-		[Vector2(24, 22), 21.0],
-	]:
-		draw_circle(center + offset_and_radius[0], offset_and_radius[1], INK_ROOT.lightened(0.20))
-	draw_line(center + Vector2(-8, -35), center + Vector2(8, 10), SPIRIT_GOLD, 3.0)
-	draw_circle(center + Vector2(-13, -15), 3.0, SPIRIT_GOLD)
-	draw_circle(center + Vector2(8, -17), 3.0, SPIRIT_GOLD)
-
-
-func _draw_boss_beast(center: Vector2) -> void:
-	_draw_beast(center)
-	for offset in [Vector2(-38, -17), Vector2(4, -42), Vector2(39, -12)]:
-		draw_circle(center + offset, 20.0, COOL_SHADOW.darkened(0.12))
-	draw_arc(center + Vector2(0, 11), 42.0, 0.15, PI - 0.15, 20, WARM_RUST, 6.0)
-	draw_line(center + Vector2(-14, -43), center + Vector2(14, 8), SPIRIT_GOLD, 4.0)
-
-
-func _draw_moss_shell(center: Vector2) -> void:
-	_draw_oval(center, Vector2(34, 24), COOL_SHADOW.lightened(0.28))
-	_draw_oval(center + Vector2(2, -7), Vector2(27, 17), FRESH_CELADON.darkened(0.18))
-	for offset in [Vector2(-17, -18), Vector2(0, -24), Vector2(18, -14)]:
-		draw_circle(center + offset, 9.0, Color("a9cd84"))
-	draw_circle(center + Vector2(-8, -4), 3.0, SPIRIT_GOLD)
-
-
-func _draw_stone_puppet(center: Vector2) -> void:
-	draw_rect(Rect2(center + Vector2(-18, -43), Vector2(36, 52)), COOL_SHADOW.lightened(0.12))
-	draw_circle(center + Vector2(-4, -54), 18.0, Color("6d837c"))
-	draw_line(center + Vector2(-15, 3), center + Vector2(-28, 28), INK_ROOT.lightened(0.2), 10.0)
-	draw_line(center + Vector2(12, 3), center + Vector2(29, 23), INK_ROOT.lightened(0.2), 10.0)
-	draw_line(center + Vector2(16, -28), center + Vector2(43, 2), WARM_RUST.darkened(0.2), 8.0)
-	draw_circle(center + Vector2(-10, -55), 3.0, SPIRIT_GOLD)
 
 
 func _draw_vignette() -> void:

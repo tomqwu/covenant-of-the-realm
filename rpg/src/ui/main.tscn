@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://src/ui/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://src/ui/map_canvas.gd" id="2_map"]
@@ -8,6 +8,8 @@
 [ext_resource type="Texture2D" path="res://assets/pixel/yanqing.png" id="6_yanqing"]
 [ext_resource type="Script" path="res://src/ui/ferry_tile_layer.gd" id="7_ferry_layer"]
 [ext_resource type="Texture2D" path="res://assets/pixel/ferry_tiles.png" id="8_ferry_tiles"]
+[ext_resource type="Script" path="res://src/ui/enemy_sprite.gd" id="9_enemy"]
+[ext_resource type="Texture2D" path="res://assets/pixel/enemy_profiles.png" id="10_enemy_profiles"]
 
 [sub_resource type="StyleBoxFlat" id="StyleMap"]
 bg_color = Color(0.286, 0.424, 0.38, 1)
@@ -114,6 +116,40 @@ z_index = 9
 script = ExtResource("4_actor")
 atlas_texture = ExtResource("6_yanqing")
 initial_facing = "left"
+
+[node name="BattleEnemySprite" type="AnimatedSprite2D" parent="MapFrame/MapCanvas"]
+unique_name_in_owner = true
+visible = false
+texture_filter = 1
+z_index = 8
+script = ExtResource("9_enemy")
+atlas_texture = ExtResource("10_enemy_profiles")
+
+[node name="PathRockEnemySprite" type="AnimatedSprite2D" parent="MapFrame/MapCanvas"]
+unique_name_in_owner = true
+visible = false
+texture_filter = 1
+z_index = 7
+script = ExtResource("9_enemy")
+atlas_texture = ExtResource("10_enemy_profiles")
+
+[node name="PathMossEnemySprite" type="AnimatedSprite2D" parent="MapFrame/MapCanvas"]
+unique_name_in_owner = true
+visible = false
+texture_filter = 1
+z_index = 7
+script = ExtResource("9_enemy")
+atlas_texture = ExtResource("10_enemy_profiles")
+initial_enemy_id = "spring_moss_shell"
+
+[node name="PathPuppetEnemySprite" type="AnimatedSprite2D" parent="MapFrame/MapCanvas"]
+unique_name_in_owner = true
+visible = false
+texture_filter = 1
+z_index = 7
+script = ExtResource("9_enemy")
+atlas_texture = ExtResource("10_enemy_profiles")
+initial_enemy_id = "unbalanced_stone_puppet"
 
 [node name="ChapterHud" type="PanelContainer" parent="."]
 layout_mode = 0

@@ -30,6 +30,14 @@ The same generator creates `ferry_tiles.png`, an original 256×32 RGBA strip con
 glints. `ferry_tile_layer.gd` composes these into a deterministic 36×20 `TileMapLayer`; no external
 map, texture, pattern, or tile-design input is used.
 
+The generator also creates `enemy_profiles.png`, an original 128×256 RGBA atlas with two 64×64
+idle frames for each of the four project-authored enemy profiles: 岩甲兽幼体、泉苔寄壳、
+失衡石傀 and 岩甲兽守巢者. The silhouettes are assembled only from project-authored pixel
+rectangles and the recorded palette; no model, reference image, commercial sprite, external game
+asset, or third-party drawing code is used. `enemy_sprite.gd` maps the same stable IDs used by the
+deterministic battle domain to fixed atlas rows. The asset gate verifies dimensions, row order,
+frame rate, foot anchor, local file name, and exact profile list before package export.
+
 These are reproducible first-production placeholders intended to validate the `AnimatedSprite2D`
 pipeline. They may be regenerated with the pinned Godot runtime and should be replaced or refined
 through the same provenance and in-engine readability review before public release.
