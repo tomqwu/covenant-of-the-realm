@@ -35,6 +35,11 @@ func _capture_flow() -> void:
 	await _save_frame("01-zhaohe-ferry.png")
 
 	instance._on_action("talk_to_companion")
+	instance.show_full_dialogue_line()
+	await _settle()
+	await _save_frame("01-companion-dialogue.png")
+	instance.skip_dialogue_to_response()
+	instance._choose_dialogue_response("careful")
 	instance._on_action("gather_moonleaf")
 	instance._on_action("enter_spring")
 	await _settle()

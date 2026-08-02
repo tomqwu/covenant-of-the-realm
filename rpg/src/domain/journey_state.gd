@@ -20,6 +20,10 @@ const BREAKTHROUGH := "breakthrough"
 const REVIEW_JOURNEY := "review_journey"
 const RETURN_TO_TITLE := "return_to_title"
 const REPLAY_CHAPTER := "replay_chapter"
+const RESPONSE_UNANSWERED := "unanswered"
+const RESPONSE_CAREFUL := "careful"
+const RESPONSE_TRUSTING := "trusting"
+const BRIEFING_RESPONSES := [RESPONSE_CAREFUL, RESPONSE_TRUSTING]
 
 var phase := Phase.RIVERBANK
 var gathered_moonleaf := false
@@ -33,6 +37,7 @@ var companion_supports := 1
 var spring_lamps := 1
 var lamp_turns := 0
 var setbacks := 0
+var briefing_response := RESPONSE_UNANSWERED
 
 
 func phase_id() -> String:
@@ -128,6 +133,7 @@ func snapshot() -> Dictionary:
 		"spring_lamps": spring_lamps,
 		"lamp_turns": lamp_turns,
 		"setbacks": setbacks,
+		"briefing_response": briefing_response,
 	}
 
 
@@ -145,6 +151,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		"spring_lamps",
 		"lamp_turns",
 		"setbacks",
+		"briefing_response",
 	]
 	for key in required_keys:
 		if not snapshot_data.has(key):
@@ -156,6 +163,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if typeof(snapshot_data["talked_to_companion"]) != TYPE_BOOL:
 		return false
 	if typeof(snapshot_data["realm"]) != TYPE_STRING:
+		return false
+	if typeof(snapshot_data["briefing_response"]) != TYPE_STRING:
 		return false
 	if not _integer_in_range(snapshot_data["player_hp"], 0, 12):
 		return false
@@ -200,6 +209,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	var next_spring_lamps := int(snapshot_data["spring_lamps"])
 	var next_lamp_turns := int(snapshot_data["lamp_turns"])
 	var next_setbacks := int(snapshot_data["setbacks"])
+	var next_briefing_response: String = snapshot_data["briefing_response"]
 	if not _valid_phase_invariants(
 		next_phase,
 		next_gathered,
@@ -212,7 +222,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_companion_supports,
 		next_spring_lamps,
 		next_lamp_turns,
-		next_setbacks
+		next_setbacks,
+		next_briefing_response
 	):
 		return false
 
@@ -228,15 +239,13 @@ func restore(snapshot_data: Dictionary) -> bool:
 	spring_lamps = next_spring_lamps
 	lamp_turns = next_lamp_turns
 	setbacks = next_setbacks
+	briefing_response = next_briefing_response
 	return true
 
 
 func _choose_riverbank(action_id: String) -> Dictionary:
 	if action_id == TALK_TO_COMPANION:
-		if talked_to_companion:
-			return _result(false, ["already_briefed"])
-		talked_to_companion = true
-		return _result(true, ["companion_briefing"])
+		return complete_companion_briefing(RESPONSE_CAREFUL)
 	if action_id == GATHER_MOONLEAF:
 		if gathered_moonleaf:
 			return _result(false, ["already_gathered"])
@@ -325,6 +334,16 @@ func _result(ok: bool, events: Array[String]) -> Dictionary:
 	return {"ok": ok, "events": events, "snapshot": snapshot()}
 
 
+func complete_companion_briefing(response_id: String) -> Dictionary:
+	if phase != Phase.RIVERBANK or talked_to_companion:
+		return _result(false, ["already_briefed"])
+	if not BRIEFING_RESPONSES.has(response_id):
+		return _result(false, ["invalid_briefing_response"])
+	talked_to_companion = true
+	briefing_response = response_id
+	return _result(true, ["companion_briefing", "briefing_%s" % response_id])
+
+
 func _reset_chapter() -> void:
 	phase = Phase.RIVERBANK
 	gathered_moonleaf = false
@@ -338,6 +357,7 @@ func _reset_chapter() -> void:
 	spring_lamps = 1
 	lamp_turns = 0
 	setbacks = 0
+	briefing_response = RESPONSE_UNANSWERED
 
 
 func _integer_in_range(value: Variant, minimum: int, maximum: int) -> bool:
@@ -359,8 +379,13 @@ func _valid_phase_invariants(
 	next_companion_supports: int,
 	next_spring_lamps: int,
 	next_lamp_turns: int,
-	next_setbacks: int
+	next_setbacks: int,
+	next_briefing_response: String
 ) -> bool:
+	if next_briefing_response not in [RESPONSE_UNANSWERED, RESPONSE_CAREFUL, RESPONSE_TRUSTING]:
+		return false
+	if next_talked != (next_briefing_response != RESPONSE_UNANSWERED):
+		return false
 	if next_phase == Phase.RIVERBANK:
 		return next_realm == "凡身" and next_player_hp > 0 and next_enemy_hp == 9 and next_round == 1 and next_companion_supports == 1 and next_spring_lamps == 1 and next_lamp_turns == 0
 	if next_phase == Phase.MOUNTAIN_PATH:

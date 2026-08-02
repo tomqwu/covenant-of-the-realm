@@ -30,7 +30,27 @@ func _run() -> void:
 	_expect(game.get_node("%LocationLabel").text == "照禾渡口", "E2E 新游戏进入照禾渡口")
 	await _trigger_semantic_action("interact")
 	await _settle()
-	_expect(game.journey.talked_to_companion, "E2E 先与砚青完成风险简报")
+	_expect(game.dialogue.active and game.get_node("%DialogueOverlay").visible, "E2E 交互开启逐句风险简报")
+	game.show_full_dialogue_line()
+	game.advance_dialogue()
+	game.show_full_dialogue_line()
+	game.advance_dialogue()
+	var interrupted_line: int = game.dialogue.line_index
+	var interrupted_text: String = game.get_node("%DialogueLabel").text
+	game.queue_free()
+	await _settle()
+	game = scene.instantiate()
+	game.configure_save_path(TEST_SAVE_PATH)
+	game.configure_settings_path(TEST_SETTINGS_PATH)
+	root.add_child(game)
+	await _settle()
+	_expect(game.continue_game(), "E2E 可从新场景恢复对话中途存档")
+	_expect(game.dialogue.active and game.dialogue.line_index == interrupted_line, "E2E 中断恢复保持对话行号")
+	_expect(game.get_node("%DialogueLabel").text == interrupted_text, "E2E 中断恢复保持当前台词")
+	game.skip_dialogue_to_response()
+	await _settle()
+	await _press_dialogue_choice(game, "先看退路，再进山。")
+	_expect(game.journey.talked_to_companion, "E2E 选择谨慎回应完成风险简报")
 	_expect(game.get_node("%ObjectiveLabel").text.contains("月芽田"), "E2E 简报后任务切换到采药")
 
 	game.move_player(Vector2.DOWN, 0.40)
@@ -109,6 +129,9 @@ func _run() -> void:
 	_expect(resumed.journey.phase_id() == "riverbank", "E2E 重游回到序章起点")
 	_expect(resumed.exploration.player_position == ExplorationStateScript.START_POSITION, "E2E 重游重置地图坐标")
 	resumed._on_action("talk_to_companion")
+	resumed.skip_dialogue_to_response()
+	await _press_dialogue_choice(resumed, "我信你的判断，一起走。")
+	_expect(resumed.journey.briefing_response == "trusting", "E2E 重游可选择不同同行态度")
 	resumed._on_action("gather_moonleaf")
 	resumed._on_action("enter_spring")
 	_expect(resumed.exploration.restore({"map_id": "cangquan_path", "player_x": 0.86, "player_y": 0.18}), "E2E 重游后到达绕行入口")
@@ -116,6 +139,8 @@ func _run() -> void:
 	await _trigger_semantic_action("interact")
 	_expect(resumed.journey.phase_id() == "spring", "E2E 沿溪绕行不进入战斗即可到泉室")
 	_expect(resumed.journey.player_hp == 12 and resumed.journey.talismans == 1 and resumed.journey.round_number == 1, "E2E 绕行保留气血、符箓和战斗回合")
+	await _press_action(resumed, "静心引息")
+	_expect(resumed.get_node("%DescriptionLabel").text.contains("以信任同行"), "E2E 结算回应重游时的信任选择")
 
 	resumed.queue_free()
 	await _settle()
@@ -137,6 +162,15 @@ func _press_action(game: Node, label: String) -> void:
 			await _settle()
 			return
 	failures.append("E2E 找不到行动：%s" % label)
+
+
+func _press_dialogue_choice(game: Node, label: String) -> void:
+	for child in game.get_node("%DialogueChoices").get_children():
+		if child is Button and child.text == label:
+			child.pressed.emit()
+			await _settle()
+			return
+	failures.append("E2E 找不到对话回应：%s" % label)
 
 
 func _trigger_semantic_action(action_name: StringName) -> void:

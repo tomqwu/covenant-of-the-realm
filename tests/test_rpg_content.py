@@ -23,6 +23,8 @@ def test_rejects_non_object_and_missing_contract() -> None:
     assert "story.origin must be 'original'" in failures
     assert "story.nodes must be an object" in failures
     assert "story.messages must be an object" in failures
+    assert "story.dialogues must be an object" in failures
+    assert "story.dialogues must not be empty" in failures
     assert "story.start_node must be non-empty text" in failures
 
 
@@ -83,7 +85,16 @@ def test_reachability_handles_converging_paths() -> None:
                 ],
             },
         },
-        "messages": {"done": "完成。"},
+        "messages": {"done": "完成。", "briefing_continue": "继续。", "briefing_wait": "等待。"},
+        "dialogues": {
+            "briefing": {
+                "lines": [{"speaker": "同行者", "text": "两路终将汇合。"}],
+                "choices": [
+                    {"id": "continue", "label": "继续"},
+                    {"id": "wait", "label": "等待"},
+                ],
+            }
+        },
     }
     assert validate_story(data) == []
 
@@ -125,6 +136,46 @@ def test_rejects_malformed_nested_values() -> None:
     assert "story.nodes.battle must be an object" in failures
     assert "story.nodes.riverbank.actions[0] must be an object" in failures
     assert "story.messages.gathered must be non-empty text" in failures
+
+
+def test_rejects_malformed_dialogue_contract() -> None:
+    data = story()
+    data["dialogues"] = {"": []}
+    failures = validate_story(data)
+    assert "story.dialogues.id must be non-empty text" in failures
+    assert "story.dialogues. must be an object" in failures
+    assert "story.dialogues..lines must be a non-empty list" in failures
+    assert "story.dialogues..choices must contain exactly two responses" in failures
+
+    data = story()
+    data["dialogues"]["companion_briefing"]["lines"] = []
+    data["dialogues"]["companion_briefing"]["choices"] = {}
+    failures = validate_story(data)
+    assert "story.dialogues.companion_briefing.lines must be a non-empty list" in failures
+    assert (
+        "story.dialogues.companion_briefing.choices must contain exactly two responses"
+        in failures
+    )
+
+
+def test_rejects_malformed_dialogue_lines_and_choices() -> None:
+    data = story()
+    dialogue = data["dialogues"]["companion_briefing"]
+    dialogue["lines"] = [[]]
+    dialogue["choices"] = [
+        {"id": "ghost", "label": ""},
+        {"id": "ghost", "label": "重复"},
+        [],
+    ]
+    failures = validate_story(data)
+    assert "story.dialogues.companion_briefing.lines[0] must be an object" in failures
+    assert "story.dialogues.companion_briefing.lines[0].speaker must be non-empty text" in failures
+    assert "story.dialogues.companion_briefing.lines[0].text must be non-empty text" in failures
+    assert any("choices must contain exactly two" in failure for failure in failures)
+    assert any("duplicates 'ghost'" in failure for failure in failures)
+    assert any("has no matching message 'briefing_ghost'" in failure for failure in failures)
+    assert "story.dialogues.companion_briefing.choices[0].label must be non-empty text" in failures
+    assert "story.dialogues.companion_briefing.choices[2] must be an object" in failures
 
 
 def test_main_reports_invalid_json_and_empty_directory(tmp_path: Path, monkeypatch, capsys) -> None:

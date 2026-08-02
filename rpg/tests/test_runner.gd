@@ -4,6 +4,7 @@ const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
+const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 const TEST_SAVE_PATH := "user://automated-test-save.json"
 const TEST_SCENE_SAVE_PATH := "user://automated-scene-save.json"
 const TEST_SETTINGS_PATH := "user://automated-test-settings.json"
@@ -21,6 +22,7 @@ func _run() -> void:
 	_test_initial_state()
 	_test_exploration_rules()
 	_test_state_restore()
+	_test_dialogue_state()
 	_test_versioned_save()
 	_test_settings_store()
 	_test_gathering_and_gate()
@@ -98,6 +100,30 @@ func _test_state_restore() -> void:
 	var missing := snapshot.duplicate(true)
 	missing.erase("realm")
 	_expect_false(restored.restore(missing), "缺失规则字段时拒绝恢复")
+	var response_mismatch := snapshot.duplicate(true)
+	response_mismatch["briefing_response"] = "unanswered"
+	_expect_false(restored.restore(response_mismatch), "已交谈状态不能恢复为未回应")
+
+
+func _test_dialogue_state() -> void:
+	var state = DialogueStateScript.new()
+	_expect_equal(state.snapshot(), DialogueStateScript.default_snapshot(), "对话初始快照为空闲态")
+	_expect_false(state.start("unknown"), "未知对话不能启动")
+	_expect_true(state.start("companion_briefing"), "可启动砚青简报")
+	_expect_false(state.start("companion_briefing"), "活动对话不能重复启动")
+	_expect_true(state.advance(7), "对话可逐句推进")
+	_expect_equal(state.line_index, 1, "逐句推进记录稳定行号")
+	_expect_true(state.skip_to_choices(7), "对话可快速显示到回应")
+	_expect_true(state.at_choices(7), "末行之后进入回应状态")
+	var snapshot := state.snapshot()
+	var restored = DialogueStateScript.new()
+	_expect_true(restored.restore(snapshot), "活动对话可从快照恢复")
+	_expect_equal(restored.snapshot(), snapshot, "恢复保留对话与行号")
+	_expect_true(restored.finish(), "回应后结束对话")
+	_expect_false(restored.finish(), "空闲对话不能重复结束")
+	_expect_true(restored.restore({"active": true, "dialogue_id": "companion_briefing", "line_index": 8}), "规则状态允许未来内容扩充到第八行")
+	_expect_false(restored.restore({"active": true, "dialogue_id": "companion_briefing", "line_index": 65}), "异常过大的对话行号被拒绝")
+	_expect_false(restored.restore({"active": false, "dialogue_id": "companion_briefing", "line_index": 0}), "空闲状态不能保留对话标识")
 
 
 func _test_versioned_save() -> void:
@@ -111,8 +137,11 @@ func _test_versioned_save() -> void:
 	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
 	var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(loaded["ok"], "版本化存档读取成功")
-	_expect_equal(loaded["data"]["save_version"], 5.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["save_version"], 6.0, "存档声明当前版本")
 	_expect_equal(loaded["data"]["exploration"]["map_id"], "zhaohe_ferry", "新版存档声明稳定地图标识")
+	var restored_dialogue = DialogueStateScript.new()
+	_expect_true(restored_dialogue.restore(loaded["data"]["dialogue"]), "新版存档包含可恢复的空闲对话状态")
+	_expect_equal(restored_dialogue.snapshot(), DialogueStateScript.default_snapshot(), "新版空闲对话状态保持默认值")
 	var restored_journey = JourneyStateScript.new()
 	var restored_exploration = ExplorationStateScript.new()
 	_expect_true(restored_journey.restore(loaded["data"]["journey"]), "读取的规则快照通过业务校验")
@@ -128,6 +157,7 @@ func _test_versioned_save() -> void:
 	legacy_journey.erase("talked_to_companion")
 	legacy_journey.erase("spring_lamps")
 	legacy_journey.erase("lamp_turns")
+	legacy_journey.erase("briefing_response")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 1,
 		"story_id": SaveGameScript.STORY_ID,
@@ -137,13 +167,15 @@ func _test_versioned_save() -> void:
 	var migrated: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated["ok"], "v1 存档可迁移到当前版本")
 	_expect_equal(migrated["migrated_from_version"], 1, "迁移结果声明来源版本")
-	_expect_equal(migrated["data"]["save_version"], 5, "迁移后的内存快照升级为 v5")
+	_expect_equal(migrated["data"]["save_version"], 6, "迁移后的内存快照升级为 v6")
 	_expect_equal(migrated["data"]["exploration"]["map_id"], "zhaohe_ferry", "v1 迁移补入照禾渡口地图标识")
 	_expect_equal(migrated["data"]["journey"]["companion_supports"], 1, "迁移补入同伴援护资源")
 	_expect_equal(migrated["data"]["journey"]["setbacks"], 0, "迁移补入挫败计数")
 	_expect_true(migrated["data"]["journey"]["talked_to_companion"], "战斗中的 v1 存档迁移为已完成简报")
 	_expect_equal(migrated["data"]["journey"]["spring_lamps"], 1, "v1 迁移补入战术石灯")
 	_expect_equal(migrated["data"]["journey"]["lamp_turns"], 0, "v1 迁移不虚构持续效果")
+	_expect_equal(migrated["data"]["journey"]["briefing_response"], "careful", "旧版已交谈存档迁移为谨慎回应")
+	_expect_equal(migrated["data"]["dialogue"], DialogueStateScript.default_snapshot(), "旧版迁移补入空闲对话状态")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "迁移后可写回新版存档")
 	var version_two_journey: Dictionary = journey.snapshot().duplicate(true)
 	version_two_journey.erase("talked_to_companion")
@@ -186,6 +218,19 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v4["migrated_from_version"], 4, "v4 迁移声明来源版本")
 	_expect_equal(migrated_v4["data"]["exploration"]["map_id"], "zhaohe_ferry", "v4 迁移补入照禾渡口地图标识")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v4 迁移后可写回新版存档")
+	var version_five_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_five_journey.erase("briefing_response")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 5,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": version_five_journey,
+		"exploration": exploration.snapshot(),
+	}))
+	var migrated_v5: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v5["ok"], "v5 地图存档可迁移到对话感知版本")
+	_expect_equal(migrated_v5["migrated_from_version"], 5, "v5 迁移声明来源版本")
+	_expect_equal(migrated_v5["data"]["dialogue"], DialogueStateScript.default_snapshot(), "v5 迁移补入空闲对话状态")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v5 迁移后可写回新版存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -206,12 +251,21 @@ func _test_versioned_save() -> void:
 	var unknown_map_exploration := exploration.snapshot().duplicate(true)
 	unknown_map_exploration["map_id"] = "unreleased_secret_realm"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 5,
+		"save_version": 6,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": unknown_map_exploration,
+		"dialogue": DialogueStateScript.default_snapshot(),
 	}))
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_map", "未知地图不会恢复到错误场景")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 6,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": journey.snapshot(),
+		"exploration": exploration.snapshot(),
+		"dialogue": {"active": true, "dialogue_id": "missing", "line_index": 0},
+	}))
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_dialogue", "未知对话标识不会进入界面层")
 	_write_test_file(TEST_SAVE_PATH, "{broken")
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_json", "损坏 JSON 被安全拒绝")
 	SaveGameScript.remove(TEST_SAVE_PATH)
@@ -439,9 +493,50 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%PauseOverlay").visible, "暂停菜单可由统一动作打开")
 	instance.toggle_pause_menu()
 	_expect_false(instance.get_node("%PauseOverlay").visible, "暂停菜单可继续游戏")
-	_expect_true(instance.interact()["ok"], "出生点语义交互与同伴交谈")
-	_expect_true(instance.get_node("%EventLabel").text.contains("泉眼昨夜"), "场景呈现砚青的风险简报")
-	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("月芽田"), "交谈后目标切换为采药")
+	var already_briefed: Dictionary = instance.journey.snapshot().duplicate(true)
+	already_briefed["talked_to_companion"] = true
+	already_briefed["briefing_response"] = "careful"
+	var inconsistent_dialogue: Dictionary = instance._decode_save({
+		"ok": true,
+		"data": {
+			"journey": already_briefed,
+			"exploration": instance.exploration.snapshot(),
+			"dialogue": {"active": true, "dialogue_id": "companion_briefing", "line_index": 1},
+		},
+	})
+	_expect_false(inconsistent_dialogue["ok"], "已完成简报的剧情不能同时恢复活动对话")
+	_expect_true(inconsistent_dialogue["reason"].contains("不一致"), "跨状态存档返回明确中文原因")
+	var invalid_dialogue_position: Dictionary = instance._decode_save({
+		"ok": true,
+		"data": {
+			"journey": instance.journey.snapshot(),
+			"exploration": instance.exploration.snapshot(),
+			"dialogue": {"active": true, "dialogue_id": "companion_briefing", "line_index": 8},
+		},
+	})
+	_expect_false(invalid_dialogue_position["ok"], "超过当前剧本长度的结构化对话位置仍被拒绝")
+	_expect_true(instance.interact()["ok"], "出生点语义交互开启同伴对话")
+	_expect_true(instance.get_node("%DialogueOverlay").visible, "场景显示独立对话层")
+	_expect_false(instance.journey.talked_to_companion, "回应前不提前完成风险简报")
+	_expect_equal(instance.get_node("%DialogueSpeakerLabel").text, "砚青", "对话显示当前说话人")
+	_expect_true(instance.get_node("%DialogueLabel").text.contains("泉眼昨夜"), "场景呈现砚青的第一句风险简报")
+	_expect_equal(instance.get_node("%DialogueLabel").visible_characters, 0, "新对话从逐字显示开始")
+	instance.show_full_dialogue_line()
+	_expect_equal(instance.get_node("%DialogueLabel").visible_characters, -1, "玩家可以立即显示整句")
+	instance.advance_dialogue()
+	_expect_equal(instance.dialogue.line_index, 1, "继续按钮推进一行并自动保存")
+	instance.toggle_dialogue_history()
+	_expect_true(instance.get_node("%DialogueSpeakerLabel").text.contains("对话回顾"), "对话过程可以查看已读记录")
+	_expect_true(instance.get_node("%DialogueLabel").text.contains("泉眼昨夜"), "回顾保留已经读过的台词")
+	instance.toggle_dialogue_history()
+	instance.skip_dialogue_to_response()
+	_expect_equal(_dialogue_choice_count(instance), 2, "跳过只到回应选择而不替玩家决定")
+	await _press_dialogue_choice(instance, "先看退路，再进山。")
+	_expect_false(instance.get_node("%DialogueOverlay").visible, "选择回应后关闭对话层")
+	_expect_true(instance.journey.talked_to_companion, "选择回应后完成风险简报")
+	_expect_equal(instance.journey.briefing_response, "careful", "谨慎回应被规则层记住")
+	_expect_true(instance.get_node("%EventLabel").text.contains("先确认退路"), "回应产生明确同行回声")
+	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("月芽田"), "回应后目标切换为采药")
 	_expect_false(instance.interact()["ok"], "完成交谈后原地没有重复奖励")
 	_expect_true(instance.get_node("%EventLabel").text.contains("附近没有"), "无目标交互给出中文反馈")
 
@@ -554,6 +649,23 @@ func _press_action(instance: Node, label: String) -> void:
 			await process_frame
 			return
 	failures.append("没有找到场景行动：%s" % label)
+
+
+func _press_dialogue_choice(instance: Node, label: String) -> void:
+	for child in instance.get_node("%DialogueChoices").get_children():
+		if child is Button and child.text == label:
+			child.pressed.emit()
+			await process_frame
+			return
+	failures.append("没有找到对话回应：%s" % label)
+
+
+func _dialogue_choice_count(instance: Node) -> int:
+	var count := 0
+	for child in instance.get_node("%DialogueChoices").get_children():
+		if child is Button:
+			count += 1
+	return count
 
 
 func _action_button_count(instance: Node) -> int:

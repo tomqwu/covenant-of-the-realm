@@ -74,6 +74,20 @@ Save v5 adds a stable `map_id` beside normalized coordinates. V1–v4 files migr
 domain restoration. This prevents a valid coordinate pair from being silently loaded into the
 wrong scene as the explorable mountain path and later regions are added.
 
+Save v6 adds a separate dialogue snapshot with active dialogue ID and line index. V1–v5 files
+migrate to an idle dialogue and infer the conservative briefing response only when an old snapshot
+already completed that mandatory quest beat. The loader validates dialogue structure, current
+content bounds, and its consistency with journey progress before replacing live state.
+
+### 2026-08-02 — Resumable dialogue owns presentation progress
+
+Long-form dialogue advances in a small domain state rather than mutating the story node on every
+line. Content JSON owns speakers, original Chinese text, and exactly two response records; the
+journey domain receives only the final response ID and awards the quest transition once. Fast
+display, history, and skip-to-response therefore cannot duplicate rewards. Autosave records every
+line advance, and the complete E2E destroys and recreates the scene mid-conversation before
+choosing each response on separate playthroughs.
+
 ### 2026-08-01 — Spatial briefing starts the quest
 
 The opening objective first asks the player to approach 砚青 at the ferry marker. The companion

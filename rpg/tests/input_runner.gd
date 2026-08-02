@@ -29,7 +29,13 @@ func _run() -> void:
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(not game.get_node("%TitleOverlay").visible, "手柄 A 启动新游戏")
 	await _trigger_key(KEY_E)
-	_expect(game.journey.talked_to_companion, "键盘 E 完成同伴简报")
+	_expect(game.dialogue.active and game.get_node("%DialogueOverlay").visible, "键盘 E 开启同伴简报")
+	game.skip_dialogue_to_response()
+	await _settle()
+	var response_focus := root.gui_get_focus_owner()
+	_expect(response_focus is Button and response_focus.text == "先看退路，再进山。", "回应选择默认聚焦第一项")
+	await _trigger_joy_button(JOY_BUTTON_A)
+	_expect(game.journey.talked_to_companion and game.journey.briefing_response == "careful", "手柄 A 确认对话回应")
 
 	var before_move: Vector2 = game.exploration.player_position
 	await _hold_key(KEY_S, 0.12)

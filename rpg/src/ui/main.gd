@@ -5,6 +5,7 @@ const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
+const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 
 @onready var map_canvas: Control = %MapCanvas
 @onready var chapter_label: Label = %ChapterLabel
@@ -27,16 +28,27 @@ const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 @onready var pause_audio_button: Button = %PauseAudioButton
 @onready var pause_volume_button: Button = %PauseVolumeButton
 @onready var audio_manager: AudioStreamPlayer = %AudioManager
+@onready var dialogue_overlay: Control = %DialogueOverlay
+@onready var dialogue_speaker_label: Label = %DialogueSpeakerLabel
+@onready var dialogue_label: Label = %DialogueLabel
+@onready var dialogue_portrait_label: Label = %DialoguePortraitLabel
+@onready var dialogue_choices: GridContainer = %DialogueChoices
+@onready var dialogue_history_button: Button = %DialogueHistoryButton
+@onready var dialogue_skip_button: Button = %DialogueSkipButton
+@onready var dialogue_next_button: Button = %DialogueNextButton
 
 var content: Dictionary = {}
 var journey = JourneyStateScript.new()
 var exploration = ExplorationStateScript.new()
+var dialogue = DialogueStateScript.new()
 var nearby_action_id := ""
 var save_path := SaveGameScript.DEFAULT_SAVE_PATH
 var settings_path := SettingsStoreScript.DEFAULT_PATH
 var settings := SettingsStoreScript.defaults()
 var is_playing := false
 var autosave_elapsed := 0.0
+var dialogue_history_visible := false
+var dialogue_reveal_elapsed := 0.0
 
 
 func _ready() -> void:
@@ -52,6 +64,9 @@ func _ready() -> void:
 	_style_settings_button(title_volume_button)
 	_style_settings_button(pause_audio_button)
 	_style_settings_button(pause_volume_button)
+	_style_settings_button(dialogue_history_button)
+	_style_settings_button(dialogue_skip_button)
+	_style_settings_button(dialogue_next_button)
 	new_game_button.pressed.connect(start_new_game)
 	continue_button.pressed.connect(continue_game)
 	resume_button.pressed.connect(toggle_pause_menu)
@@ -60,8 +75,12 @@ func _ready() -> void:
 	pause_audio_button.pressed.connect(toggle_audio)
 	title_volume_button.pressed.connect(cycle_audio_volume)
 	pause_volume_button.pressed.connect(cycle_audio_volume)
+	dialogue_history_button.pressed.connect(toggle_dialogue_history)
+	dialogue_skip_button.pressed.connect(skip_dialogue_to_response)
+	dialogue_next_button.pressed.connect(advance_dialogue)
 	_apply_audio_settings()
 	pause_overlay.hide()
+	dialogue_overlay.hide()
 	_refresh_title_state()
 	title_overlay.show()
 	if continue_button.disabled:
@@ -71,6 +90,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if dialogue.active and dialogue_overlay.visible and not pause_overlay.visible:
+		_process_dialogue_reveal(delta)
+		return
 	if not is_playing or title_overlay.visible or pause_overlay.visible or not _is_exploration_phase():
 		return
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -90,6 +112,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if is_playing and event.is_action_pressed("pause_menu"):
 		toggle_pause_menu()
 		get_viewport().set_input_as_handled()
+		return
+	if dialogue.active and dialogue_overlay.visible and event.is_action_pressed("interact"):
+		if not _dialogue_at_choices():
+			advance_dialogue()
+			get_viewport().set_input_as_handled()
 		return
 	if not is_playing or title_overlay.visible or pause_overlay.visible:
 		return
@@ -132,6 +159,7 @@ func _render(event_ids: Array) -> void:
 	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"])
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	_build_actions(node)
+	_render_dialogue_overlay()
 
 
 func _status_text(snapshot: Dictionary) -> String:
@@ -182,7 +210,8 @@ func _chapter_summary(snapshot: Dictionary) -> String:
 	var setback_text := "全程无失手" if snapshot["setbacks"] == 0 else "经历 %d 次撤退或救援" % snapshot["setbacks"]
 	var talisman_text := "镇岩符留存" if snapshot["talismans"] > 0 else "镇岩符已用"
 	var lamp_text := "石灯未布" if snapshot["spring_lamps"] > 0 else "石灯已护阵"
-	return "本节结算　%s · %s · %s · %s · 砚青平安同行" % [snapshot["realm"], setback_text, talisman_text, lamp_text]
+	var response_text := "你与砚青先认清了退路" if snapshot["briefing_response"] == "careful" else "你与砚青以信任同行"
+	return "本节结算　%s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, response_text]
 
 
 func _build_actions(node: Dictionary) -> void:
@@ -265,6 +294,9 @@ func _style_settings_button(button: Button) -> void:
 
 
 func _on_action(action_id: String) -> void:
+	if action_id == JourneyStateScript.TALK_TO_COMPANION and not journey.talked_to_companion:
+		_start_companion_dialogue()
+		return
 	var result: Dictionary = journey.choose(action_id)
 	if result["ok"]:
 		_sync_exploration_after_action(action_id, result["events"])
@@ -294,6 +326,8 @@ func interact() -> Dictionary:
 		var no_target := {"ok": false, "events": ["nothing_nearby"], "snapshot": journey.snapshot()}
 		_render(no_target["events"])
 		return no_target
+	if nearby_action_id == JourneyStateScript.TALK_TO_COMPANION and not journey.talked_to_companion:
+		return _start_companion_dialogue()
 	var result: Dictionary = journey.choose(nearby_action_id)
 	if result["ok"]:
 		_sync_exploration_after_action(nearby_action_id, result["events"])
@@ -310,6 +344,7 @@ func _is_exploration_phase() -> bool:
 func _sync_exploration_after_action(action_id: String, event_ids: Array) -> void:
 	if action_id == JourneyStateScript.REPLAY_CHAPTER:
 		exploration = ExplorationStateScript.new()
+		dialogue = DialogueStateScript.new()
 		return
 	if action_id == JourneyStateScript.ENTER_SPRING and journey.phase_id() == "mountain_path":
 		exploration.transition_to(ExplorationStateScript.MOUNTAIN_PATH_MAP_ID)
@@ -365,11 +400,14 @@ func start_new_game() -> void:
 	SaveGameScript.remove(save_path)
 	journey = JourneyStateScript.new()
 	exploration = ExplorationStateScript.new()
+	dialogue = DialogueStateScript.new()
+	dialogue_history_visible = false
 	nearby_action_id = ""
 	autosave_elapsed = 0.0
 	is_playing = true
 	title_overlay.hide()
 	pause_overlay.hide()
+	dialogue_overlay.hide()
 	_render([])
 	_save_game()
 
@@ -382,6 +420,7 @@ func continue_game() -> bool:
 		return false
 	journey = decoded["journey"]
 	exploration = decoded["exploration"]
+	dialogue = decoded["dialogue"]
 	is_playing = true
 	autosave_elapsed = 0.0
 	title_overlay.hide()
@@ -403,7 +442,10 @@ func toggle_pause_menu() -> void:
 	pause_overlay.visible = not pause_overlay.visible
 	if pause_overlay.visible:
 		_save_game()
+		dialogue_overlay.hide()
 		resume_button.grab_focus.call_deferred()
+	else:
+		_render_dialogue_overlay()
 
 
 func return_to_title() -> void:
@@ -411,6 +453,7 @@ func return_to_title() -> void:
 		_save_game()
 	is_playing = false
 	pause_overlay.hide()
+	dialogue_overlay.hide()
 	_refresh_title_state()
 	title_overlay.show()
 	if continue_button.disabled:
@@ -422,7 +465,7 @@ func return_to_title() -> void:
 func _save_game() -> bool:
 	if not is_playing:
 		return false
-	var result: Dictionary = SaveGameScript.write(journey.snapshot(), exploration.snapshot(), save_path)
+	var result: Dictionary = SaveGameScript.write(journey.snapshot(), exploration.snapshot(), save_path, dialogue.snapshot())
 	if not result["ok"]:
 		event_label.text = "自动存档失败（%s）。当前游戏仍可继续。" % result["reason"]
 	return result["ok"]
@@ -456,12 +499,177 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 	var restored_exploration = ExplorationStateScript.new()
 	if not restored_exploration.restore(loaded["data"]["exploration"]):
 		return {"ok": false, "reason": "存档中的地图位置无效"}
+	var restored_dialogue = DialogueStateScript.new()
+	if not restored_dialogue.restore(loaded["data"]["dialogue"]):
+		return {"ok": false, "reason": "存档中的对话状态无效"}
+	if restored_dialogue.active:
+		if restored_journey.talked_to_companion or restored_journey.phase_id() != "riverbank":
+			return {"ok": false, "reason": "存档中的对话与剧情进度不一致"}
+		var dialogue_data: Dictionary = content.get("dialogues", {}).get(restored_dialogue.dialogue_id, {})
+		if dialogue_data.is_empty() or restored_dialogue.line_index > dialogue_data.get("lines", []).size():
+			return {"ok": false, "reason": "存档中的对话位置无效"}
 	return {
 		"ok": true,
 		"reason": "",
 		"journey": restored_journey,
 		"exploration": restored_exploration,
+		"dialogue": restored_dialogue,
 	}
+
+
+func _start_companion_dialogue() -> Dictionary:
+	if not dialogue.start(DialogueStateScript.COMPANION_BRIEFING):
+		return {"ok": false, "events": ["already_briefed"], "snapshot": journey.snapshot()}
+	dialogue_history_visible = false
+	_render_dialogue_overlay()
+	_save_game()
+	return {"ok": true, "events": ["dialogue_started"], "snapshot": journey.snapshot()}
+
+
+func advance_dialogue() -> void:
+	if not dialogue.active or _dialogue_at_choices():
+		return
+	if dialogue_label.visible_characters != -1:
+		show_full_dialogue_line()
+		return
+	var lines: Array = _current_dialogue_data().get("lines", [])
+	dialogue.advance(lines.size())
+	dialogue_history_visible = false
+	_render_dialogue_overlay()
+	_save_game()
+
+
+func show_full_dialogue_line() -> void:
+	if not dialogue.active or _dialogue_at_choices():
+		return
+	dialogue_label.visible_characters = -1
+	dialogue_reveal_elapsed = 0.0
+	dialogue_next_button.text = "继续"
+
+
+func skip_dialogue_to_response() -> void:
+	if not dialogue.active:
+		return
+	var lines: Array = _current_dialogue_data().get("lines", [])
+	if dialogue.skip_to_choices(lines.size()):
+		dialogue_history_visible = false
+		_render_dialogue_overlay()
+		_save_game()
+
+
+func toggle_dialogue_history() -> void:
+	if not dialogue.active:
+		return
+	dialogue_history_visible = not dialogue_history_visible
+	_render_dialogue_overlay()
+
+
+func _choose_dialogue_response(response_id: String) -> void:
+	if not _dialogue_at_choices():
+		return
+	var result: Dictionary = journey.complete_companion_briefing(response_id)
+	if not result["ok"]:
+		return
+	dialogue.finish()
+	dialogue_history_visible = false
+	dialogue_overlay.hide()
+	_render(result["events"])
+	_save_game()
+
+
+func _current_dialogue_data() -> Dictionary:
+	return content.get("dialogues", {}).get(dialogue.dialogue_id, {})
+
+
+func _dialogue_at_choices() -> bool:
+	if not dialogue.active:
+		return false
+	return dialogue.at_choices(_current_dialogue_data().get("lines", []).size())
+
+
+func _render_dialogue_overlay() -> void:
+	if not dialogue.active or title_overlay.visible or pause_overlay.visible:
+		dialogue_overlay.hide()
+		return
+	var dialogue_data := _current_dialogue_data()
+	var lines: Array = dialogue_data.get("lines", [])
+	if dialogue_data.is_empty() or lines.is_empty():
+		dialogue_overlay.hide()
+		return
+	dialogue_overlay.show()
+	for child in dialogue_choices.get_children():
+		child.queue_free()
+	dialogue_choices.hide()
+	dialogue_history_button.text = "返回对话" if dialogue_history_visible else "回顾"
+	if dialogue_history_visible:
+		_render_dialogue_history(lines)
+		return
+	if dialogue.at_choices(lines.size()):
+		_render_dialogue_choices(dialogue_data.get("choices", []))
+		return
+	var line: Dictionary = lines[dialogue.line_index]
+	var speaker := str(line.get("speaker", ""))
+	dialogue_speaker_label.text = speaker
+	dialogue_portrait_label.text = "行旅者\n初入山河" if speaker == "你" else "砚青\n照禾药师"
+	dialogue_label.text = str(line.get("text", ""))
+	dialogue_label.visible_characters = 0
+	dialogue_reveal_elapsed = 0.0
+	dialogue_skip_button.show()
+	dialogue_next_button.show()
+	dialogue_next_button.text = "显示全文"
+	dialogue_next_button.grab_focus.call_deferred()
+
+
+func _render_dialogue_choices(choices: Array) -> void:
+	dialogue_speaker_label.text = "你的回应"
+	dialogue_portrait_label.text = "行旅者\n初入山河"
+	dialogue_label.text = "砚青等着你的决定。回应只改变同行回声，不会锁死主线。"
+	dialogue_label.visible_characters = -1
+	dialogue_skip_button.hide()
+	dialogue_next_button.hide()
+	dialogue_choices.show()
+	var first_button: Button = null
+	for raw_choice in choices:
+		var choice: Dictionary = raw_choice
+		var button := Button.new()
+		button.text = str(choice.get("label", ""))
+		button.custom_minimum_size = Vector2(0, 44)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.focus_mode = Control.FOCUS_ALL
+		_style_action_button(button)
+		button.pressed.connect(_choose_dialogue_response.bind(str(choice.get("id", ""))))
+		dialogue_choices.add_child(button)
+		if first_button == null:
+			first_button = button
+	if first_button != null:
+		first_button.grab_focus.call_deferred()
+
+
+func _render_dialogue_history(lines: Array) -> void:
+	var seen_count := mini(dialogue.line_index + 1, lines.size())
+	var first_index := maxi(0, seen_count - 4)
+	var history_lines: Array[String] = []
+	for index in range(first_index, seen_count):
+		var line: Dictionary = lines[index]
+		history_lines.append("%s：%s" % [line.get("speaker", ""), line.get("text", "")])
+	dialogue_speaker_label.text = "对话回顾"
+	dialogue_portrait_label.text = "行旅札记\n最近四句"
+	dialogue_label.text = "\n".join(history_lines)
+	dialogue_label.visible_characters = -1
+	dialogue_choices.hide()
+	dialogue_skip_button.hide()
+	dialogue_next_button.hide()
+	dialogue_history_button.grab_focus.call_deferred()
+
+
+func _process_dialogue_reveal(delta: float) -> void:
+	if dialogue_history_visible or _dialogue_at_choices() or dialogue_label.visible_characters == -1:
+		return
+	dialogue_reveal_elapsed += delta * 42.0
+	dialogue_label.visible_characters = mini(dialogue_label.text.length(), floori(dialogue_reveal_elapsed))
+	if dialogue_label.visible_characters >= dialogue_label.text.length():
+		dialogue_label.visible_characters = -1
+		dialogue_next_button.text = "继续"
 
 
 func _phase_display_name(phase_name: String) -> String:

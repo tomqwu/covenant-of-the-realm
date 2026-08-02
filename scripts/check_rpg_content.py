@@ -53,6 +53,7 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
 
     nodes = _mapping(story.get("nodes"), f"{source}.nodes", failures)
     messages = _mapping(story.get("messages"), f"{source}.messages", failures)
+    dialogues = _mapping(story.get("dialogues"), f"{source}.dialogues", failures)
     start_node = _text(story.get("start_node"), f"{source}.start_node", failures)
     if start_node and start_node not in nodes:
         failures.append(f"{source}.start_node points to missing node '{start_node}'")
@@ -106,6 +107,46 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
         for message_id, message in messages.items():
             _text(message_id, f"{source}.messages.id", failures)
             _text(message, f"{source}.messages.{message_id}", failures)
+
+    if not dialogues:
+        failures.append(f"{source}.dialogues must not be empty")
+    else:
+        for dialogue_id, raw_dialogue in dialogues.items():
+            label = f"{source}.dialogues.{dialogue_id}"
+            _text(dialogue_id, f"{source}.dialogues.id", failures)
+            dialogue = _mapping(raw_dialogue, label, failures)
+            lines = dialogue.get("lines")
+            if not isinstance(lines, list):
+                failures.append(f"{label}.lines must be a non-empty list")
+                lines = []
+            elif not lines:
+                failures.append(f"{label}.lines must be a non-empty list")
+            for index, raw_line in enumerate(lines):
+                line_label = f"{label}.lines[{index}]"
+                line = _mapping(raw_line, line_label, failures)
+                _text(line.get("speaker"), f"{line_label}.speaker", failures)
+                _text(line.get("text"), f"{line_label}.text", failures)
+
+            choices = dialogue.get("choices")
+            if not isinstance(choices, list):
+                failures.append(f"{label}.choices must contain exactly two responses")
+                choices = []
+            elif len(choices) != 2:
+                failures.append(f"{label}.choices must contain exactly two responses")
+            choice_ids: set[str] = set()
+            for index, raw_choice in enumerate(choices):
+                choice_label = f"{label}.choices[{index}]"
+                choice = _mapping(raw_choice, choice_label, failures)
+                choice_id = _text(choice.get("id"), f"{choice_label}.id", failures)
+                if choice_id in choice_ids:
+                    failures.append(f"{choice_label}.id duplicates '{choice_id}'")
+                elif choice_id:
+                    choice_ids.add(choice_id)
+                _text(choice.get("label"), f"{choice_label}.label", failures)
+                if choice_id and f"briefing_{choice_id}" not in messages:
+                    failures.append(
+                        f"{choice_label}.id has no matching message 'briefing_{choice_id}'"
+                    )
 
     if start_node in nodes:
         reachable: set[str] = set()

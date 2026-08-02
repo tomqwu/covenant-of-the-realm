@@ -24,8 +24,8 @@ The development window has a 1152×648 minimum because that is the validated rea
 Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, battle confirmation,
 and pause/resume are exercised as physical input events by `make test-rpg-input`.
 
-启动后可选择新游戏或继续本机的版本化存档。当前 save v5 同时记录稳定地图标识
-与归一化坐标；v1–v4 自动迁移，未知地图不会被静默放进错误场景。游戏会在成功交互、战斗行动和持续
+启动后可选择新游戏或继续本机的版本化存档。当前 save v6 同时记录稳定地图标识、
+归一化坐标与对话行号；v1–v5 自动迁移，未知地图或无效对话不会被静默放进错误场景。游戏会在成功交互、战斗行动和持续
 移动时自动保存；按 `Esc` 或手柄 Start 可暂停、保存并返回标题。损坏或未知版本
 的存档不会被静默载入，主文件写入失败时可从安全备份恢复。
 
@@ -50,8 +50,10 @@ and pause/resume are exercised as physical input events by `make test-rpg-input`
 会自动保存并能在新场景实例中恢复。战斗撤退回到山道安全点，气血耗尽时砚青才
 会把主角救回渡口。
 
-开场任务采用同一套近距离交互：先在渡碑旁与砚青交谈，任务目标随后切换为采药，
-取得月芽草后再指向藏泉山门。砚青会在简报完成前原地等候，之后才跟随主角。
+开场任务采用同一套近距离交互：先在渡碑旁与砚青交谈。七句原创风险简报支持
+逐字显示、整句显示、最近四句回顾、跳到回应、两项不会锁死主线的态度选择，以及
+关闭场景后的精确续读。玩家回应会在章节结算中获得对应回声；任务目标随后切换
+为采药，取得月芽草后再指向藏泉山门。砚青会在简报完成前原地等候，之后才跟随主角。
 
 设计合同见 [RPG 基础设计](../docs/design/RPG_FOUNDATION_v0.1.md) 与
 [美术方向 v0.2](../docs/design/ART_DIRECTION_v0.2.md)。

@@ -125,12 +125,12 @@ Nakama may be evaluated later if the product grows into match-based content, ext
 Expand the executable RPG graybox into a complete 90-minute original chapter:
 
 1. top-down movement, collision, proximity interaction, and a 32 px TileMapLayer ground in 照禾渡口 (implemented; foreground asset refinement remains);
-2. proximity companion briefing and dynamic quest-state presentation (implemented; longer dialogue remains);
+2. resumable seven-line companion briefing, two attitude responses, and dynamic quest-state presentation (implemented);
 3. 月芽田 resource choice;
 4. 藏泉山道 free exploration, warning, optional stone-marker investigation, return/retreat, no-combat bypass, mid-map save, and companion rescue path (implemented);
 5. three regular enemy profiles and one boss;
 6. an active chapter companion and a visible two-turn tactical deployable (implemented);
-7. map-aware save v5, title/continue, safe backup recovery, and chapter replay (implemented; v1–v4 migrate explicitly);
+7. dialogue- and map-aware save v6, title/continue, safe backup recovery, and chapter replay (implemented; v1–v5 migrate explicitly);
 8. mouse, keyboard, and controller parity with physical-event/focus acceptance coverage (implemented);
 9. original visual direction and opt-in procedural ambience with recorded provenance (first reproducible character atlases and animation pipeline implemented; map/final assets remain);
 10. new-game-to-ending-to-save-resume-to-replay automated Godot acceptance path (implemented).

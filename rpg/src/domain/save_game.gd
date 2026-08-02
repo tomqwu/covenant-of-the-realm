@@ -2,8 +2,9 @@ extends RefCounted
 class_name SaveGame
 
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
+const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 
-const SAVE_VERSION := 5
+const SAVE_VERSION := 6
 const STORY_ID := "zhaohe_first_breath"
 const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 
@@ -11,13 +12,16 @@ const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 static func write(
 	journey_snapshot: Dictionary,
 	exploration_snapshot: Dictionary,
-	path: String = DEFAULT_SAVE_PATH
+	path: String = DEFAULT_SAVE_PATH,
+	dialogue_snapshot: Dictionary = {}
 ) -> Dictionary:
+	var stored_dialogue := dialogue_snapshot if not dialogue_snapshot.is_empty() else DialogueStateScript.default_snapshot()
 	var payload := {
 		"save_version": SAVE_VERSION,
 		"story_id": STORY_ID,
 		"journey": journey_snapshot,
 		"exploration": exploration_snapshot,
+		"dialogue": stored_dialogue,
 	}
 	var temporary_path := path + ".tmp"
 	var backup_path := path + ".bak"
@@ -106,7 +110,9 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["journey"]["talked_to_companion"] = migrated["journey"].get("phase") != "riverbank"
 		migrated["journey"]["spring_lamps"] = 1
 		migrated["journey"]["lamp_turns"] = 0
+		migrated["journey"]["briefing_response"] = _legacy_briefing_response(migrated["journey"])
 		migrated["exploration"]["map_id"] = ExplorationStateScript.DEFAULT_MAP_ID
+		migrated["dialogue"] = DialogueStateScript.default_snapshot()
 		var migration_result := _result(true, migrated, "")
 		migration_result["migrated_from_version"] = 1
 		return migration_result
@@ -116,7 +122,9 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["journey"]["talked_to_companion"] = migrated["journey"].get("phase") != "riverbank"
 		migrated["journey"]["spring_lamps"] = 1
 		migrated["journey"]["lamp_turns"] = 0
+		migrated["journey"]["briefing_response"] = _legacy_briefing_response(migrated["journey"])
 		migrated["exploration"]["map_id"] = ExplorationStateScript.DEFAULT_MAP_ID
+		migrated["dialogue"] = DialogueStateScript.default_snapshot()
 		var migration_result := _result(true, migrated, "")
 		migration_result["migrated_from_version"] = 2
 		return migration_result
@@ -125,22 +133,43 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["save_version"] = SAVE_VERSION
 		migrated["journey"]["spring_lamps"] = 1
 		migrated["journey"]["lamp_turns"] = 0
+		migrated["journey"]["briefing_response"] = _legacy_briefing_response(migrated["journey"])
 		migrated["exploration"]["map_id"] = ExplorationStateScript.DEFAULT_MAP_ID
+		migrated["dialogue"] = DialogueStateScript.default_snapshot()
 		var migration_result := _result(true, migrated, "")
 		migration_result["migrated_from_version"] = 3
 		return migration_result
 	if int(version) == 4:
 		var migrated := payload.duplicate(true)
 		migrated["save_version"] = SAVE_VERSION
+		migrated["journey"]["briefing_response"] = _legacy_briefing_response(migrated["journey"])
 		migrated["exploration"]["map_id"] = ExplorationStateScript.DEFAULT_MAP_ID
+		migrated["dialogue"] = DialogueStateScript.default_snapshot()
 		var migration_result := _result(true, migrated, "")
 		migration_result["migrated_from_version"] = 4
+		return migration_result
+	if int(version) == 5:
+		var migrated := payload.duplicate(true)
+		migrated["save_version"] = SAVE_VERSION
+		migrated["journey"]["briefing_response"] = _legacy_briefing_response(migrated["journey"])
+		migrated["dialogue"] = DialogueStateScript.default_snapshot()
+		var migration_result := _result(true, migrated, "")
+		migration_result["migrated_from_version"] = 5
 		return migration_result
 	if int(version) != SAVE_VERSION:
 		return _result(false, {}, "unsupported_version")
 	if not ExplorationStateScript.supports_map_id(payload["exploration"].get("map_id")):
 		return _result(false, {}, "invalid_map")
+	if typeof(payload.get("dialogue")) != TYPE_DICTIONARY:
+		return _result(false, {}, "invalid_dialogue")
+	var restored_dialogue = DialogueStateScript.new()
+	if not restored_dialogue.restore(payload["dialogue"]):
+		return _result(false, {}, "invalid_dialogue")
 	return _result(true, payload, "")
+
+
+static func _legacy_briefing_response(journey_snapshot: Dictionary) -> String:
+	return "careful" if journey_snapshot.get("talked_to_companion", false) else "unanswered"
 
 
 static func _result(ok: bool, data: Dictionary, reason: String) -> Dictionary:
