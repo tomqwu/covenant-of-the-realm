@@ -70,6 +70,7 @@ Open `http://127.0.0.1:4001/webclient/`. Create an account with:
 make test-rpg                # Godot domain and scene tests
 make test-rpg-e2e            # complete Godot new-game → ending → resume → replay path
 make test-rpg-input          # keyboard/controller events, focus, movement, interact, pause
+make test-rpg-performance    # movement/combat throughput and scene-lifecycle leak budget
 make check-rpg-package       # reproducible PCK/manifest, content probe, SHA-256, and boot smoke
 make rpg-content-check       # original story-graph integrity
 make test                    # rules, Evennia integration, real two-client E2E

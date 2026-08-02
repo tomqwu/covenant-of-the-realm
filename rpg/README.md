@@ -10,6 +10,7 @@ make rpg-asset-check
 make test-rpg
 make test-rpg-e2e
 make test-rpg-input
+make test-rpg-performance
 make check-rpg-package
 make play-rpg-package
 ```
@@ -20,13 +21,20 @@ make play-rpg-package
 nearest Git revision, clean/dirty source state, required runtime resources, and excluded development
 resources. `make play-rpg-package` launches that pack with the pinned Godot entrypoint. The package
 gate exports the PCK and manifest twice, requires byte-identical results, verifies the manifest,
-probes the packed namespace for four runtime resources and seven excluded `tests/`/`tools/` files,
+probes the packed namespace for four runtime resources and nine excluded `tests/`/`tools/` files,
 then boots the pack headlessly. A native `.app`/`.exe` is intentionally deferred until platform export templates,
 signing identity, product icon, and distribution target are confirmed.
 
 The development window has a 1152×648 minimum because that is the validated readable layout.
 Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, battle confirmation,
 and pause/resume are exercised as physical input events by `make test-rpg-input`.
+
+`make test-rpg-performance` executes 100,000 deterministic movement/collision steps, 2,000
+complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. The checked-in
+budget allows 2.5 seconds for each pure-domain workload and 5 seconds for the lifecycle workload,
+caps the main scene at 120 nodes, and requires every cycle to return the root to its baseline child
+count. The runner reports measured times but does not treat one development machine as a release
+hardware promise.
 
 启动后可选择新游戏或继续本机的版本化存档。当前 save v8 同时记录稳定地图标识、
 归一化坐标、对话行号、敌人标识与战斗状态；v1–v7 自动迁移，未知地图、无效对话或未知敌人不会被静默放进错误场景。游戏会在成功交互、战斗行动和持续

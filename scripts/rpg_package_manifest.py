@@ -20,6 +20,8 @@ REQUIRED_RESOURCES = [
 EXCLUDED_RESOURCES = [
     "res://tests/e2e_runner.gd",
     "res://tests/input_runner.gd",
+    "res://tests/performance_budget.json",
+    "res://tests/performance_runner.gd",
     "res://tests/test_runner.gd",
     "res://tools/capture_ui.gd",
     "res://tools/generate_pixel_assets.gd",

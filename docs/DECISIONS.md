@@ -4,6 +4,16 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Performance evidence uses broad versioned workloads
+
+The CI performance gate measures deterministic work rather than presentation frame timing: 100,000
+normalized movement/collision steps, 2,000 complete regular-enemy-to-warden rule loops, and 20
+main-scene create/destroy cycles. The first two have independent 2.5-second ceilings; scene
+lifecycle has a 5-second ceiling, a 120-node cap, and must restore the root-child baseline after
+every cycle. Budgets live in excluded test data and are intentionally far above the current local
+measurements so shared CI detects order-of-magnitude regressions without pretending to certify a
+release device. Animation speed and combat outcomes remain outside these wall-clock thresholds.
+
 ### 2026-08-02 — Stable enemy IDs select reproducible pixel-atlas rows
 
 The three regular profiles and the rock-armor warden share one original 128×256 RGBA atlas. Each
@@ -154,7 +164,7 @@ byte-identical builds plus a headless main-scene boot. Every build now also emit
 JSON manifest containing the exact size, SHA-256, engine and preset, nearest Git revision,
 clean/dirty source state, runtime-resource probes, and development-resource exclusions. The package
 gate compares two manifests, recalculates their artifact fields, opens the PCK as the active
-`res://` namespace, requires four production resources, and rejects seven representative files
+`res://` namespace, requires four production resources, and rejects nine representative files
 under the excluded `tests/` and `tools/` trees before booting the main scene. Generated `.gd.uid` files are committed as
 intentional Godot resource identity metadata; the `.pck` itself stays under ignored `build/`.
 Native macOS, Windows, or Linux executables wait for a confirmed distribution target, official

@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup setup-rpg setup-prototype rpg-import-assets play play-rpg package-rpg play-rpg-package capture-rpg-ui stop prototype lint docs-check rpg-content-check rpg-asset-check test test-unit test-rpg test-rpg-e2e test-rpg-input check-rpg-package test-integration test-multiplayer-e2e check check-mud check-rpg check-prototype
+.PHONY: help setup setup-rpg setup-prototype rpg-import-assets play play-rpg package-rpg play-rpg-package capture-rpg-ui stop prototype lint docs-check rpg-content-check rpg-asset-check test test-unit test-rpg test-rpg-e2e test-rpg-input test-rpg-performance check-rpg-package test-integration test-multiplayer-e2e check check-mud check-rpg check-prototype
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-24s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -69,6 +69,9 @@ test-rpg-e2e: rpg-import-assets ## Play the complete Godot chapter path headless
 test-rpg-input: rpg-import-assets ## Exercise real semantic input events, focus navigation, movement, interaction, and pause
 	@./scripts/godot --headless --path rpg --script res://tests/input_runner.gd
 
+test-rpg-performance: rpg-import-assets ## Benchmark deterministic movement, battle resolution, and scene cleanup
+	@./scripts/godot --headless --path rpg --script res://tests/performance_runner.gd
+
 check-rpg-package: ## Export the Godot pack twice, compare bytes, and boot it headlessly
 	@./scripts/check_rpg_package
 
@@ -80,7 +83,7 @@ test-multiplayer-e2e: ## Run a real two-client Telnet journey against a live ser
 
 check-mud: lint test ## Run all multiplayer quality gates
 
-check-rpg: rpg-content-check rpg-asset-check test-rpg test-rpg-e2e test-rpg-input check-rpg-package ## Run RPG content, assets, rules, input, full-flow, and package gates
+check-rpg: rpg-content-check rpg-asset-check test-rpg test-rpg-e2e test-rpg-input test-rpg-performance check-rpg-package ## Run RPG content, assets, rules, input, performance, full-flow, and package gates
 
 check-prototype: ## Run the preserved journey's full unit/E2E/build evidence suite
 	@cd prototypes/journey && make check
