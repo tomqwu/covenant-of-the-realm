@@ -14,6 +14,7 @@ const DAWN_PEACH := Color("e7a76f")
 @onready var player_sprite = %PlayerSprite
 @onready var companion_sprite = %CompanionSprite
 @onready var ferry_ground: TileMapLayer = %FerryGround
+@onready var path_ground: TileMapLayer = %PathGround
 
 var phase_id := "riverbank"
 var gathered_moonleaf := false
@@ -65,6 +66,10 @@ func uses_ferry_tile_layers() -> bool:
 	return ferry_ground is TileMapLayer and ferry_ground.tile_set != null
 
 
+func uses_mountain_path_tile_layers() -> bool:
+	return path_ground is TileMapLayer and path_ground.tile_set != null
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and is_node_ready():
 		_sync_actor_visuals()
@@ -75,6 +80,7 @@ func _sync_actor_visuals() -> void:
 		return
 	var size := get_rect().size
 	ferry_ground.visible = phase_id == "riverbank"
+	path_ground.visible = phase_id == "mountain_path"
 	player_sprite.visible = true
 	companion_sprite.visible = true
 	match phase_id:
@@ -82,6 +88,11 @@ func _sync_actor_visuals() -> void:
 			var protagonist_feet := Vector2(player_position.x * size.x, player_position.y * size.y).round()
 			player_sprite.position = protagonist_feet
 			companion_sprite.position = (protagonist_feet + Vector2(48, 7) if talked_to_companion else Vector2(size.x * 0.53, size.y * 0.51)).round()
+			set_player_motion(player_motion)
+		"mountain_path":
+			var path_feet := Vector2(player_position.x * size.x, player_position.y * size.y).round()
+			player_sprite.position = path_feet
+			companion_sprite.position = (path_feet + Vector2(-46, 8)).round()
 			set_player_motion(player_motion)
 		"battle":
 			player_sprite.position = Vector2(size.x * 0.43, size.y * 0.58).round()
@@ -99,6 +110,8 @@ func _draw() -> void:
 	match phase_id:
 		"riverbank":
 			_draw_riverbank()
+		"mountain_path":
+			_draw_mountain_path()
 		"battle":
 			_draw_battle_path()
 		"spring":
@@ -186,6 +199,21 @@ func _draw_battle_path() -> void:
 	_draw_beast(Vector2(size.x * 0.66, size.y * 0.43))
 	draw_line(Vector2(size.x * 0.40, size.y * 0.49), Vector2(size.x * 0.64, size.y * 0.40), SPIRIT_GOLD, 3.0)
 	draw_circle(Vector2(size.x * 0.64, size.y * 0.40), 6.0, SPIRIT_GOLD, false, 2.0)
+
+
+func _draw_mountain_path() -> void:
+	var size := get_rect().size
+	for rock_position in [Vector2(260, 128), Vector2(548, 116), Vector2(850, 320), Vector2(360, 430)]:
+		_draw_rock(rock_position, 34.0)
+	for tree_position in [Vector2(180, 160), Vector2(400, 110), Vector2(690, 145), Vector2(1000, 260), Vector2(940, 420)]:
+		_draw_tree(tree_position)
+	_draw_cave(Vector2(size.x * 0.84, size.y * 0.12), Vector2(128, 90))
+	_draw_spring_gate(Vector2(size.x * 0.10, size.y * 0.68))
+	_draw_interaction_marker(Vector2(size.x * 0.10, size.y * 0.68), nearby_action == "return_to_ferry")
+	_draw_interaction_marker(Vector2(size.x * 0.43, size.y * 0.57), nearby_action == "inspect_path_marker")
+	_draw_interaction_marker(Vector2(size.x * 0.73, size.y * 0.34), nearby_action == "approach_enemy")
+	draw_circle(Vector2(size.x * 0.73, size.y * 0.34), 62.0, Color(0.78, 0.35, 0.24, 0.18), false, 3.0)
+	_draw_beast(Vector2(size.x * 0.76, size.y * 0.31))
 
 
 func _draw_spring_chamber(completed: bool) -> void:

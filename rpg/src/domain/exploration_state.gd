@@ -4,7 +4,11 @@ class_name ExplorationState
 const GATHER_MOONLEAF := "gather_moonleaf"
 const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
+const INSPECT_PATH_MARKER := "inspect_path_marker"
+const APPROACH_ENEMY := "approach_enemy"
+const RETURN_TO_FERRY := "return_to_ferry"
 const DEFAULT_MAP_ID := "zhaohe_ferry"
+const MOUNTAIN_PATH_MAP_ID := "cangquan_path"
 
 # Positions are normalized world coordinates. Rendering resolution never changes
 # traversal, collision, or interaction outcomes.
@@ -12,6 +16,11 @@ const START_POSITION := Vector2(0.47, 0.51)
 const MOONLEAF_POSITION := Vector2(0.69, 0.62)
 const SPRING_GATE_POSITION := Vector2(0.88, 0.18)
 const COMPANION_POSITION := Vector2(0.53, 0.51)
+const PATH_START_POSITION := Vector2(0.16, 0.68)
+const PATH_RETURN_POSITION := Vector2(0.10, 0.68)
+const PATH_MARKER_POSITION := Vector2(0.43, 0.57)
+const PATH_ENEMY_POSITION := Vector2(0.73, 0.34)
+const PATH_RETREAT_POSITION := Vector2(0.64, 0.44)
 const MOVE_SPEED := 0.30
 const MAX_STEP_SECONDS := 0.10
 const INTERACTION_RADIUS := 0.065
@@ -22,6 +31,14 @@ const OBSTACLES: Array[Rect2] = [
 	Rect2(0.50, 0.20, 0.15, 0.17),
 	Rect2(0.71, 0.32, 0.16, 0.21),
 	Rect2(0.81, 0.55, 0.17, 0.18),
+]
+
+const PATH_WALK_BOUNDS := Rect2(0.06, 0.10, 0.89, 0.65)
+const PATH_OBSTACLES: Array[Rect2] = [
+	Rect2(0.20, 0.12, 0.15, 0.20),
+	Rect2(0.47, 0.18, 0.13, 0.20),
+	Rect2(0.77, 0.48, 0.17, 0.20),
+	Rect2(0.28, 0.68, 0.16, 0.17),
 ]
 
 var player_position := START_POSITION
@@ -42,6 +59,14 @@ func move(direction: Vector2, delta: float) -> Vector2:
 
 
 func interaction_action(gathered_moonleaf: bool, talked_to_companion: bool = false) -> String:
+	if map_id == MOUNTAIN_PATH_MAP_ID:
+		if player_position.distance_to(PATH_RETURN_POSITION) <= INTERACTION_RADIUS:
+			return RETURN_TO_FERRY
+		if player_position.distance_to(PATH_MARKER_POSITION) <= INTERACTION_RADIUS:
+			return INSPECT_PATH_MARKER
+		if player_position.distance_to(PATH_ENEMY_POSITION) <= INTERACTION_RADIUS:
+			return APPROACH_ENEMY
+		return ""
 	if not talked_to_companion and player_position.distance_to(COMPANION_POSITION) <= INTERACTION_RADIUS:
 		return TALK_TO_COMPANION
 	if not gathered_moonleaf and player_position.distance_to(MOONLEAF_POSITION) <= INTERACTION_RADIUS:
@@ -65,15 +90,29 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if not supports_map_id(snapshot_data["map_id"]):
 		return false
 	var candidate := Vector2(float(snapshot_data["player_x"]), float(snapshot_data["player_y"]))
-	if not _is_walkable(candidate):
+	var next_map_id := str(snapshot_data["map_id"])
+	if not _is_walkable_on_map(candidate, next_map_id):
 		return false
-	map_id = str(snapshot_data["map_id"])
+	map_id = next_map_id
 	player_position = candidate
 	return true
 
 
 static func supports_map_id(candidate: Variant) -> bool:
-	return typeof(candidate) == TYPE_STRING and candidate == DEFAULT_MAP_ID
+	return typeof(candidate) == TYPE_STRING and candidate in [DEFAULT_MAP_ID, MOUNTAIN_PATH_MAP_ID]
+
+
+func transition_to(next_map_id: String, spawn_position := Vector2(-1, -1)) -> bool:
+	if not supports_map_id(next_map_id):
+		return false
+	var next_position: Vector2 = spawn_position
+	if next_position.x < 0.0 or next_position.y < 0.0:
+		next_position = START_POSITION if next_map_id == DEFAULT_MAP_ID else PATH_START_POSITION
+	if not _is_walkable_on_map(next_position, next_map_id):
+		return false
+	map_id = next_map_id
+	player_position = next_position
+	return true
 
 
 func is_walkable(position: Vector2) -> bool:
@@ -89,7 +128,13 @@ func _move_axis(offset: Vector2) -> void:
 
 
 func _is_walkable(position: Vector2) -> bool:
-	var safe_bounds := WALK_BOUNDS.grow_individual(
+	return _is_walkable_on_map(position, map_id)
+
+
+func _is_walkable_on_map(position: Vector2, target_map_id: String) -> bool:
+	var bounds := WALK_BOUNDS if target_map_id == DEFAULT_MAP_ID else PATH_WALK_BOUNDS
+	var obstacles := OBSTACLES if target_map_id == DEFAULT_MAP_ID else PATH_OBSTACLES
+	var safe_bounds := bounds.grow_individual(
 		-PLAYER_EXTENTS.x,
 		-PLAYER_EXTENTS.y,
 		-PLAYER_EXTENTS.x,
@@ -97,7 +142,7 @@ func _is_walkable(position: Vector2) -> bool:
 	)
 	if not safe_bounds.has_point(position):
 		return false
-	for obstacle in OBSTACLES:
+	for obstacle in obstacles:
 		if obstacle.grow_individual(
 			PLAYER_EXTENTS.x,
 			PLAYER_EXTENTS.y,

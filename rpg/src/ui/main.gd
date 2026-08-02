@@ -71,7 +71,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if not is_playing or title_overlay.visible or pause_overlay.visible or journey.phase_id() != "riverbank":
+	if not is_playing or title_overlay.visible or pause_overlay.visible or not _is_exploration_phase():
 		return
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if not direction.is_zero_approx():
@@ -93,7 +93,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if not is_playing or title_overlay.visible or pause_overlay.visible:
 		return
-	if journey.phase_id() == "riverbank" and event.is_action_pressed("interact"):
+	if _is_exploration_phase() and event.is_action_pressed("interact"):
 		interact()
 		get_viewport().set_input_as_handled()
 
@@ -159,6 +159,8 @@ func _objective_text(snapshot: Dictionary) -> String:
 			return "当前目标　沿石路寻找藏泉山门"
 		"battle":
 			return "当前目标　看清甲缝，留住退路"
+		"mountain_path":
+			return "当前目标　沿石标探查碎甲声，随时可以折返"
 		"spring":
 			return "当前目标　借月芽草完成第一次引息"
 		_:
@@ -191,19 +193,19 @@ func _build_actions(node: Dictionary) -> void:
 	for action: Dictionary in node["actions"]:
 		if not available.has(action["id"]):
 			continue
-		if journey.phase_id() == "riverbank" and action["id"] != nearby_action_id:
+		if _is_exploration_phase() and action["id"] != nearby_action_id:
 			continue
 		var button := Button.new()
 		button.text = action["label"]
 		button.custom_minimum_size = Vector2(0, 48)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.focus_mode = Control.FOCUS_NONE if journey.phase_id() == "riverbank" else Control.FOCUS_ALL
+		button.focus_mode = Control.FOCUS_NONE if _is_exploration_phase() else Control.FOCUS_ALL
 		_style_action_button(button)
 		button.pressed.connect(_on_action.bind(action["id"]))
 		actions.add_child(button)
 		if first_button == null:
 			first_button = button
-	if first_button == null and journey.phase_id() == "riverbank":
+	if first_button == null and _is_exploration_phase():
 		var guidance := Label.new()
 		guidance.text = "附近暂无可交互目标"
 		guidance.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -212,9 +214,9 @@ func _build_actions(node: Dictionary) -> void:
 		guidance.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		guidance.add_theme_color_override("font_color", Color("5f674f"))
 		actions.add_child(guidance)
-	if first_button != null and journey.phase_id() != "riverbank":
+	if first_button != null and not _is_exploration_phase():
 		first_button.grab_focus.call_deferred()
-	input_hint.text = "WASD / 方向键移动 · E / 空格 / 手柄 A 交互" if journey.phase_id() == "riverbank" else "鼠标点击 · 方向键选择 · Enter / 手柄 A 确认"
+	input_hint.text = "WASD / 方向键移动 · E / 空格 / 手柄 A 交互" if _is_exploration_phase() else "鼠标点击 · 方向键选择 · Enter / 手柄 A 确认"
 
 
 func _style_action_button(button: Button) -> void:
@@ -264,8 +266,8 @@ func _style_settings_button(button: Button) -> void:
 
 func _on_action(action_id: String) -> void:
 	var result: Dictionary = journey.choose(action_id)
-	if result["ok"] and action_id == JourneyStateScript.REPLAY_CHAPTER:
-		exploration = ExplorationStateScript.new()
+	if result["ok"]:
+		_sync_exploration_after_action(action_id, result["events"])
 	_render(result["events"])
 	if result["ok"]:
 		_save_game()
@@ -274,7 +276,7 @@ func _on_action(action_id: String) -> void:
 
 
 func move_player(direction: Vector2, delta: float) -> Vector2:
-	if journey.phase_id() != "riverbank":
+	if not _is_exploration_phase():
 		return exploration.player_position
 	var previous_action := nearby_action_id
 	var previous_position: Vector2 = exploration.player_position
@@ -283,20 +285,43 @@ func move_player(direction: Vector2, delta: float) -> Vector2:
 	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	if nearby_action_id != previous_action:
-		_build_actions(content["nodes"]["riverbank"])
+		_build_actions(content["nodes"][journey.phase_id()])
 	return exploration.player_position
 
 
 func interact() -> Dictionary:
-	if journey.phase_id() != "riverbank" or nearby_action_id.is_empty():
+	if not _is_exploration_phase() or nearby_action_id.is_empty():
 		var no_target := {"ok": false, "events": ["nothing_nearby"], "snapshot": journey.snapshot()}
 		_render(no_target["events"])
 		return no_target
 	var result: Dictionary = journey.choose(nearby_action_id)
+	if result["ok"]:
+		_sync_exploration_after_action(nearby_action_id, result["events"])
 	_render(result["events"])
 	if result["ok"]:
 		_save_game()
 	return result
+
+
+func _is_exploration_phase() -> bool:
+	return journey.phase_id() in ["riverbank", "mountain_path"]
+
+
+func _sync_exploration_after_action(action_id: String, event_ids: Array) -> void:
+	if action_id == JourneyStateScript.REPLAY_CHAPTER:
+		exploration = ExplorationStateScript.new()
+		return
+	if action_id == JourneyStateScript.ENTER_SPRING and journey.phase_id() == "mountain_path":
+		exploration.transition_to(ExplorationStateScript.MOUNTAIN_PATH_MAP_ID)
+		return
+	if action_id == JourneyStateScript.RETURN_TO_FERRY:
+		exploration.transition_to(ExplorationStateScript.DEFAULT_MAP_ID, ExplorationStateScript.SPRING_GATE_POSITION)
+		return
+	if action_id == JourneyStateScript.RETREAT:
+		exploration.transition_to(ExplorationStateScript.MOUNTAIN_PATH_MAP_ID, ExplorationStateScript.PATH_RETREAT_POSITION)
+		return
+	if event_ids.has("companion_rescue"):
+		exploration.transition_to(ExplorationStateScript.DEFAULT_MAP_ID)
 
 
 func configure_save_path(path: String) -> void:
@@ -443,6 +468,8 @@ func _phase_display_name(phase_name: String) -> String:
 	match phase_name:
 		"riverbank":
 			return "照禾渡口"
+		"mountain_path":
+			return "藏泉山道"
 		"battle":
 			return "藏泉山道"
 		"spring":

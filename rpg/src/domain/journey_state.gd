@@ -1,11 +1,14 @@
 extends RefCounted
 class_name JourneyState
 
-enum Phase { RIVERBANK, BATTLE, SPRING, COMPLETE }
+enum Phase { RIVERBANK, MOUNTAIN_PATH, BATTLE, SPRING, COMPLETE }
 
 const GATHER_MOONLEAF := "gather_moonleaf"
 const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
+const INSPECT_PATH_MARKER := "inspect_path_marker"
+const APPROACH_ENEMY := "approach_enemy"
+const RETURN_TO_FERRY := "return_to_ferry"
 const USE_ART := "use_art"
 const USE_TALISMAN := "use_talisman"
 const GUARD := "guard"
@@ -35,6 +38,8 @@ func phase_id() -> String:
 	match phase:
 		Phase.RIVERBANK:
 			return "riverbank"
+		Phase.MOUNTAIN_PATH:
+			return "mountain_path"
 		Phase.BATTLE:
 			return "battle"
 		Phase.SPRING:
@@ -53,6 +58,8 @@ func available_actions() -> PackedStringArray:
 				actions.append(GATHER_MOONLEAF)
 			actions.append(ENTER_SPRING)
 			return actions
+		Phase.MOUNTAIN_PATH:
+			return PackedStringArray([INSPECT_PATH_MARKER, APPROACH_ENEMY, RETURN_TO_FERRY])
 		Phase.BATTLE:
 			var battle_actions := PackedStringArray([USE_ART])
 			if talismans > 0:
@@ -74,6 +81,15 @@ func choose(action_id: String) -> Dictionary:
 	match phase:
 		Phase.RIVERBANK:
 			return _choose_riverbank(action_id)
+		Phase.MOUNTAIN_PATH:
+			if action_id == INSPECT_PATH_MARKER:
+				return _result(true, ["path_marker_inspected"])
+			if action_id == APPROACH_ENEMY:
+				phase = Phase.BATTLE
+				return _result(true, ["battle_started"])
+			if action_id == RETURN_TO_FERRY:
+				phase = Phase.RIVERBANK
+				return _result(true, ["returned_to_ferry"])
 		Phase.BATTLE:
 			return _choose_battle(action_id)
 		Phase.SPRING:
@@ -157,6 +173,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	match snapshot_data["phase"]:
 		"riverbank":
 			next_phase = Phase.RIVERBANK
+		"mountain_path":
+			next_phase = Phase.MOUNTAIN_PATH
 		"battle":
 			next_phase = Phase.BATTLE
 		"spring":
@@ -224,8 +242,8 @@ func _choose_riverbank(action_id: String) -> Dictionary:
 			return _result(false, ["need_briefing"])
 		if not gathered_moonleaf:
 			return _result(false, ["need_moonleaf"])
-		phase = Phase.BATTLE
-		return _result(true, ["battle_started"])
+		phase = Phase.MOUNTAIN_PATH
+		return _result(true, ["path_entered"])
 	return _result(false, ["invalid_action"])
 
 
@@ -260,7 +278,7 @@ func _choose_battle(action_id: String) -> Dictionary:
 			events.append("spring_lamp_deployed")
 		RETREAT:
 			setbacks += 1
-			phase = Phase.RIVERBANK
+			phase = Phase.MOUNTAIN_PATH
 			player_hp = mini(12, player_hp + 3)
 			enemy_hp = 9
 			round_number = 1
@@ -340,6 +358,8 @@ func _valid_phase_invariants(
 ) -> bool:
 	if next_phase == Phase.RIVERBANK:
 		return next_realm == "凡身" and next_player_hp > 0 and next_enemy_hp == 9 and next_round == 1 and next_companion_supports == 1 and next_spring_lamps == 1 and next_lamp_turns == 0
+	if next_phase == Phase.MOUNTAIN_PATH:
+		return next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp == 9 and next_round == 1 and next_lamp_turns == 0
 	if next_phase == Phase.BATTLE:
 		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp > 0 and (next_lamp_turns == 0 or next_spring_lamps == 0)
 	if next_phase == Phase.SPRING:

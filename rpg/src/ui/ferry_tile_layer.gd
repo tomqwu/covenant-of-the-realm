@@ -13,6 +13,7 @@ const TILE_DEEP_GRASS := Vector2i(6, 0)
 const TILE_WATER_GLINT := Vector2i(7, 0)
 
 @export var atlas_texture: Texture2D
+@export_enum("ferry", "mountain_path") var map_kind := "ferry"
 
 var tile_counts: Dictionary = {}
 
@@ -20,11 +21,12 @@ var tile_counts: Dictionary = {}
 func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	tile_set = _build_tile_set()
-	_build_ferry_ground()
+	_build_ground()
 
 
 func map_contract() -> Dictionary:
 	return {
+		"map_kind": map_kind,
 		"map_size": MAP_SIZE,
 		"tile_size": TILE_SIZE,
 		"used_rect": get_used_rect(),
@@ -45,7 +47,7 @@ func _build_tile_set() -> TileSet:
 	return result
 
 
-func _build_ferry_ground() -> void:
+func _build_ground() -> void:
 	clear()
 	tile_counts = {
 		"grass": 0,
@@ -63,6 +65,8 @@ func _build_ferry_ground() -> void:
 
 
 func _tile_for_cell(cell: Vector2i) -> Vector2i:
+	if map_kind == "mountain_path":
+		return _mountain_tile_for_cell(cell)
 	if cell.x <= 11:
 		return TILE_WATER_GLINT if (cell.x + cell.y) % 5 == 0 else TILE_WATER
 	if cell.x <= 14:
@@ -77,6 +81,25 @@ func _tile_for_cell(cell: Vector2i) -> Vector2i:
 	if minf(main_path, field_path) <= 1.35:
 		return TILE_PATH
 	return TILE_DEEP_GRASS if (cell.x + cell.y) % 7 == 0 else TILE_GRASS
+
+
+func _mountain_tile_for_cell(cell: Vector2i) -> Vector2i:
+	if cell.x <= 4:
+		return TILE_WATER_GLINT if (cell.x + cell.y) % 4 == 0 else TILE_WATER
+	var point := Vector2(cell) + Vector2(0.5, 0.5)
+	var path_distance := _distance_to_polyline(point, [
+		Vector2(3, 14),
+		Vector2(9, 15),
+		Vector2(14, 12),
+		Vector2(20, 9),
+		Vector2(27, 6),
+		Vector2(32, 3),
+	])
+	if path_distance <= 1.25:
+		return TILE_PATH
+	if Rect2i(24, 5, 5, 4).has_point(cell) or Rect2i(14, 10, 3, 3).has_point(cell):
+		return TILE_STONE
+	return TILE_DEEP_GRASS if (cell.x * 3 + cell.y) % 5 == 0 else TILE_GRASS
 
 
 func _distance_to_polyline(point: Vector2, points: Array) -> float:

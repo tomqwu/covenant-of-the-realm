@@ -127,7 +127,7 @@ Expand the executable RPG graybox into a complete 90-minute original chapter:
 1. top-down movement, collision, proximity interaction, and a 32 px TileMapLayer ground in 照禾渡口 (implemented; foreground asset refinement remains);
 2. proximity companion briefing and dynamic quest-state presentation (implemented; longer dialogue remains);
 3. 月芽田 resource choice;
-4. 藏泉山道 warning, retreat, and companion rescue path (implemented; free path exploration remains);
+4. 藏泉山道 free exploration, warning, optional stone-marker investigation, return/retreat, mid-map save, and companion rescue path (implemented; bypass route remains);
 5. three regular enemy profiles and one boss;
 6. an active chapter companion and a visible two-turn tactical deployable (implemented);
 7. map-aware save v5, title/continue, safe backup recovery, and chapter replay (implemented; v1–v4 migrate explicitly);

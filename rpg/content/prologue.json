@@ -22,7 +22,29 @@
         {
           "id": "enter_spring",
           "label": "进入藏泉山道",
-          "possible_targets": ["riverbank", "battle"]
+          "possible_targets": ["riverbank", "mountain_path"]
+        }
+      ]
+    },
+    "mountain_path": {
+      "kind": "explore",
+      "title": "藏泉山道",
+      "description": "石路贴着溪谷向上。旧石标留着退路，前方碎甲声在林间忽远忽近。",
+      "actions": [
+        {
+          "id": "inspect_path_marker",
+          "label": "查看旧石标",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "approach_enemy",
+          "label": "接近碎甲声",
+          "possible_targets": ["battle"]
+        },
+        {
+          "id": "return_to_ferry",
+          "label": "沿石阶返回渡口",
+          "possible_targets": ["riverbank"]
         }
       ]
     },
@@ -58,8 +80,8 @@
         },
         {
           "id": "retreat",
-          "label": "撤回照禾渡口",
-          "possible_targets": ["riverbank"]
+          "label": "撤到旧石标",
+          "possible_targets": ["mountain_path"]
         }
       ]
     },
@@ -105,7 +127,10 @@
     "need_briefing": "你还不知道山道异动的详情，先回渡碑旁与砚青商量。",
     "already_gathered": "本轮可取的月芽草已经收好，继续采摘会伤及田脉。",
     "need_moonleaf": "山道灵雾刺骨。砚青建议先去月芽田准备一株护脉灵草。",
-    "battle_started": "岩甲兽踏碎石屑逼近。战斗开始。",
+    "path_entered": "你与砚青越过山门。溪声掩住了林间的碎甲声，退路仍在身后。",
+    "path_marker_inspected": "石标背面刻着旧猎户的箭记：逆溪三步可避开第一轮冲撞。",
+    "returned_to_ferry": "你与砚青沿石阶回到渡口，山道中的动静并未追来。",
+    "battle_started": "你循着碎甲声靠近，岩甲兽踏碎石屑逼来。战斗开始。",
     "art_hit": "你引出一缕泉息，击中岩甲兽的甲缝。",
     "talisman_hit": "镇岩符贴上甲壳，灵纹骤然收紧。",
     "no_talisman": "镇岩符已经用尽。",
@@ -117,7 +142,7 @@
     "spring_lamp_deployed": "你将引泉石灯按进路旁阵眼，青白泉光护住前路。",
     "spring_lamp_absorbed": "石灯引开一缕冲势，本次伤害降低一点。",
     "no_spring_lamp": "本次挑战的引泉石灯已经布下，无法重复部署。",
-    "retreated": "你与砚青沿预留的石标撤回渡口。岩甲兽重新缩回完整甲势。",
+    "retreated": "你与砚青退到旧石标旁。岩甲兽没有追远，并重新缩回完整甲势。",
     "companion_rescue": "你气血耗尽前，砚青将你拖离山道。休整后仍可再次进山。",
     "battle_won": "岩甲兽退入山缝，通往泉室的道路已经打开。",
     "breakthrough": "月芽草化开寒意，你完成第一次引息，踏入引息境一层。",

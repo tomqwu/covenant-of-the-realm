@@ -37,6 +37,10 @@ func _capture_flow() -> void:
 	instance._on_action("talk_to_companion")
 	instance._on_action("gather_moonleaf")
 	instance._on_action("enter_spring")
+	await _settle()
+	await _save_frame("02-cangquan-path.png")
+
+	instance._on_action("approach_enemy")
 	instance._on_action("deploy_spring_lamp")
 	await _settle()
 	await _save_frame("02-cangquan-battle.png")

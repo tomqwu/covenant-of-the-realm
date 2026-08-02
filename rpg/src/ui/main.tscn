@@ -85,6 +85,14 @@ texture_filter = 1
 script = ExtResource("7_ferry_layer")
 atlas_texture = ExtResource("8_ferry_tiles")
 
+[node name="PathGround" type="TileMapLayer" parent="MapFrame"]
+unique_name_in_owner = true
+visible = false
+texture_filter = 1
+script = ExtResource("7_ferry_layer")
+atlas_texture = ExtResource("8_ferry_tiles")
+map_kind = "mountain_path"
+
 [node name="MapCanvas" type="Control" parent="MapFrame"]
 unique_name_in_owner = true
 clip_contents = true

@@ -79,8 +79,8 @@ make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
 The deterministic multiplayer domain rules have an enforced 99% statement/branch minimum and
-currently reach 100%. Godot behavior is covered by 233 headless rule/scene assertions plus an
-independent 17-check chapter E2E and 16-check physical-input/focus path. The MUD adapter has
+currently reach 100%. Godot behavior is covered by 254 headless rule/scene assertions plus an
+independent 30-check chapter E2E and 18-check physical-input/focus path. The MUD adapter has
 isolated Evennia tests, and its release path
 is exercised through two real concurrent Telnet clients. The preserved browser prototype retains
 its own 100% unit result and 53-execution Playwright matrix. See [testing](docs/TESTING.md),

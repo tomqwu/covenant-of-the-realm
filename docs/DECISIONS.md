@@ -4,6 +4,15 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Explorable mountain-path transition and retreat semantics
+
+Entering the spring gate now transitions from `zhaohe_ferry` to the independently saved
+`cangquan_path` map before combat. The player may inspect an old route marker, approach the visible
+warning zone, or walk back to the ferry. Battle retreat returns to a safe mountain-path marker and
+resets the enemy attempt; only health depletion triggers companion rescue all the way to the ferry.
+Both map transitions use the same semantic interaction path, persist map identity and normalized
+coordinates, and are included in new-scene save/resume E2E coverage.
+
 ### 2026-08-02 — TileMapLayer ferry-ground baseline
 
 照禾渡口 now composes its ground from a 36×20 grid of original 32 px tiles through Godot's
