@@ -169,7 +169,8 @@ func _render(event_ids: Array) -> void:
 		snapshot["gathered_moonleaf"],
 		snapshot["talked_to_companion"],
 		snapshot["lamp_turns"],
-		snapshot["enemy_id"]
+		snapshot["enemy_id"],
+		snapshot["moonleaf_method"]
 	)
 	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"])
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
@@ -248,7 +249,8 @@ func _chapter_summary(snapshot: Dictionary) -> String:
 	var talisman_text := "镇岩符留存" if snapshot["talismans"] > 0 else "镇岩符已用"
 	var lamp_text := "石灯未布" if snapshot["spring_lamps"] > 0 else "石灯已护阵"
 	var response_text := "你与砚青先认清了退路" if snapshot["briefing_response"] == "careful" else "你与砚青以信任同行"
-	return "本节结算　%s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, response_text]
+	var harvest_text := "月芽留根" if snapshot["moonleaf_method"] == "cutting" else "依旧规取药"
+	return "本节结算　%s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, response_text]
 
 
 func _build_actions(node: Dictionary) -> void:
@@ -259,7 +261,7 @@ func _build_actions(node: Dictionary) -> void:
 	for action: Dictionary in node["actions"]:
 		if not available.has(action["id"]):
 			continue
-		if _is_exploration_phase() and action["id"] != nearby_action_id:
+		if _is_exploration_phase() and not _action_matches_nearby(action["id"]):
 			continue
 		var button := Button.new()
 		button.text = action["label"]
@@ -376,6 +378,12 @@ func interact() -> Dictionary:
 
 func _is_exploration_phase() -> bool:
 	return journey.phase_id() in ["riverbank", "mountain_path"]
+
+
+func _action_matches_nearby(action_id: String) -> bool:
+	if nearby_action_id == JourneyStateScript.GATHER_MOONLEAF:
+		return action_id in [JourneyStateScript.GATHER_MOONLEAF, JourneyStateScript.GATHER_MOONLEAF_CUTTING]
+	return action_id == nearby_action_id
 
 
 func _sync_exploration_after_action(action_id: String, event_ids: Array) -> void:

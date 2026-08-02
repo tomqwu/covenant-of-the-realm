@@ -22,6 +22,7 @@ const DAWN_PEACH := Color("e7a76f")
 
 var phase_id := "riverbank"
 var gathered_moonleaf := false
+var moonleaf_method := "unselected"
 var talked_to_companion := false
 var lamp_turns := 0
 var enemy_id := "rock_armor_young"
@@ -35,9 +36,17 @@ var feedback_motion_enabled := true
 var feedback_phase := 0.0
 
 
-func set_story_state(next_phase: String, gathered: bool, talked: bool, active_lamp_turns: int, next_enemy_id: String) -> void:
+func set_story_state(
+	next_phase: String,
+	gathered: bool,
+	talked: bool,
+	active_lamp_turns: int,
+	next_enemy_id: String,
+	next_moonleaf_method: String
+) -> void:
 	phase_id = next_phase
 	gathered_moonleaf = gathered
+	moonleaf_method = next_moonleaf_method
 	talked_to_companion = talked
 	lamp_turns = active_lamp_turns
 	enemy_id = next_enemy_id
@@ -131,6 +140,14 @@ func uses_animated_enemy_sprites() -> bool:
 		and path_moss_enemy_sprite is AnimatedSprite2D
 		and path_puppet_enemy_sprite is AnimatedSprite2D
 	)
+
+
+func moonleaf_visual_contract() -> Dictionary:
+	return {
+		"gathered": gathered_moonleaf,
+		"method": moonleaf_method,
+		"regrowing": gathered_moonleaf and moonleaf_method == "cutting",
+	}
 
 
 func _notification(what: int) -> void:
@@ -237,7 +254,7 @@ func _draw_riverbank() -> void:
 
 	for index in range(10):
 		var plant := Vector2(size.x * 0.63 + float(index % 5) * 28.0, size.y * 0.57 + float(index / 5) * 28.0)
-		_draw_plant(plant, not gathered_moonleaf)
+		_draw_plant(plant, not gathered_moonleaf, gathered_moonleaf and moonleaf_method == "cutting")
 
 	_draw_spring_gate(Vector2(size.x * 0.88, size.y * 0.18))
 	if not talked_to_companion:
@@ -388,7 +405,12 @@ func _draw_tree(position: Vector2) -> void:
 	draw_circle(position + Vector2(19, 9), 21.0, Color("a1c98c"))
 
 
-func _draw_plant(position: Vector2, available: bool) -> void:
+func _draw_plant(position: Vector2, available: bool, regrowing: bool) -> void:
+	if regrowing:
+		draw_line(position + Vector2(0, 12), position + Vector2(0, 1), Color("739b70"), 3.0)
+		draw_circle(position + Vector2(-4, 3), 4.0, Color("a9cd84"))
+		draw_circle(position + Vector2(5, 6), 3.0, Color("8ebb83"))
+		return
 	var color := Color("a9cd84") if available else Color("72836b")
 	draw_line(position + Vector2(0, 12), position - Vector2(0, 12), color.darkened(0.2), 3.0)
 	draw_circle(position + Vector2(-6, -6), 6.0, color)

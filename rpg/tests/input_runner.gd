@@ -58,6 +58,7 @@ func _run() -> void:
 	game._render([])
 	await _trigger_action("interact")
 	_expect(game.journey.gathered_moonleaf, "交互动作在月芽田采集")
+	_expect(game.journey.moonleaf_method == "whole_plant", "单键交互采用稳定的旧规取药默认项")
 	_expect(game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.88, "player_y": 0.18}), "输入验收移动到合法山门坐标")
 	game._render([])
 	await _trigger_action("interact")

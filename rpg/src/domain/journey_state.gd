@@ -6,6 +6,7 @@ const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
 enum Phase { RIVERBANK, MOUNTAIN_PATH, BATTLE, SPRING, COMPLETE }
 
 const GATHER_MOONLEAF := "gather_moonleaf"
+const GATHER_MOONLEAF_CUTTING := "gather_moonleaf_cutting"
 const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
 const INSPECT_PATH_MARKER := "inspect_path_marker"
@@ -28,6 +29,10 @@ const RESPONSE_UNANSWERED := "unanswered"
 const RESPONSE_CAREFUL := "careful"
 const RESPONSE_TRUSTING := "trusting"
 const BRIEFING_RESPONSES := [RESPONSE_CAREFUL, RESPONSE_TRUSTING]
+const MOONLEAF_UNSELECTED := "unselected"
+const MOONLEAF_WHOLE_PLANT := "whole_plant"
+const MOONLEAF_CUTTING := "cutting"
+const MOONLEAF_METHODS := [MOONLEAF_UNSELECTED, MOONLEAF_WHOLE_PLANT, MOONLEAF_CUTTING]
 
 var phase := Phase.RIVERBANK
 var gathered_moonleaf := false
@@ -43,6 +48,7 @@ var spring_lamps := 1
 var lamp_turns := 0
 var setbacks := 0
 var briefing_response := RESPONSE_UNANSWERED
+var moonleaf_method := MOONLEAF_UNSELECTED
 var armor_break_turns := 0
 var focus_turns := 0
 
@@ -69,6 +75,7 @@ func available_actions() -> PackedStringArray:
 				actions.append(TALK_TO_COMPANION)
 			if not gathered_moonleaf:
 				actions.append(GATHER_MOONLEAF)
+				actions.append(GATHER_MOONLEAF_CUTTING)
 			actions.append(ENTER_SPRING)
 			return actions
 		Phase.MOUNTAIN_PATH:
@@ -155,6 +162,7 @@ func snapshot() -> Dictionary:
 		"lamp_turns": lamp_turns,
 		"setbacks": setbacks,
 		"briefing_response": briefing_response,
+		"moonleaf_method": moonleaf_method,
 		"armor_break_turns": armor_break_turns,
 		"focus_turns": focus_turns,
 	}
@@ -176,6 +184,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		"lamp_turns",
 		"setbacks",
 		"briefing_response",
+		"moonleaf_method",
 		"armor_break_turns",
 		"focus_turns",
 	]
@@ -191,6 +200,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if typeof(snapshot_data["realm"]) != TYPE_STRING:
 		return false
 	if typeof(snapshot_data["briefing_response"]) != TYPE_STRING:
+		return false
+	if typeof(snapshot_data["moonleaf_method"]) != TYPE_STRING:
 		return false
 	if not EnemyCatalogScript.supports(snapshot_data["enemy_id"]):
 		return false
@@ -243,6 +254,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	var next_lamp_turns := int(snapshot_data["lamp_turns"])
 	var next_setbacks := int(snapshot_data["setbacks"])
 	var next_briefing_response: String = snapshot_data["briefing_response"]
+	var next_moonleaf_method: String = snapshot_data["moonleaf_method"]
 	var next_armor_break_turns := int(snapshot_data["armor_break_turns"])
 	var next_focus_turns := int(snapshot_data["focus_turns"])
 	if not _valid_phase_invariants(
@@ -260,6 +272,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_lamp_turns,
 		next_setbacks,
 		next_briefing_response,
+		next_moonleaf_method,
 		next_armor_break_turns,
 		next_focus_turns
 	):
@@ -279,6 +292,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	lamp_turns = next_lamp_turns
 	setbacks = next_setbacks
 	briefing_response = next_briefing_response
+	moonleaf_method = next_moonleaf_method
 	armor_break_turns = next_armor_break_turns
 	focus_turns = next_focus_turns
 	return true
@@ -287,11 +301,12 @@ func restore(snapshot_data: Dictionary) -> bool:
 func _choose_riverbank(action_id: String) -> Dictionary:
 	if action_id == TALK_TO_COMPANION:
 		return complete_companion_briefing(RESPONSE_CAREFUL)
-	if action_id == GATHER_MOONLEAF:
+	if action_id in [GATHER_MOONLEAF, GATHER_MOONLEAF_CUTTING]:
 		if gathered_moonleaf:
 			return _result(false, ["already_gathered"])
 		gathered_moonleaf = true
-		return _result(true, ["gathered"])
+		moonleaf_method = MOONLEAF_CUTTING if action_id == GATHER_MOONLEAF_CUTTING else MOONLEAF_WHOLE_PLANT
+		return _result(true, ["gathered_cutting" if moonleaf_method == MOONLEAF_CUTTING else "gathered"])
 	if action_id == ENTER_SPRING:
 		if not talked_to_companion:
 			return _result(false, ["need_briefing"])
@@ -449,6 +464,7 @@ func _reset_chapter() -> void:
 	lamp_turns = 0
 	setbacks = 0
 	briefing_response = RESPONSE_UNANSWERED
+	moonleaf_method = MOONLEAF_UNSELECTED
 	armor_break_turns = 0
 	focus_turns = 0
 
@@ -475,12 +491,20 @@ func _valid_phase_invariants(
 	next_lamp_turns: int,
 	next_setbacks: int,
 	next_briefing_response: String,
+	next_moonleaf_method: String,
 	next_armor_break_turns: int,
 	next_focus_turns: int
 ) -> bool:
 	if next_briefing_response not in [RESPONSE_UNANSWERED, RESPONSE_CAREFUL, RESPONSE_TRUSTING]:
 		return false
 	if next_talked != (next_briefing_response != RESPONSE_UNANSWERED):
+		return false
+	if next_moonleaf_method not in MOONLEAF_METHODS:
+		return false
+	if next_phase == Phase.COMPLETE:
+		if next_moonleaf_method == MOONLEAF_UNSELECTED:
+			return false
+	elif next_gathered != (next_moonleaf_method != MOONLEAF_UNSELECTED):
 		return false
 	var next_enemy_max := EnemyCatalogScript.max_hp(next_enemy_id)
 	if next_phase == Phase.RIVERBANK:

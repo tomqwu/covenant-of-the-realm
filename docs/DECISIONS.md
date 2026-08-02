@@ -4,6 +4,16 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Moonleaf harvesting has two non-blocking persisted methods
+
+At the moonleaf field, the existing `gather_moonleaf` action remains the stable one-button default
+and means taking one whole plant under the field rule. A second explicit action cuts mature leaves
+and leaves roots and new growth visible. Both yield the one quest herb required for the first-breath
+route and neither creates a hidden optimal combat reward; the authored consequence is stewardship,
+map residue, event prose, and chapter-summary echo. Save v9 records `whole_plant` or `cutting`.
+V1–v8 snapshots with an herb or completed chapter conservatively migrate to `whole_plant`; an
+unharvested old snapshot migrates to `unselected`. Invalid or phase-inconsistent methods fail closed.
+
 ### 2026-08-02 — Performance evidence uses broad versioned workloads
 
 The CI performance gate measures deterministic work rather than presentation frame timing: 100,000

@@ -59,6 +59,7 @@ func _run() -> void:
 	await _trigger_semantic_action("interact")
 	await _settle()
 	_expect(game.journey.gathered_moonleaf, "E2E 通过语义交互采集月芽草")
+	_expect(game.journey.moonleaf_method == "whole_plant", "E2E 语义交互保留向后兼容的旧规取药")
 
 	game.move_player(Vector2.LEFT, 0.82)
 	game.move_player(Vector2.UP, 1.56)
@@ -164,7 +165,9 @@ func _run() -> void:
 	resumed.skip_dialogue_to_response()
 	await _press_dialogue_choice(resumed, "我信你的判断，一起走。")
 	_expect(resumed.journey.briefing_response == "trusting", "E2E 重游可选择不同同行态度")
-	resumed._on_action("gather_moonleaf")
+	resumed._on_action("gather_moonleaf_cutting")
+	_expect(resumed.journey.moonleaf_method == "cutting", "E2E 重游可选择剪叶留根")
+	_expect(resumed.get_node("%MapCanvas").moonleaf_visual_contract()["regrowing"], "E2E 剪叶后地图显示留根新芽")
 	resumed._on_action("enter_spring")
 	_expect(resumed.exploration.restore({"map_id": "cangquan_path", "player_x": 0.86, "player_y": 0.18}), "E2E 重游后到达绕行入口")
 	resumed._render([])
@@ -173,6 +176,7 @@ func _run() -> void:
 	_expect(resumed.journey.player_hp == 12 and resumed.journey.talismans == 1 and resumed.journey.round_number == 1, "E2E 绕行保留气血、符箓和战斗回合")
 	await _press_action(resumed, "静心引息")
 	_expect(resumed.get_node("%DescriptionLabel").text.contains("以信任同行"), "E2E 结算回应重游时的信任选择")
+	_expect(resumed.get_node("%DescriptionLabel").text.contains("月芽留根"), "E2E 结算回应重游时的采集选择")
 
 	resumed.queue_free()
 	await _settle()

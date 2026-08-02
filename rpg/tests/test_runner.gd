@@ -50,6 +50,8 @@ func _test_initial_state() -> void:
 	_expect_equal(state.snapshot()["realm"], "凡身", "初始境界")
 	_expect_true(state.available_actions().has("talk_to_companion"), "初始可与同伴交谈")
 	_expect_true(state.available_actions().has("gather_moonleaf"), "初始可采集")
+	_expect_true(state.available_actions().has("gather_moonleaf_cutting"), "初始可选择剪叶留根")
+	_expect_equal(state.snapshot()["moonleaf_method"], "unselected", "采集前没有伪造取药方式")
 	_expect_true(state.available_actions().has("enter_spring"), "初始可尝试进山")
 	_expect_false(state.choose("unknown")["ok"], "未知行动不改变状态")
 
@@ -136,6 +138,12 @@ func _test_state_restore() -> void:
 	var response_mismatch := snapshot.duplicate(true)
 	response_mismatch["briefing_response"] = "unanswered"
 	_expect_false(restored.restore(response_mismatch), "已交谈状态不能恢复为未回应")
+	var invalid_harvest := snapshot.duplicate(true)
+	invalid_harvest["moonleaf_method"] = "burn_field"
+	_expect_false(restored.restore(invalid_harvest), "未知采集方式不会进入规则层")
+	var missing_harvest := snapshot.duplicate(true)
+	missing_harvest["moonleaf_method"] = "unselected"
+	_expect_false(restored.restore(missing_harvest), "持有灵草时不能恢复为未选择采集方式")
 	var excessive_status := snapshot.duplicate(true)
 	excessive_status["focus_turns"] = 3
 	_expect_false(restored.restore(excessive_status), "持续状态层数拒绝超出规则上限")
@@ -176,7 +184,8 @@ func _test_versioned_save() -> void:
 	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
 	var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(loaded["ok"], "版本化存档读取成功")
-	_expect_equal(loaded["data"]["save_version"], 8.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["save_version"], 9.0, "存档声明当前版本")
+	_expect_equal(loaded["data"]["journey"]["moonleaf_method"], "whole_plant", "新版存档保留取药方式")
 	_expect_equal(loaded["data"]["journey"]["enemy_id"], "rock_armor_young", "新版存档声明稳定敌人标识")
 	_expect_equal(loaded["data"]["exploration"]["map_id"], "zhaohe_ferry", "新版存档声明稳定地图标识")
 	var restored_dialogue = DialogueStateScript.new()
@@ -207,7 +216,7 @@ func _test_versioned_save() -> void:
 	var migrated: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated["ok"], "v1 存档可迁移到当前版本")
 	_expect_equal(migrated["migrated_from_version"], 1, "迁移结果声明来源版本")
-	_expect_equal(migrated["data"]["save_version"], 8, "迁移后的内存快照升级为 v8")
+	_expect_equal(migrated["data"]["save_version"], 9, "迁移后的内存快照升级为 v9")
 	_expect_equal(migrated["data"]["journey"]["enemy_id"], "rock_armor_young", "旧版迁移补入默认敌人标识")
 	_expect_equal(migrated["data"]["exploration"]["map_id"], "zhaohe_ferry", "v1 迁移补入照禾渡口地图标识")
 	_expect_equal(migrated["data"]["journey"]["companion_supports"], 1, "迁移补入同伴援护资源")
@@ -216,6 +225,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated["data"]["journey"]["spring_lamps"], 1, "v1 迁移补入战术石灯")
 	_expect_equal(migrated["data"]["journey"]["lamp_turns"], 0, "v1 迁移不虚构持续效果")
 	_expect_equal(migrated["data"]["journey"]["briefing_response"], "careful", "旧版已交谈存档迁移为谨慎回应")
+	_expect_equal(migrated["data"]["journey"]["moonleaf_method"], "whole_plant", "旧版持药存档迁移为保守整株记录")
 	_expect_equal(migrated["data"]["dialogue"], DialogueStateScript.default_snapshot(), "旧版迁移补入空闲对话状态")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "迁移后可写回新版存档")
 	var version_two_journey: Dictionary = journey.snapshot().duplicate(true)
@@ -303,6 +313,20 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v7["data"]["journey"]["armor_break_turns"], 0, "v7 迁移不虚构破甲状态")
 	_expect_equal(migrated_v7["data"]["journey"]["focus_turns"], 0, "v7 迁移不虚构凝息状态")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v7 迁移后可写回新版存档")
+	var version_eight_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_eight_journey.erase("moonleaf_method")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 8,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": version_eight_journey,
+		"exploration": exploration.snapshot(),
+		"dialogue": DialogueStateScript.default_snapshot(),
+	}))
+	var migrated_v8: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v8["ok"], "v8 战斗状态存档可迁移到采集选择版本")
+	_expect_equal(migrated_v8["migrated_from_version"], 8, "v8 迁移声明来源版本")
+	_expect_equal(migrated_v8["data"]["journey"]["moonleaf_method"], "whole_plant", "v8 持药状态迁移为保守整株记录")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v8 迁移后可写回新版存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -323,7 +347,7 @@ func _test_versioned_save() -> void:
 	var unknown_map_exploration := exploration.snapshot().duplicate(true)
 	unknown_map_exploration["map_id"] = "unreleased_secret_realm"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 8,
+		"save_version": 9,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": unknown_map_exploration,
@@ -331,7 +355,7 @@ func _test_versioned_save() -> void:
 	}))
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_map", "未知地图不会恢复到错误场景")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 8,
+		"save_version": 9,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": journey.snapshot(),
 		"exploration": exploration.snapshot(),
@@ -341,7 +365,7 @@ func _test_versioned_save() -> void:
 	var unknown_enemy_journey: Dictionary = journey.snapshot().duplicate(true)
 	unknown_enemy_journey["enemy_id"] = "unreleased_enemy"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
-		"save_version": 8,
+		"save_version": 9,
 		"story_id": SaveGameScript.STORY_ID,
 		"journey": unknown_enemy_journey,
 		"exploration": exploration.snapshot(),
@@ -403,8 +427,10 @@ func _test_gathering_and_gate() -> void:
 	_expect_false(blocked["ok"], "交谈后仍需准备灵草")
 	_expect_equal(blocked["events"], ["need_moonleaf"], "返回准备提示")
 	_expect_true(state.choose("gather_moonleaf")["ok"], "首次采集成功")
+	_expect_equal(state.moonleaf_method, "whole_plant", "旧规行动记录整株取药")
 	_expect_false(state.choose("gather_moonleaf")["ok"], "重复采集无收益")
 	_expect_false(state.available_actions().has("gather_moonleaf"), "完成行动从选项隐藏")
+	_expect_false(state.available_actions().has("gather_moonleaf_cutting"), "采集后另一种方式也从选项隐藏")
 	_expect_true(state.choose("enter_spring")["ok"], "准备后进入战斗")
 	_expect_equal(state.phase_id(), "mountain_path", "山门先进入可探索山道")
 	_expect_true(state.choose("inspect_path_marker")["ok"], "山道石标可以调查")
@@ -425,6 +451,14 @@ func _test_gathering_and_gate() -> void:
 	_expect_equal(bypassed["snapshot"]["talismans"], 1, "绕行不消耗符箓")
 	_expect_equal(bypassed["snapshot"]["round"], 1, "绕行不推进战斗回合")
 	_expect_true(bypassed["events"].has("enemy_bypassed"), "绕行返回独立语义事件")
+
+	var cutting = JourneyStateScript.new()
+	cutting.choose("talk_to_companion")
+	var cutting_result: Dictionary = cutting.choose("gather_moonleaf_cutting")
+	_expect_true(cutting_result["ok"], "剪叶留根同样取得护脉灵草")
+	_expect_equal(cutting_result["events"], ["gathered_cutting"], "剪叶方式返回独立语义事件")
+	_expect_equal(cutting_result["snapshot"]["moonleaf_method"], "cutting", "剪叶方式进入确定性快照")
+	_expect_true(cutting.choose("enter_spring")["ok"], "剪叶留根不会锁死进山主线")
 
 
 func _test_combat_paths() -> void:
@@ -571,6 +605,7 @@ func _test_breakthrough_and_completion() -> void:
 	_expect_true(result["ok"], "突破成功")
 	_expect_equal(result["snapshot"]["realm"], "引息境一层", "境界更新")
 	_expect_false(result["snapshot"]["gathered_moonleaf"], "突破消耗灵草")
+	_expect_equal(result["snapshot"]["moonleaf_method"], "whole_plant", "突破后仍保留采集方式用于结算")
 	_expect_equal(state.available_actions(), PackedStringArray(["review_journey", "return_to_title", "replay_chapter"]), "完成后可回顾、返回标题或重游")
 	_expect_true(state.choose("review_journey")["ok"], "回顾不重复奖励")
 	_expect_true(state.choose("return_to_title")["ok"], "规则层允许完成本节返回标题")
@@ -582,6 +617,7 @@ func _test_breakthrough_and_completion() -> void:
 	_expect_equal(replay["snapshot"]["setbacks"], 0, "重游重置挫败记录")
 	_expect_equal(replay["snapshot"]["spring_lamps"], 1, "重游重置战术部署物")
 	_expect_false(replay["snapshot"]["talked_to_companion"], "重游重置开场交谈")
+	_expect_equal(replay["snapshot"]["moonleaf_method"], "unselected", "重游重置采集选择")
 	_expect_false(state.choose("breakthrough")["ok"], "突破不能重复")
 
 
@@ -733,11 +769,14 @@ func _test_scene_smoke() -> void:
 	_expect_equal(player_sprite.animation, &"walk_right", "向右移动驱动右向行走动画")
 	_expect_equal(player_sprite.position, player_sprite.position.round(), "人物脚底位置保持整数像素对齐")
 	await process_frame
-	_expect_equal(_action_button_count(instance), 1, "靠近月芽草显示一个交互行动")
+	_expect_equal(_action_button_count(instance), 2, "靠近月芽草显示两种可选择采集方式")
 	_expect_equal(_first_action_button(instance).custom_minimum_size.y, 48.0, "交互按钮保持可点击高度")
 
-	await _press_action(instance, "查看月芽田")
+	await _press_action(instance, "依旧规取一株")
 	_expect_true(instance.get_node("%EventLabel").text.contains("只取一株"), "场景呈现采集结果")
+	_expect_equal(instance.journey.moonleaf_method, "whole_plant", "场景默认旧规按钮进入整株记录")
+	var whole_plant_visual: Dictionary = instance.get_node("%MapCanvas").moonleaf_visual_contract()
+	_expect_false(whole_plant_visual["regrowing"], "整株取药后不伪造留根新芽")
 	_expect_equal(_action_button_count(instance), 0, "采集按钮完成后隐藏")
 
 	instance.move_player(Vector2.LEFT, 0.82)
@@ -822,6 +861,7 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%StatusLabel").text.contains("引息境一层"), "场景显示突破境界")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "complete", "结算切换明亮突破画面")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("本节结算"), "完成画面显示战绩结算")
+	_expect_true(instance.get_node("%DescriptionLabel").text.contains("依旧规取药"), "结算回显本轮采集选择")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("经历 1 次"), "结算记录实际撤退次数")
 	_expect_equal(_action_button_count(instance), 3, "结算提供回顾、返回标题和重游")
 	await _press_action(instance, "完成本节并返回标题")

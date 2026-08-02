@@ -5,9 +5,9 @@
 | Boundary | Gate | Current result |
 | --- | --- | --- |
 | Deterministic cultivation rules and package manifest | pytest + branch coverage, minimum 99% | 59 tests; 100% statements and branches |
-| Godot RPG rules and scenes | headless GDScript harness | 430 assertions passing, including enemy-atlas selection, presentation independence, modal layering, shared-resolver boss, persisted combat states, dialogue, exploration, and save v8 contracts |
-| Godot RPG chapter path | independent headless E2E | 51 checks: dialogue interruption → mountain return → retreat → non-default enemy restore → boss status restore → ending → replay bypass |
-| Godot keyboard/controller path | physical events + focus assertions | 22 checks: title/dialogue confirm → movement → pause speed/motion toggles → two-map interaction → battle focus |
+| Godot RPG rules and scenes | headless GDScript harness | 451 assertions passing, including selectable harvesting, save v9, enemy-atlas selection, presentation independence, shared-resolver boss, dialogue, and exploration contracts |
+| Godot RPG chapter path | independent headless E2E | 55 checks: dialogue interruption → old-rule harvest → mountain return → enemy/boss restore → ending → replay cutting/regrowth → bypass |
+| Godot keyboard/controller path | physical events + focus assertions | 23 checks: title/dialogue confirm → movement → stable one-button harvest → pause preferences → two-map interaction → battle focus |
 | Godot performance and lifecycle | versioned headless budget | 100,000 collision moves and 2,000 complete battle-rule loops each under 2.5 s; 20 scene create/destroy cycles under 5 s; ≤120 nodes and zero root-child leaks |
 | Godot RPG package | double PCK/manifest export + packed-namespace/boot smoke | byte-reproducible artifact and manifest; SHA-256/size/source state verified; four runtime resources present and nine `tests/`/`tools/` resources absent |
 | Evennia commands and world bootstrap | Evennia isolated database harness | command, localization, and bootstrap integration tests passing |

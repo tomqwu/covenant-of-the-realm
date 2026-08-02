@@ -16,7 +16,12 @@
         },
         {
           "id": "gather_moonleaf",
-          "label": "查看月芽田",
+          "label": "依旧规取一株",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "gather_moonleaf_cutting",
+          "label": "剪叶留根",
           "possible_targets": ["riverbank"]
         },
         {
@@ -154,6 +159,7 @@
   },
   "messages": {
     "gathered": "你与砚青只取一株月芽草，将余下幼株重新覆好薄土。",
+    "gathered_cutting": "你剪下成熟月芽叶，把根须与新芽留在湿土中；药性足以护住第一次引息。",
     "companion_briefing": "砚青收好渡碑拓片，与你一同离开石碑。",
     "briefing_careful": "你决定先确认退路。砚青点头，把旧石标的位置画在药囊内侧。",
     "briefing_trusting": "你把路线交给砚青判断。她认真应下，也请你在危险时提醒她撤退。",
