@@ -29,8 +29,8 @@ The development window has a 1152×648 minimum because that is the validated rea
 Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, battle confirmation,
 and pause/resume are exercised as physical input events by `make test-rpg-input`.
 
-`make test-rpg-performance` executes 100,000 deterministic movement/collision steps, 2,000
-complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. The checked-in
+`make test-rpg-performance` executes 100,000 deterministic movement/collision steps, 50,000
+bounded companion-footprint updates, 2,000 complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. The checked-in
 budget allows 2.5 seconds for each pure-domain workload and 5 seconds for the lifecycle workload,
 caps the main scene at 120 nodes, and requires every cycle to return the root to its baseline child
 count. The runner reports measured times but does not treat one development machine as a release
@@ -94,7 +94,10 @@ settings v2 还保存“标准/快速”战斗表现和“完整/简化”动态
 开场任务采用同一套近距离交互：先在渡碑旁与砚青交谈。七句原创风险简报支持
 逐字显示、整句显示、最近四句回顾、跳到回应、两项不会锁死主线的态度选择，以及
 关闭场景后的精确续读。玩家回应会在章节结算中获得对应回声；任务目标随后切换
-为采药，取得月芽草后再指向藏泉山门。砚青会在简报完成前原地等候，之后才跟随主角。
+为采药，取得月芽草后再指向藏泉山门。砚青会在简报完成前原地等候，之后沿主角
+实际走过的脚印保持约 0.058 个地图单位的距离；拐角不斜切建筑，轨迹固定封顶 96 点。
+换图、读档或远距离调试跳转会在主角近旁重建轨迹，同行位置不进入旅程存档，也不
+成为第二套碰撞或任务规则。
 
 设计合同见 [RPG 基础设计](../docs/design/RPG_FOUNDATION_v0.1.md) 与
 [美术方向 v0.2](../docs/design/ART_DIRECTION_v0.2.md)。

@@ -40,6 +40,8 @@ func _run() -> void:
 	var before_move: Vector2 = game.exploration.player_position
 	await _hold_key(KEY_S, 0.12)
 	_expect(game.exploration.player_position.y > before_move.y, "键盘 S 持续驱动角色位置")
+	var follow_contract: Dictionary = game.get_node("%MapCanvas").companion_follow_contract()
+	_expect(follow_contract["active"] and follow_contract["point_count"] > 2, "真实持续输入为砚青留下可跟随脚印")
 	await _trigger_joy_button(JOY_BUTTON_START)
 	_expect(game.get_node("%PauseOverlay").visible, "手柄 Start 打开暂停界面")
 	await _settle()

@@ -1,6 +1,7 @@
 extends Control
 
 const MapOccluderScript := preload("res://src/ui/map_occluder.gd")
+const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const ACTOR_HEIGHT := 56.0
 const INK_ROOT := Color("27312e")
 const COOL_SHADOW := Color("355e63")
@@ -37,6 +38,10 @@ var feedback_motion_enabled := true
 var feedback_phase := 0.0
 var occluder_nodes: Array[Node] = []
 var occluder_signature := ""
+var companion_trail = CompanionTrailScript.new()
+var companion_position := Vector2(0.53, 0.51)
+var companion_motion := Vector2.ZERO
+var companion_trail_needs_reset := true
 
 
 func set_story_state(
@@ -47,6 +52,8 @@ func set_story_state(
 	next_enemy_id: String,
 	next_moonleaf_method: String
 ) -> void:
+	if next_phase != phase_id or talked != talked_to_companion:
+		companion_trail_needs_reset = true
 	phase_id = next_phase
 	gathered_moonleaf = gathered
 	moonleaf_method = next_moonleaf_method
@@ -61,6 +68,7 @@ func set_exploration_state(next_position: Vector2, next_nearby_action: String) -
 	player_motion = next_position - player_position
 	player_position = next_position
 	nearby_action = next_nearby_action
+	_sync_companion_trail()
 	_sync_actor_visuals()
 	queue_redraw()
 
@@ -70,7 +78,7 @@ func set_player_motion(direction: Vector2) -> void:
 	if is_instance_valid(player_sprite):
 		player_sprite.set_motion(direction, not direction.is_zero_approx())
 	if is_instance_valid(companion_sprite):
-		companion_sprite.set_motion(direction, talked_to_companion and not direction.is_zero_approx())
+		companion_sprite.set_motion(companion_motion, talked_to_companion and not companion_motion.is_zero_approx())
 
 
 func show_battle_feedback(event_ids: Array, fast_mode: bool, reduced_motion: bool) -> void:
@@ -153,6 +161,15 @@ func moonleaf_visual_contract() -> Dictionary:
 	}
 
 
+func companion_follow_contract() -> Dictionary:
+	var contract: Dictionary = companion_trail.visual_contract()
+	contract["active"] = talked_to_companion and phase_id in ["riverbank", "mountain_path"]
+	contract["normalized_position"] = companion_position
+	contract["sprite_position"] = companion_sprite.position
+	contract["motion"] = companion_motion
+	return contract
+
+
 func depth_for_y(feet_y: float) -> int:
 	var height := maxf(get_rect().size.y, 1.0)
 	return 10 + clampi(int(round(feet_y / height * 50.0)), 0, 50)
@@ -218,12 +235,12 @@ func _sync_actor_visuals() -> void:
 		"riverbank":
 			var protagonist_feet := Vector2(player_position.x * size.x, player_position.y * size.y).round()
 			player_sprite.position = protagonist_feet
-			companion_sprite.position = (protagonist_feet + Vector2(48, 7) if talked_to_companion else Vector2(size.x * 0.53, size.y * 0.51)).round()
+			companion_sprite.position = (Vector2(companion_position.x * size.x, companion_position.y * size.y) if talked_to_companion else Vector2(size.x * 0.53, size.y * 0.51)).round()
 			set_player_motion(player_motion)
 		"mountain_path":
 			var path_feet := Vector2(player_position.x * size.x, player_position.y * size.y).round()
 			player_sprite.position = path_feet
-			companion_sprite.position = (path_feet + Vector2(-46, 8)).round()
+			companion_sprite.position = Vector2(companion_position.x * size.x, companion_position.y * size.y).round()
 			set_player_motion(player_motion)
 		"battle":
 			player_sprite.position = Vector2(size.x * 0.43, size.y * 0.58).round()
@@ -236,6 +253,20 @@ func _sync_actor_visuals() -> void:
 			player_sprite.set_motion(Vector2.RIGHT, false)
 			companion_sprite.set_motion(Vector2.LEFT, false)
 	_apply_depth_sort()
+
+
+func _sync_companion_trail() -> void:
+	if not talked_to_companion or phase_id not in ["riverbank", "mountain_path"]:
+		companion_motion = Vector2.ZERO
+		return
+	var previous := companion_position
+	var rest_offset := Vector2(0.042, 0.011) if phase_id == "riverbank" else Vector2(-0.040, 0.012)
+	if companion_trail_needs_reset:
+		companion_position = companion_trail.reset(phase_id, player_position, rest_offset)
+		companion_trail_needs_reset = false
+	else:
+		companion_position = companion_trail.record(phase_id, player_position, rest_offset)
+	companion_motion = companion_position - previous
 
 
 func _apply_depth_sort() -> void:

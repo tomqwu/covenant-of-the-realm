@@ -6,6 +6,7 @@ const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
+const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const TEST_SAVE_PATH := "user://automated-test-save.json"
 const TEST_SCENE_SAVE_PATH := "user://automated-scene-save.json"
 const TEST_SETTINGS_PATH := "user://automated-test-settings.json"
@@ -27,6 +28,7 @@ func _run() -> void:
 	_test_dialogue_state()
 	_test_versioned_save()
 	_test_settings_store()
+	_test_companion_trail()
 	_test_gathering_and_gate()
 	_test_combat_paths()
 	_test_enemy_profile_combat()
@@ -416,6 +418,27 @@ func _test_settings_store() -> void:
 	SettingsStoreScript.remove(TEST_SETTINGS_PATH)
 
 
+func _test_companion_trail() -> void:
+	var trail = CompanionTrailScript.new()
+	var initial := trail.reset("riverbank", Vector2(0.50, 0.50), Vector2(0.042, 0.011))
+	_expect_equal(initial, Vector2(0.542, 0.511), "同行轨迹从主角旁的安全休息位开始")
+	for step in range(1, 16):
+		trail.record("riverbank", Vector2(0.50 + float(step) * 0.01, 0.50), Vector2(0.042, 0.011))
+	var straight: Dictionary = trail.visual_contract()
+	_expect_true(float(straight["position"].x) < 0.65, "砚青保持在主角已走过的路线后方")
+	_expect_true(is_equal_approx(float(straight["position"].y), 0.50), "直线路段不会产生横向漂移")
+	trail.record("riverbank", Vector2(0.65, 0.53), Vector2(0.042, 0.011))
+	var corner: Vector2 = trail.visual_contract()["position"]
+	_expect_true(corner.x < 0.65 and is_equal_approx(corner.y, 0.50), "转弯初段沿旧脚印而不是斜切墙角")
+	var reset_count := int(trail.visual_contract()["reset_count"])
+	var teleported := trail.record("riverbank", Vector2(0.90, 0.20), Vector2(0.042, 0.011))
+	_expect_equal(teleported, Vector2(0.942, 0.211), "远距离读档在新位置旁安全重建同行者")
+	_expect_equal(trail.visual_contract()["reset_count"], reset_count + 1, "远距离跳转只记录一次轨迹重置")
+	trail.record("mountain_path", Vector2(0.16, 0.68), Vector2(-0.040, 0.012))
+	_expect_equal(trail.visual_contract()["context_id"], "mountain_path", "换图清空旧地图脚印上下文")
+	_expect_true(trail.visual_contract()["point_count"] <= trail.visual_contract()["max_points"], "同行轨迹受固定点数预算约束")
+
+
 func _test_gathering_and_gate() -> void:
 	var state = JourneyStateScript.new()
 	var blocked: Dictionary = state.choose("enter_spring")
@@ -786,11 +809,24 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.journey.briefing_response, "careful", "谨慎回应被规则层记住")
 	_expect_true(instance.get_node("%EventLabel").text.contains("先确认退路"), "回应产生明确同行回声")
 	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("月芽田"), "回应后目标切换为采药")
+	var initial_follow: Dictionary = instance.get_node("%MapCanvas").companion_follow_contract()
+	_expect_true(initial_follow["active"], "简报结束后砚青启动同行轨迹")
+	_expect_equal(initial_follow["context_id"], "riverbank", "同行轨迹绑定当前地图表现上下文")
+	_expect_equal(initial_follow["point_count"], 2, "同行开始时只建立安全休息位与主角脚印")
 	_expect_false(instance.interact()["ok"], "完成交谈后原地没有重复奖励")
 	_expect_true(instance.get_node("%EventLabel").text.contains("附近没有"), "无目标交互给出中文反馈")
 
-	instance.move_player(Vector2.DOWN, 0.40)
-	instance.move_player(Vector2.RIGHT, 0.74)
+	for _step in range(4):
+		instance.move_player(Vector2.DOWN, 0.10)
+	for _step in range(7):
+		instance.move_player(Vector2.RIGHT, 0.10)
+	instance.move_player(Vector2.RIGHT, 0.04)
+	var moved_follow: Dictionary = instance.get_node("%MapCanvas").companion_follow_contract()
+	_expect_true(moved_follow["point_count"] > initial_follow["point_count"], "主角移动会追加受预算约束的脚印")
+	_expect_true(instance.exploration.player_position.distance_to(moved_follow["normalized_position"]) <= 0.061, "同行者保持紧凑跟随距离")
+	_expect_true(not moved_follow["motion"].is_zero_approx(), "同行者根据自身脚印位移播放行走方向")
+	_expect_equal(moved_follow["sprite_position"], moved_follow["sprite_position"].round(), "同行者脚底保持整数像素对齐")
+	_expect_equal(instance.get_node("%CompanionSprite").z_index, instance.get_node("%MapCanvas").depth_for_y(moved_follow["sprite_position"].y), "同行轨迹位置继续参与脚底深度排序")
 	_expect_equal(player_sprite.animation, &"walk_right", "向右移动驱动右向行走动画")
 	_expect_equal(player_sprite.position, player_sprite.position.round(), "人物脚底位置保持整数像素对齐")
 	await process_frame
@@ -819,6 +855,9 @@ func _test_scene_smoke() -> void:
 	transition.finish()
 	instance.toggle_reduced_motion()
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "mountain_path", "山门进入可自由探索山道")
+	var path_follow: Dictionary = instance.get_node("%MapCanvas").companion_follow_contract()
+	_expect_equal(path_follow["context_id"], "mountain_path", "山道不会沿用渡口脚印")
+	_expect_equal(path_follow["point_count"], 2, "换图只在新出生点重建同行轨迹")
 	_expect_equal(instance.exploration.map_id, "cangquan_path", "场景切换到稳定山道地图标识")
 	_expect_true(instance.get_node("%PathGround").visible, "山道 TileMapLayer 在探索阶段可见")
 	_expect_true(instance.get_node("%MapCanvas").uses_mountain_path_tile_layers(), "山道使用独立 TileMapLayer")
@@ -833,7 +872,9 @@ func _test_scene_smoke() -> void:
 	_expect_true(path_contract["tile_counts"]["path"] > 40, "山道存在连续可读石路")
 	_expect_true(path_contract["tile_counts"]["stone"] > 3, "山道敌区与调查点使用石地标记")
 	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.43, "player_y": 0.57}), "场景测试移动到旧石标")
+	var resets_before_restore := int(instance.get_node("%MapCanvas").companion_follow_contract()["reset_count"])
 	instance._render([])
+	_expect_equal(instance.get_node("%MapCanvas").companion_follow_contract()["reset_count"], resets_before_restore + 1, "远距离读档重建砚青位置而不跨图跑来")
 	await _press_action(instance, "查看旧石标")
 	_expect_true(instance.get_node("%EventLabel").text.contains("旧猎户的箭记"), "山道可选调查返回原创环境线索")
 	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.73, "player_y": 0.34}), "场景测试移动到敌人预警区")

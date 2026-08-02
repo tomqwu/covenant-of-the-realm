@@ -46,6 +46,12 @@ func _capture_flow() -> void:
 	await _save_frame("01-companion-dialogue.png")
 	instance.skip_dialogue_to_response()
 	instance._choose_dialogue_response("careful")
+	for _step in range(6):
+		instance.move_player(Vector2.RIGHT, 0.08)
+	for _step in range(4):
+		instance.move_player(Vector2.DOWN, 0.08)
+	await _settle()
+	await _save_frame("01-companion-following.png")
 	instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.69, "player_y": 0.62})
 	instance._render([])
 	await _settle()

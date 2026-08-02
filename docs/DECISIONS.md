@@ -4,6 +4,19 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Chapter companions follow bounded player footprints
+
+After the ferry briefing, 砚青 follows the player's already-traversed normalized positions rather
+than snapping to a fixed offset or introducing a second navigation authority. The presentation
+keeps a maximum of 96 points and resolves a target 0.058 map units behind the player, so corners
+follow the proven route instead of cutting diagonally through buildings. A phase change, context
+change, or jump over 0.14 units rebuilds two seed points beside the current player; the trail is
+deliberately not serialized. Battle and cultivation keep authored stage positions. This affects
+animation, placement, Y-depth, and screenshots only; deterministic player collision, interactions,
+quests, and saves remain authoritative. A 50,000-update performance workload enforces the point
+cap. Godot 2D navigation remains reserved for actors that need routes the player has not walked,
+such as independent patrols.
+
 ### 2026-08-02 — Scene transitions are content-driven presentation with an instant fallback
 
 Changes between ferry, mountain path, battle, spring, and completion use a 0.48-second bright

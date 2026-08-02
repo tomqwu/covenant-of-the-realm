@@ -4,6 +4,7 @@ const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
+const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const BUDGET_PATH := "res://tests/performance_budget.json"
 const PERFORMANCE_SAVE_PATH := "user://performance-save.json"
 const PERFORMANCE_SETTINGS_PATH := "user://performance-settings.json"
@@ -38,6 +39,7 @@ func _run() -> void:
 		return
 	var results := {
 		"movement": _benchmark_movement(budget),
+		"trail": _benchmark_companion_trail(budget),
 		"battle": _benchmark_battle(budget),
 	}
 	results["scene"] = await _benchmark_scene_lifecycle(budget)
@@ -57,6 +59,8 @@ func _load_budget() -> Dictionary:
 	var positive_fields := [
 		"movement_iterations",
 		"movement_budget_ms",
+		"trail_iterations",
+		"trail_budget_ms",
 		"battle_iterations",
 		"battle_budget_ms",
 		"scene_cycles",
@@ -114,6 +118,31 @@ func _benchmark_battle(budget: Dictionary) -> Dictionary:
 		"iterations": iterations,
 		"elapsed_ms": snappedf(elapsed_ms, 0.01),
 		"total_rounds": total_rounds,
+	}
+
+
+func _benchmark_companion_trail(budget: Dictionary) -> Dictionary:
+	var trail = CompanionTrailScript.new()
+	var position := Vector2(0.50, 0.50)
+	trail.reset("performance_map", position, Vector2(0.042, 0.011))
+	var iterations := int(budget["trail_iterations"])
+	var started := Time.get_ticks_usec()
+	for index in range(iterations):
+		position += DIRECTIONS[int(index / 250) % DIRECTIONS.size()] * 0.002
+		trail.record("performance_map", position, Vector2(0.042, 0.011))
+	var elapsed_ms := float(Time.get_ticks_usec() - started) / 1000.0
+	var contract: Dictionary = trail.visual_contract()
+	if elapsed_ms > float(budget["trail_budget_ms"]):
+		failures.append("同行脚印预算超时：%.2f ms > %d ms" % [elapsed_ms, int(budget["trail_budget_ms"])])
+	if int(contract["point_count"]) > int(contract["max_points"]):
+		failures.append("同行脚印超过固定点数上限")
+	if int(contract["reset_count"]) != 1:
+		failures.append("连续同行性能循环意外重置轨迹")
+	return {
+		"iterations": iterations,
+		"elapsed_ms": snappedf(elapsed_ms, 0.01),
+		"point_count": contract["point_count"],
+		"reset_count": contract["reset_count"],
 	}
 
 
