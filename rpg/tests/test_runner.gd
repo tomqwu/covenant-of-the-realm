@@ -224,8 +224,15 @@ func _test_breakthrough_and_completion() -> void:
 	_expect_true(result["ok"], "突破成功")
 	_expect_equal(result["snapshot"]["realm"], "引息境一层", "境界更新")
 	_expect_false(result["snapshot"]["gathered_moonleaf"], "突破消耗灵草")
-	_expect_equal(state.available_actions(), PackedStringArray(["review_journey"]), "完成后只可回顾")
+	_expect_equal(state.available_actions(), PackedStringArray(["review_journey", "return_to_title", "replay_chapter"]), "完成后可回顾、返回标题或重游")
 	_expect_true(state.choose("review_journey")["ok"], "回顾不重复奖励")
+	_expect_true(state.choose("return_to_title")["ok"], "规则层允许完成本节返回标题")
+	var replay: Dictionary = state.choose("replay_chapter")
+	_expect_true(replay["ok"], "完成后可以重游本章")
+	_expect_equal(replay["snapshot"]["phase"], "riverbank", "重游回到渡口")
+	_expect_equal(replay["snapshot"]["realm"], "凡身", "重游重置境界")
+	_expect_equal(replay["snapshot"]["talismans"], 1, "重游重置消耗品")
+	_expect_equal(replay["snapshot"]["setbacks"], 0, "重游重置挫败记录")
 	_expect_false(state.choose("breakthrough")["ok"], "突破不能重复")
 
 
@@ -311,7 +318,10 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.get_node("%LocationLabel").text, "第一息", "场景完成章节")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("引息境一层"), "场景显示突破境界")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "complete", "结算切换明亮突破画面")
-	instance.return_to_title()
+	_expect_true(instance.get_node("%DescriptionLabel").text.contains("本节结算"), "完成画面显示战绩结算")
+	_expect_true(instance.get_node("%DescriptionLabel").text.contains("经历 1 次"), "结算记录实际撤退次数")
+	_expect_equal(_action_button_count(instance), 3, "结算提供回顾、返回标题和重游")
+	await _press_action(instance, "完成本节并返回标题")
 	await process_frame
 	_expect_true(instance.get_node("%TitleOverlay").visible, "完成后可以保存并返回标题")
 	_expect_false(instance.get_node("%ContinueButton").disabled, "已有存档时允许继续")
@@ -327,6 +337,11 @@ func _test_scene_smoke() -> void:
 	await process_frame
 	_expect_equal(resumed.get_node("%LocationLabel").text, "第一息", "继续游戏恢复章节完成态")
 	_expect_true(resumed.get_node("%EventLabel").text.contains("本地存档恢复"), "恢复存档提供中文反馈")
+	await _press_action(resumed, "重游序章（重置进度）")
+	_expect_equal(resumed.get_node("%LocationLabel").text, "照禾渡口", "结算页可重游序章")
+	_expect_equal(resumed.get_node("%MapCanvas").current_visual_mode(), "riverbank", "重游恢复渡口地图")
+	_expect_equal(resumed.exploration.player_position, ExplorationStateScript.START_POSITION, "重游重置玩家位置")
+	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["journey"]["phase"], "riverbank", "重游结果写入存档")
 	resumed.queue_free()
 	await process_frame
 	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)

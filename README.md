@@ -3,11 +3,12 @@
 [![Checks](https://github.com/tomqwu/covenant-of-the-realm/actions/workflows/check.yml/badge.svg)](https://github.com/tomqwu/covenant-of-the-realm/actions/workflows/check.yml)
 [![Deterministic rules coverage](https://img.shields.io/badge/rules%20coverage-100%25-brightgreen)](docs/TESTING.md)
 [![Playable slice](https://img.shields.io/badge/multiplayer%20slice-playable-8a5cf5)](docs/VERTICAL_SLICE.md)
-[![RPG foundation](https://img.shields.io/badge/Godot%20RPG-graybox-4b8f8c)](rpg/README.md)
+[![Godot chapter](https://img.shields.io/badge/Godot%20chapter-playable-4b8f8c)](rpg/README.md)
 
 **《山河有契》**（英文工作名：**Covenant of the Realm**）正在发展为一款原创、
-中文优先、章节式的 2D 修仙剧情 RPG。新的 Godot 灰盒已经建立数据驱动行动、
-确定性回合战斗和首次境界突破；现有多人 MUD 与单人 PWA 作为可运行研究原型保留。
+中文优先、章节式的 2D 修仙剧情 RPG。Godot 可玩章节已经串联自由移动、碰撞、
+近距离采集、可撤退回合战斗、同伴援护、版本化存档和首次境界突破；现有多人
+MUD 与单人 PWA 作为可运行研究原型保留。
 
 ## Play the RPG graybox
 
@@ -20,10 +21,11 @@ make setup-rpg
 make play-rpg
 ```
 
-The current graybox uses original project locations and characters only. It validates the
-journey from preparation through a deterministic battle to `引息境一层`; map movement,
-controller input, save files, and the complete 90-minute chapter are the next implementation
-milestones. See the [RPG foundation](docs/design/RPG_FOUNDATION_v0.1.md).
+The current graybox uses original project locations and characters only. It is playable from a
+Chinese title screen through exploration, preparation, a recoverable deterministic battle,
+`引息境一层`, chapter settlement, save resume, and replay. Keyboard, mouse, and controller
+share semantic actions. Expanding this tested short chapter toward the complete 90-minute content
+target is the next production milestone. See the [RPG foundation](docs/design/RPG_FOUNDATION_v0.1.md).
 
 ## Play the preserved multiplayer slice
 
@@ -60,6 +62,7 @@ Open `http://127.0.0.1:4001/webclient/`. Create an account with:
 
 ```sh
 make test-rpg                # Godot domain and scene tests
+make test-rpg-e2e            # complete Godot new-game → ending → resume → replay path
 make rpg-content-check       # original story-graph integrity
 make test                    # rules, Evennia integration, real two-client E2E
 make lint                    # Ruff and documentation integrity
@@ -67,7 +70,12 @@ make check                   # RPG, MUD, and preserved PWA gates
 make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
-The deterministic domain rules have an enforced 99% statement/branch minimum and currently reach 100%. The MUD adapter has isolated Evennia tests, and the release path is exercised through two real concurrent Telnet clients. The preserved browser prototype retains its own 100% unit result and 53-execution Playwright matrix. See [testing](docs/TESTING.md), [architecture](docs/ARCHITECTURE.md), and the [vertical-slice contract](docs/VERTICAL_SLICE.md).
+The deterministic multiplayer domain rules have an enforced 99% statement/branch minimum and
+currently reach 100%. Godot behavior is covered by 150 headless rule/scene assertions plus an
+independent 14-check chapter E2E. The MUD adapter has isolated Evennia tests, and its release path
+is exercised through two real concurrent Telnet clients. The preserved browser prototype retains
+its own 100% unit result and 53-execution Playwright matrix. See [testing](docs/TESTING.md),
+[architecture](docs/ARCHITECTURE.md), and the [vertical-slice contract](docs/VERTICAL_SLICE.md).
 
 ## Repository map
 

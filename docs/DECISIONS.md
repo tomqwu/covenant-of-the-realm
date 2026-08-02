@@ -36,6 +36,14 @@ setback is recorded. If player health reaches zero, the chapter companion rescue
 the ferry with a playable health floor. Companion first aid is an explicit once-per-attempt
 action, not an invisible damage modifier.
 
+### 2026-08-01 — Explicit chapter closure and replay
+
+The vertical slice ends on a settlement state that shows realm, setbacks, remaining consumables,
+and companion outcome. From there the player can review, save and return to title, or explicitly
+reset the chapter for replay. The release gate includes a separate headless path that starts at
+the title, performs proximity gathering and a retreat/re-entry combat route, breaks through,
+reloads the completed save in a new scene instance, and resets into replay.
+
 ### 2026-08-01 — Brighter and more optimistic visual tone
 
 Refine the confirmed hybrid art direction toward clear daylight, fresh air, visible water,

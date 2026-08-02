@@ -12,6 +12,8 @@ const COMPANION_SUPPORT := "companion_support"
 const RETREAT := "retreat"
 const BREAKTHROUGH := "breakthrough"
 const REVIEW_JOURNEY := "review_journey"
+const RETURN_TO_TITLE := "return_to_title"
+const REPLAY_CHAPTER := "replay_chapter"
 
 var phase := Phase.RIVERBANK
 var gathered_moonleaf := false
@@ -55,7 +57,7 @@ func available_actions() -> PackedStringArray:
 		Phase.SPRING:
 			return PackedStringArray([BREAKTHROUGH])
 		_:
-			return PackedStringArray([REVIEW_JOURNEY])
+			return PackedStringArray([REVIEW_JOURNEY, RETURN_TO_TITLE, REPLAY_CHAPTER])
 
 
 func choose(action_id: String) -> Dictionary:
@@ -73,6 +75,11 @@ func choose(action_id: String) -> Dictionary:
 		Phase.COMPLETE:
 			if action_id == REVIEW_JOURNEY:
 				return _result(true, ["review"])
+			if action_id == RETURN_TO_TITLE:
+				return _result(true, ["chapter_closed"])
+			if action_id == REPLAY_CHAPTER:
+				_reset_chapter()
+				return _result(true, ["chapter_replayed"])
 	return _result(false, ["invalid_action"])
 
 
@@ -241,6 +248,18 @@ func _choose_battle(action_id: String) -> Dictionary:
 
 func _result(ok: bool, events: Array[String]) -> Dictionary:
 	return {"ok": ok, "events": events, "snapshot": snapshot()}
+
+
+func _reset_chapter() -> void:
+	phase = Phase.RIVERBANK
+	gathered_moonleaf = false
+	player_hp = 12
+	enemy_hp = 9
+	talismans = 1
+	round_number = 1
+	realm = "凡身"
+	companion_supports = 1
+	setbacks = 0
 
 
 func _integer_in_range(value: Variant, minimum: int, maximum: int) -> bool:

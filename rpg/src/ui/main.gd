@@ -99,6 +99,8 @@ func _render(event_ids: Array) -> void:
 	objective_label.text = _objective_text(snapshot["phase"])
 	location_label.text = node["title"]
 	description_label.text = node["description"]
+	if snapshot["phase"] == "complete":
+		description_label.text += "\n\n" + _chapter_summary(snapshot)
 	status_label.text = _status_text(snapshot)
 	event_label.text = _event_text(event_ids)
 	map_canvas.set_story_state(snapshot["phase"], snapshot["gathered_moonleaf"])
@@ -142,6 +144,12 @@ func _event_text(event_ids: Array) -> String:
 	for event_id in event_ids:
 		messages.append(content["messages"].get(event_id, event_id))
 	return "\n".join(messages)
+
+
+func _chapter_summary(snapshot: Dictionary) -> String:
+	var setback_text := "全程无失手" if snapshot["setbacks"] == 0 else "经历 %d 次撤退或救援" % snapshot["setbacks"]
+	var talisman_text := "镇岩符留存" if snapshot["talismans"] > 0 else "镇岩符已用"
+	return "本节结算　%s · %s · %s · 砚青平安同行" % [snapshot["realm"], setback_text, talisman_text]
 
 
 func _build_actions(node: Dictionary) -> void:
@@ -218,9 +226,13 @@ func _style_menu_button(button: Button) -> void:
 
 func _on_action(action_id: String) -> void:
 	var result: Dictionary = journey.choose(action_id)
+	if result["ok"] and action_id == JourneyStateScript.REPLAY_CHAPTER:
+		exploration = ExplorationStateScript.new()
 	_render(result["events"])
 	if result["ok"]:
 		_save_game()
+	if result["ok"] and action_id == JourneyStateScript.RETURN_TO_TITLE:
+		return_to_title()
 
 
 func move_player(direction: Vector2, delta: float) -> Vector2:

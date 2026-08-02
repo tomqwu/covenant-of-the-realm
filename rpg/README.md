@@ -7,6 +7,7 @@
 make setup-rpg
 make play-rpg
 make test-rpg
+make test-rpg-e2e
 ```
 
 启动后可选择新游戏或继续本机的版本化存档。游戏会在成功交互、战斗行动和持续

@@ -74,6 +74,16 @@
           "id": "review_journey",
           "label": "回顾此行",
           "possible_targets": ["complete"]
+        },
+        {
+          "id": "return_to_title",
+          "label": "完成本节并返回标题",
+          "possible_targets": ["complete"]
+        },
+        {
+          "id": "replay_chapter",
+          "label": "重游序章（重置进度）",
+          "possible_targets": ["riverbank"]
         }
       ]
     }
@@ -96,6 +106,8 @@
     "battle_won": "岩甲兽退入山缝，通往泉室的道路已经打开。",
     "breakthrough": "月芽草化开寒意，你完成第一次引息，踏入引息境一层。",
     "review": "渡口、月芽田与藏泉连成了你的第一段修行记忆。",
+    "chapter_closed": "序章进度已经保存。山河会在你下次归来时继续展开。",
+    "chapter_replayed": "序章状态已经重置。你再次站在照禾渡口。",
     "nothing_nearby": "附近没有可以交互的事物。沿石路寻找金色圆环。",
     "save_loaded": "旅程已从本地存档恢复。",
     "save_loaded_backup": "主存档不可用，旅程已从安全备份恢复。",

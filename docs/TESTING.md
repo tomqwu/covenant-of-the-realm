@@ -4,7 +4,9 @@
 
 | Boundary | Gate | Current result |
 | --- | --- | --- |
-| Deterministic cultivation rules | pytest + branch coverage, minimum 99% | 40 tests; 100% statements and branches |
+| Deterministic cultivation rules | pytest + branch coverage, minimum 99% | 50 tests; 100% statements and branches |
+| Godot RPG rules and scenes | headless GDScript harness | 150 assertions passing |
+| Godot RPG chapter path | independent headless E2E | 14 checks: new game → exploration → retreat → battle → breakthrough → resume → replay |
 | Evennia commands and world bootstrap | Evennia isolated database harness | command, localization, and bootstrap integration tests passing |
 | Multiplayer release path | real server, two real Telnet clients | 中文注册 → 登录 → 采药 → 修炼 → 协作 → 突破 → 重连持久化 |
 | Browser journey prototype | Vitest and Playwright | 100% unit metrics; 53 Playwright executions passing |
@@ -17,6 +19,8 @@ The percentage badge describes the deterministic production rules, not transport
 make test-unit              # rules and coverage gate
 make test-integration       # Evennia command/database fixtures
 make test-multiplayer-e2e   # migrate, boot, two clients, stop
+make test-rpg               # Godot rules and scene integration
+make test-rpg-e2e           # complete Godot chapter path and persistence
 make lint                   # Ruff and local Markdown links
 make check-mud              # all multiplayer gates
 make check-prototype        # preserved PWA's complete evidence suite
@@ -27,13 +31,14 @@ make check                  # entire repository
 
 ## CI
 
-GitHub Actions runs three pinned, least-privilege jobs:
+GitHub Actions runs four pinned, least-privilege jobs:
 
 1. deterministic coverage, lint, docs, and Evennia integration;
 2. live two-player multiplayer E2E;
-3. the preserved prototype's full browser/unit/build matrix.
+3. Godot content, rule/scene, and complete chapter E2E;
+4. the preserved prototype's full browser/unit/build matrix.
 
-Dependency updates are monitored separately for the root uv lock and the nested npm lock. A pull request must pass all three jobs before merge.
+Dependency updates are monitored separately for the root uv lock and the nested npm lock. A pull request must pass all four jobs before merge.
 
 ## Adding behavior
 

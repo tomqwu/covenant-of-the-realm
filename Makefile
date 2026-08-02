@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help setup setup-rpg setup-prototype play play-rpg capture-rpg-ui stop prototype lint docs-check rpg-content-check test test-unit test-rpg test-integration test-multiplayer-e2e check check-mud check-rpg check-prototype
+.PHONY: help setup setup-rpg setup-prototype play play-rpg capture-rpg-ui stop prototype lint docs-check rpg-content-check test test-unit test-rpg test-rpg-e2e test-integration test-multiplayer-e2e check check-mud check-rpg check-prototype
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Usage: make <target>\n\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-24s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -50,6 +50,9 @@ test-unit: ## Run deterministic rules tests with the 99% branch/statement gate
 test-rpg: ## Run the headless Godot domain and scene tests
 	@./scripts/godot --headless --path rpg --script res://tests/test_runner.gd
 
+test-rpg-e2e: ## Play the complete Godot chapter path headlessly, including save resume and replay
+	@./scripts/godot --headless --path rpg --script res://tests/e2e_runner.gd
+
 test-integration: ## Run isolated Evennia command and world-construction tests
 	@cd mud && uv run --project .. evennia test --settings settings.py world.tests
 
@@ -58,7 +61,7 @@ test-multiplayer-e2e: ## Run a real two-client Telnet journey against a live ser
 
 check-mud: lint test ## Run all multiplayer quality gates
 
-check-rpg: rpg-content-check test-rpg ## Run RPG content, rules, and scene gates
+check-rpg: rpg-content-check test-rpg test-rpg-e2e ## Run RPG content, rules, scene, and full-flow gates
 
 check-prototype: ## Run the preserved journey's full unit/E2E/build evidence suite
 	@cd prototypes/journey && make check
