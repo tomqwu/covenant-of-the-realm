@@ -4,6 +4,19 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Text size and contrast are player settings, not rule inputs
+
+Settings v3 adds `text_scale` (`standard`/`large`) and `high_contrast` (boolean), toggled from
+paired title and pause buttons like every earlier preference and persisted through the same
+validated store. Large text multiplies each captured baseline reading-label size by 1.25 and
+never edits scene-authored values; standard restores the exact captured baseline. High contrast
+maps each reading label to one of two fixed opaque palette anchors by luminance — deep ink on
+paper surfaces, paper white on dark surfaces — so both text polarities strengthen instead of
+inverting the painted-paper art. Both options touch presentation labels only: rules, saves,
+combat pacing, and content are unaffected, and `accessibility_contract()` exposes the applied
+state for headless assertions. v1/v2 settings migrate conservatively to standard size and
+normal contrast.
+
 ### 2026-08-02 — The ferryman side story leaves public evidence without a power reward
 
 梁叔 now waits at a fixed reachable ferry coordinate as the chapter's third animated map actor.

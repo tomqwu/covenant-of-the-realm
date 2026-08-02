@@ -720,25 +720,41 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "踏入山河"
 
-[node name="TitleAudioButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+[node name="TitleSettings" type="GridContainer" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="TitleAudioButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column/TitleSettings"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "环境音：关闭"
 
-[node name="TitleVolumeButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+[node name="TitleVolumeButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column/TitleSettings"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "音量：60%"
 
-[node name="TitleBattleSpeedButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+[node name="TitleBattleSpeedButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column/TitleSettings"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "战斗表现：标准"
 
-[node name="TitleMotionButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+[node name="TitleMotionButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column/TitleSettings"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "动态效果：完整"
+
+[node name="TitleTextScaleButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column/TitleSettings"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "文字大小：标准"
+
+[node name="TitleContrastButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column/TitleSettings"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "高对比：关闭"
 
 [node name="TitleControls" type="Label" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
 layout_mode = 2
@@ -805,25 +821,41 @@ theme_override_font_sizes/font_size = 14
 text = "当前进度已保存到本机。"
 horizontal_alignment = 1
 
-[node name="PauseAudioButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
+[node name="PauseSettings" type="GridContainer" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="PauseAudioButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column/PauseSettings"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "环境音：关闭"
 
-[node name="PauseVolumeButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
+[node name="PauseVolumeButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column/PauseSettings"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "音量：60%"
 
-[node name="PauseBattleSpeedButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
+[node name="PauseBattleSpeedButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column/PauseSettings"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "战斗表现：标准"
 
-[node name="PauseMotionButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
+[node name="PauseMotionButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column/PauseSettings"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "动态效果：完整"
+
+[node name="PauseTextScaleButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column/PauseSettings"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "文字大小：标准"
+
+[node name="PauseContrastButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column/PauseSettings"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "高对比：关闭"
 
 [node name="ResumeButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
 unique_name_in_owner = true

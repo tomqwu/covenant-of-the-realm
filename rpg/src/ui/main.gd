@@ -1,6 +1,9 @@
 extends Control
 
 const CONTENT_PATH := "res://content/prologue.json"
+const LARGE_TEXT_SCALE := 1.25
+const HIGH_CONTRAST_INK := Color("131a17")
+const HIGH_CONTRAST_PAPER := Color("fdfaf1")
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
@@ -31,6 +34,10 @@ const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 @onready var pause_battle_speed_button: Button = %PauseBattleSpeedButton
 @onready var title_motion_button: Button = %TitleMotionButton
 @onready var pause_motion_button: Button = %PauseMotionButton
+@onready var title_text_scale_button: Button = %TitleTextScaleButton
+@onready var pause_text_scale_button: Button = %PauseTextScaleButton
+@onready var title_contrast_button: Button = %TitleContrastButton
+@onready var pause_contrast_button: Button = %PauseContrastButton
 @onready var audio_manager: AudioStreamPlayer = %AudioManager
 @onready var dialogue_overlay: Control = %DialogueOverlay
 @onready var dialogue_speaker_label: Label = %DialogueSpeakerLabel
@@ -63,6 +70,9 @@ var autosave_elapsed := 0.0
 var dialogue_history_visible := false
 var dialogue_reveal_elapsed := 0.0
 var journal_previous_focus: Control = null
+var reading_labels: Array[Label] = []
+var base_reading_font_sizes := {}
+var base_reading_font_colors := {}
 
 
 func _ready() -> void:
@@ -82,6 +92,10 @@ func _ready() -> void:
 	_style_settings_button(pause_battle_speed_button)
 	_style_settings_button(title_motion_button)
 	_style_settings_button(pause_motion_button)
+	_style_settings_button(title_text_scale_button)
+	_style_settings_button(pause_text_scale_button)
+	_style_settings_button(title_contrast_button)
+	_style_settings_button(pause_contrast_button)
 	_style_settings_button(dialogue_history_button)
 	_style_settings_button(dialogue_skip_button)
 	_style_settings_button(dialogue_next_button)
@@ -100,12 +114,17 @@ func _ready() -> void:
 	pause_battle_speed_button.pressed.connect(toggle_battle_speed)
 	title_motion_button.pressed.connect(toggle_reduced_motion)
 	pause_motion_button.pressed.connect(toggle_reduced_motion)
+	title_text_scale_button.pressed.connect(toggle_text_scale)
+	pause_text_scale_button.pressed.connect(toggle_text_scale)
+	title_contrast_button.pressed.connect(toggle_high_contrast)
+	pause_contrast_button.pressed.connect(toggle_high_contrast)
 	dialogue_history_button.pressed.connect(toggle_dialogue_history)
 	dialogue_skip_button.pressed.connect(skip_dialogue_to_response)
 	dialogue_next_button.pressed.connect(advance_dialogue)
 	journal_button.pressed.connect(toggle_journal)
 	journal_close_button.pressed.connect(close_journal)
 	scene_transition.transition_finished.connect(_restore_action_focus)
+	_capture_reading_baseline()
 	_apply_audio_settings()
 	pause_overlay.hide()
 	dialogue_overlay.hide()
@@ -526,6 +545,18 @@ func toggle_reduced_motion() -> void:
 	_apply_presentation_settings()
 
 
+func toggle_text_scale() -> void:
+	settings["text_scale"] = "large" if settings["text_scale"] == "standard" else "standard"
+	SettingsStoreScript.write(settings, settings_path)
+	_apply_accessibility_settings()
+
+
+func toggle_high_contrast() -> void:
+	settings["high_contrast"] = not settings["high_contrast"]
+	SettingsStoreScript.write(settings, settings_path)
+	_apply_accessibility_settings()
+
+
 func _apply_audio_settings() -> void:
 	audio_manager.set_audio_volume(float(settings["audio_volume"]))
 	audio_manager.set_audio_enabled(bool(settings["audio_enabled"]))
@@ -545,6 +576,63 @@ func _apply_presentation_settings() -> void:
 	pause_battle_speed_button.text = speed_text
 	title_motion_button.text = motion_text
 	pause_motion_button.text = motion_text
+	_apply_accessibility_settings()
+
+
+func _capture_reading_baseline() -> void:
+	reading_labels = [
+		chapter_label,
+		objective_label,
+		location_label,
+		description_label,
+		status_label,
+		event_label,
+		input_hint,
+		title_status,
+		dialogue_speaker_label,
+		dialogue_label,
+		dialogue_portrait_label,
+		journal_location_label,
+		journal_objective_label,
+		journal_count_label,
+		journal_entries_label,
+	]
+	for label in reading_labels:
+		base_reading_font_sizes[label] = label.get_theme_font_size("font_size")
+		base_reading_font_colors[label] = label.get_theme_color("font_color")
+
+
+func _apply_accessibility_settings() -> void:
+	var scale_text := "文字大小：大字" if settings["text_scale"] == "large" else "文字大小：标准"
+	var contrast_text := "高对比：开启" if settings["high_contrast"] else "高对比：关闭"
+	title_text_scale_button.text = scale_text
+	pause_text_scale_button.text = scale_text
+	title_contrast_button.text = contrast_text
+	pause_contrast_button.text = contrast_text
+	for label in reading_labels:
+		var base_size := int(base_reading_font_sizes[label])
+		var next_size := ceili(float(base_size) * LARGE_TEXT_SCALE) if settings["text_scale"] == "large" else base_size
+		label.add_theme_font_size_override("font_size", next_size)
+		var base_color: Color = base_reading_font_colors[label]
+		var next_color := _high_contrast_color(base_color) if settings["high_contrast"] else base_color
+		label.add_theme_color_override("font_color", next_color)
+
+
+func _high_contrast_color(base_color: Color) -> Color:
+	return HIGH_CONTRAST_PAPER if base_color.get_luminance() >= 0.5 else HIGH_CONTRAST_INK
+
+
+func accessibility_contract() -> Dictionary:
+	return {
+		"text_scale": settings["text_scale"],
+		"high_contrast": settings["high_contrast"],
+		"reading_label_count": reading_labels.size(),
+		"base_dialogue_font_size": int(base_reading_font_sizes.get(dialogue_label, 0)),
+		"dialogue_font_size": dialogue_label.get_theme_font_size("font_size"),
+		"dialogue_font_color": dialogue_label.get_theme_color("font_color"),
+		"motion_free": true,
+		"rule_authority": false,
+	}
 
 
 func start_new_game() -> void:
