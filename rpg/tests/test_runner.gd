@@ -3,8 +3,11 @@ extends SceneTree
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
+const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const TEST_SAVE_PATH := "user://automated-test-save.json"
 const TEST_SCENE_SAVE_PATH := "user://automated-scene-save.json"
+const TEST_SETTINGS_PATH := "user://automated-test-settings.json"
+const TEST_SCENE_SETTINGS_PATH := "user://automated-scene-settings.json"
 
 var assertions := 0
 var failures: Array[String] = []
@@ -19,6 +22,7 @@ func _run() -> void:
 	_test_exploration_rules()
 	_test_state_restore()
 	_test_versioned_save()
+	_test_settings_store()
 	_test_gathering_and_gate()
 	_test_combat_paths()
 	_test_companion_retreat_and_rescue()
@@ -165,6 +169,31 @@ func _test_versioned_save() -> void:
 	_expect_false(FileAccess.file_exists(TEST_SAVE_PATH), "测试存档和临时文件可清理")
 
 
+func _test_settings_store() -> void:
+	SettingsStoreScript.remove(TEST_SETTINGS_PATH)
+	var initial: Dictionary = SettingsStoreScript.read(TEST_SETTINGS_PATH)
+	_expect_true(initial["ok"], "缺失设置文件时返回安全默认值")
+	_expect_equal(initial["reason"], "missing", "默认设置声明文件缺失来源")
+	_expect_false(initial["data"]["audio_enabled"], "环境音默认关闭")
+	_expect_equal(initial["data"]["audio_volume"], 0.6, "默认音量为六成")
+	_expect_true(SettingsStoreScript.write({"audio_enabled": true, "audio_volume": 0.35}, TEST_SETTINGS_PATH), "音频偏好写入成功")
+	var stored: Dictionary = SettingsStoreScript.read(TEST_SETTINGS_PATH)
+	_expect_true(stored["ok"], "音频偏好可以读取")
+	_expect_true(stored["data"]["audio_enabled"], "音频开关持久化")
+	_expect_equal(stored["data"]["audio_volume"], 0.35, "音量持久化")
+	_write_test_file(TEST_SETTINGS_PATH, "{broken")
+	var corrupt: Dictionary = SettingsStoreScript.read(TEST_SETTINGS_PATH)
+	_expect_false(corrupt["ok"], "损坏设置不会加载")
+	_expect_false(corrupt["data"]["audio_enabled"], "损坏设置回退到静音")
+	_write_test_file(TEST_SETTINGS_PATH, JSON.stringify({"settings_version": 9, "audio_enabled": true, "audio_volume": 1.0}))
+	_expect_equal(SettingsStoreScript.read(TEST_SETTINGS_PATH)["reason"], "unsupported_version", "未知设置版本被拒绝")
+	_write_test_file(TEST_SETTINGS_PATH, JSON.stringify({"settings_version": 1, "audio_enabled": "yes", "audio_volume": 0.5}))
+	_expect_equal(SettingsStoreScript.read(TEST_SETTINGS_PATH)["reason"], "invalid_audio_enabled", "非布尔音频开关被拒绝")
+	_write_test_file(TEST_SETTINGS_PATH, JSON.stringify({"settings_version": 1, "audio_enabled": true, "audio_volume": 1.5}))
+	_expect_equal(SettingsStoreScript.read(TEST_SETTINGS_PATH)["reason"], "invalid_audio_volume", "越界音量被拒绝")
+	SettingsStoreScript.remove(TEST_SETTINGS_PATH)
+
+
 func _test_gathering_and_gate() -> void:
 	var state = JourneyStateScript.new()
 	var blocked: Dictionary = state.choose("enter_spring")
@@ -271,13 +300,23 @@ func _test_visual_scale_scene() -> void:
 
 func _test_scene_smoke() -> void:
 	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
+	SettingsStoreScript.remove(TEST_SCENE_SETTINGS_PATH)
 	var scene: PackedScene = load("res://src/ui/main.tscn")
 	var instance := scene.instantiate()
 	instance.configure_save_path(TEST_SCENE_SAVE_PATH)
+	instance.configure_settings_path(TEST_SCENE_SETTINGS_PATH)
 	root.add_child(instance)
 	await process_frame
 	_expect_true(instance.get_node("%TitleOverlay").visible, "首次启动显示中文标题界面")
 	_expect_true(instance.get_node("%ContinueButton").disabled, "没有存档时继续按钮禁用")
+	_expect_equal(instance.get_node("%TitleAudioButton").text, "环境音：关闭", "标题默认静音且不自动播放")
+	instance.get_node("%TitleAudioButton").pressed.emit()
+	await process_frame
+	_expect_equal(instance.get_node("%TitleAudioButton").text, "环境音：开启", "标题可以开启原创环境音")
+	_expect_equal(instance.get_node("%PauseAudioButton").text, "环境音：开启", "标题与暂停音频开关同步")
+	_expect_true(instance.get_node("%AudioManager").is_audio_active(), "开启后音频生成器运行")
+	instance.get_node("%TitleVolumeButton").pressed.emit()
+	_expect_equal(instance.get_node("%TitleVolumeButton").text, "音量：100%", "音量按钮循环到满音量")
 	instance.get_node("%NewGameButton").pressed.emit()
 	await process_frame
 	_expect_false(instance.get_node("%TitleOverlay").visible, "新游戏进入实际地图")
@@ -351,14 +390,18 @@ func _test_scene_smoke() -> void:
 	await process_frame
 	_expect_true(instance.get_node("%TitleOverlay").visible, "完成后可以保存并返回标题")
 	_expect_false(instance.get_node("%ContinueButton").disabled, "已有存档时允许继续")
+	instance.get_node("%AudioManager").set_audio_enabled(false)
 	instance.queue_free()
 	await process_frame
 
 	var resumed := scene.instantiate()
 	resumed.configure_save_path(TEST_SCENE_SAVE_PATH)
+	resumed.configure_settings_path(TEST_SCENE_SETTINGS_PATH)
 	root.add_child(resumed)
 	await process_frame
 	_expect_true(resumed.get_node("%TitleStatus").text.contains("第一息"), "标题界面展示存档位置")
+	_expect_equal(resumed.get_node("%TitleVolumeButton").text, "音量：100%", "新场景恢复音量偏好")
+	_expect_true(resumed.get_node("%AudioManager").is_audio_active(), "新场景恢复用户开启的环境音")
 	_expect_true(resumed.continue_game(), "新场景可以继续本地存档")
 	await process_frame
 	_expect_equal(resumed.get_node("%LocationLabel").text, "第一息", "继续游戏恢复章节完成态")
@@ -368,9 +411,11 @@ func _test_scene_smoke() -> void:
 	_expect_equal(resumed.get_node("%MapCanvas").current_visual_mode(), "riverbank", "重游恢复渡口地图")
 	_expect_equal(resumed.exploration.player_position, ExplorationStateScript.START_POSITION, "重游重置玩家位置")
 	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["data"]["journey"]["phase"], "riverbank", "重游结果写入存档")
+	resumed.get_node("%AudioManager").set_audio_enabled(false)
 	resumed.queue_free()
 	await process_frame
 	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
+	SettingsStoreScript.remove(TEST_SCENE_SETTINGS_PATH)
 
 
 func _press_action(instance: Node, label: String) -> void:

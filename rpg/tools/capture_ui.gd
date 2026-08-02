@@ -3,6 +3,8 @@ extends SceneTree
 const OUTPUT_DIR := "res://../docs/concepts/gameplay-ui-v1"
 const CAPTURE_SAVE_PATH := "user://capture-ui-save.json"
 const SaveGameScript := preload("res://src/domain/save_game.gd")
+const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
+const CAPTURE_SETTINGS_PATH := "user://capture-ui-settings.json"
 
 
 func _initialize() -> void:
@@ -21,7 +23,9 @@ func _capture_flow() -> void:
 	var scene: PackedScene = load("res://src/ui/main.tscn")
 	var instance := scene.instantiate()
 	SaveGameScript.remove(CAPTURE_SAVE_PATH)
+	SettingsStoreScript.remove(CAPTURE_SETTINGS_PATH)
 	instance.configure_save_path(CAPTURE_SAVE_PATH)
+	instance.configure_settings_path(CAPTURE_SETTINGS_PATH)
 	root.add_child(instance)
 	await _settle()
 	await _save_frame("01-title-screen.png")
@@ -46,6 +50,7 @@ func _capture_flow() -> void:
 	await _settle()
 	await _save_frame("04-first-breath.png")
 	SaveGameScript.remove(CAPTURE_SAVE_PATH)
+	SettingsStoreScript.remove(CAPTURE_SETTINGS_PATH)
 	quit(0)
 
 

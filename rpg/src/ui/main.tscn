@@ -1,7 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/ui/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://src/ui/map_canvas.gd" id="2_map"]
+[ext_resource type="Script" path="res://src/ui/audio_manager.gd" id="3_audio"]
 
 [sub_resource type="StyleBoxFlat" id="StyleMap"]
 bg_color = Color(0.286, 0.424, 0.38, 1)
@@ -316,6 +317,16 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "踏入山河"
 
+[node name="TitleAudioButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "环境音：关闭"
+
+[node name="TitleVolumeButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "音量：60%"
+
 [node name="TitleControls" type="Label" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.286, 0.424, 0.38, 0.82)
@@ -380,6 +391,16 @@ theme_override_font_sizes/font_size = 14
 text = "当前进度已保存到本机。"
 horizontal_alignment = 1
 
+[node name="PauseAudioButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "环境音：关闭"
+
+[node name="PauseVolumeButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "音量：60%"
+
 [node name="ResumeButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -389,3 +410,7 @@ text = "继续修行"
 unique_name_in_owner = true
 layout_mode = 2
 text = "保存并返回标题"
+
+[node name="AudioManager" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+script = ExtResource("3_audio")

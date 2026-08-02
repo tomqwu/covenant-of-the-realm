@@ -4,6 +4,7 @@ const CONTENT_PATH := "res://content/prologue.json"
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
+const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 
 @onready var map_canvas: Control = %MapCanvas
 @onready var chapter_label: Label = %ChapterLabel
@@ -21,12 +22,19 @@ const SaveGameScript := preload("res://src/domain/save_game.gd")
 @onready var pause_overlay: Control = %PauseOverlay
 @onready var resume_button: Button = %ResumeButton
 @onready var return_title_button: Button = %ReturnTitleButton
+@onready var title_audio_button: Button = %TitleAudioButton
+@onready var title_volume_button: Button = %TitleVolumeButton
+@onready var pause_audio_button: Button = %PauseAudioButton
+@onready var pause_volume_button: Button = %PauseVolumeButton
+@onready var audio_manager: AudioStreamPlayer = %AudioManager
 
 var content: Dictionary = {}
 var journey = JourneyStateScript.new()
 var exploration = ExplorationStateScript.new()
 var nearby_action_id := ""
 var save_path := SaveGameScript.DEFAULT_SAVE_PATH
+var settings_path := SettingsStoreScript.DEFAULT_PATH
+var settings := SettingsStoreScript.defaults()
 var is_playing := false
 var autosave_elapsed := 0.0
 
@@ -34,15 +42,25 @@ var autosave_elapsed := 0.0
 func _ready() -> void:
 	_ensure_input_actions()
 	content = _load_content()
+	settings = SettingsStoreScript.read(settings_path)["data"]
 	_render([])
 	_style_menu_button(new_game_button)
 	_style_menu_button(continue_button)
 	_style_menu_button(resume_button)
 	_style_menu_button(return_title_button)
+	_style_settings_button(title_audio_button)
+	_style_settings_button(title_volume_button)
+	_style_settings_button(pause_audio_button)
+	_style_settings_button(pause_volume_button)
 	new_game_button.pressed.connect(start_new_game)
 	continue_button.pressed.connect(continue_game)
 	resume_button.pressed.connect(toggle_pause_menu)
 	return_title_button.pressed.connect(return_to_title)
+	title_audio_button.pressed.connect(toggle_audio)
+	pause_audio_button.pressed.connect(toggle_audio)
+	title_volume_button.pressed.connect(cycle_audio_volume)
+	pause_volume_button.pressed.connect(cycle_audio_volume)
+	_apply_audio_settings()
 	pause_overlay.hide()
 	_refresh_title_state()
 	title_overlay.show()
@@ -228,6 +246,13 @@ func _style_menu_button(button: Button) -> void:
 	button.focus_mode = Control.FOCUS_ALL
 
 
+func _style_settings_button(button: Button) -> void:
+	_style_action_button(button)
+	button.custom_minimum_size = Vector2(0, 42)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.focus_mode = Control.FOCUS_ALL
+
+
 func _on_action(action_id: String) -> void:
 	var result: Dictionary = journey.choose(action_id)
 	if result["ok"] and action_id == JourneyStateScript.REPLAY_CHAPTER:
@@ -265,6 +290,39 @@ func interact() -> Dictionary:
 
 func configure_save_path(path: String) -> void:
 	save_path = path
+
+
+func configure_settings_path(path: String) -> void:
+	settings_path = path
+
+
+func toggle_audio() -> void:
+	settings["audio_enabled"] = not settings["audio_enabled"]
+	SettingsStoreScript.write(settings, settings_path)
+	_apply_audio_settings()
+
+
+func cycle_audio_volume() -> void:
+	var current := float(settings["audio_volume"])
+	if current < 0.5:
+		settings["audio_volume"] = 0.6
+	elif current < 0.8:
+		settings["audio_volume"] = 1.0
+	else:
+		settings["audio_volume"] = 0.35
+	SettingsStoreScript.write(settings, settings_path)
+	_apply_audio_settings()
+
+
+func _apply_audio_settings() -> void:
+	audio_manager.set_audio_volume(float(settings["audio_volume"]))
+	audio_manager.set_audio_enabled(bool(settings["audio_enabled"]))
+	var audio_text := "环境音：开启" if settings["audio_enabled"] else "环境音：关闭"
+	var volume_text := "音量：%d%%" % roundi(float(settings["audio_volume"]) * 100.0)
+	title_audio_button.text = audio_text
+	pause_audio_button.text = audio_text
+	title_volume_button.text = volume_text
+	pause_volume_button.text = volume_text
 
 
 func start_new_game() -> void:

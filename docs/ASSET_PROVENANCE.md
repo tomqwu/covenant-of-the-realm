@@ -11,10 +11,18 @@ The preserved single-player study under `prototypes/journey/` contains:
 No public-use license has been selected for the repository or these assets. They remain under their creators' default copyright. Before any public release, the owner must choose a repository license, verify every dependency and generated-asset term, complete name/trademark clearance, and record any new asset's source, author, date, transformation, and allowed use here.
 
 The Godot RPG graybox under `rpg/` currently uses only project-authored code, text, vector-like
-runtime drawing, and Godot's default theme/font behavior. It commits no third-party art, font,
-music, map, sound, or plugin. Godot 4.7.1 is an external MIT-licensed development/runtime
+runtime drawing, runtime-synthesized ambience, and Godot's default theme/font behavior. It
+commits no third-party art, font, music, map, sound file, or plugin. Godot 4.7.1 is an external MIT-licensed development/runtime
 dependency resolved separately from the repository; its official Linux build is checksum-pinned
 by `scripts/setup_rpg`.
+
+## 2026-08-01 · Godot procedural ferry ambience
+
+`rpg/src/ui/audio_manager.gd` synthesizes a quiet three-frequency waterbank chord directly into
+Godot's `AudioStreamGenerator`. The frequencies, slow amplitude modulation, stereo balance, and
+implementation were authored for this project; no recording, sample, model-generated audio,
+external composition, or third-party sound library is embedded. Playback is opt-in and defaults
+to off. This functional ambience remains a placeholder for the final authored sound direction.
 
 ## 2026-08-01 · RPG style-exploration concept boards
 

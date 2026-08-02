@@ -5,7 +5,7 @@
 | Boundary | Gate | Current result |
 | --- | --- | --- |
 | Deterministic cultivation rules | pytest + branch coverage, minimum 99% | 50 tests; 100% statements and branches |
-| Godot RPG rules and scenes | headless GDScript harness | 165 assertions passing |
+| Godot RPG rules and scenes | headless GDScript harness | 185 assertions passing |
 | Godot RPG chapter path | independent headless E2E | 16 checks: briefing → exploration → retreat → battle → breakthrough → resume → replay |
 | Evennia commands and world bootstrap | Evennia isolated database harness | command, localization, and bootstrap integration tests passing |
 | Multiplayer release path | real server, two real Telnet clients | 中文注册 → 登录 → 采药 → 修炼 → 协作 → 突破 → 重连持久化 |

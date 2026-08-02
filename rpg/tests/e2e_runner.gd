@@ -2,7 +2,9 @@ extends SceneTree
 
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
+const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const TEST_SAVE_PATH := "user://automated-e2e-save.json"
+const TEST_SETTINGS_PATH := "user://automated-e2e-settings.json"
 
 var assertions := 0
 var failures: Array[String] = []
@@ -14,9 +16,11 @@ func _initialize() -> void:
 
 func _run() -> void:
 	SaveGameScript.remove(TEST_SAVE_PATH)
+	SettingsStoreScript.remove(TEST_SETTINGS_PATH)
 	var scene: PackedScene = load("res://src/ui/main.tscn")
 	var game := scene.instantiate()
 	game.configure_save_path(TEST_SAVE_PATH)
+	game.configure_settings_path(TEST_SETTINGS_PATH)
 	root.add_child(game)
 	await _settle()
 
@@ -63,6 +67,7 @@ func _run() -> void:
 
 	var resumed := scene.instantiate()
 	resumed.configure_save_path(TEST_SAVE_PATH)
+	resumed.configure_settings_path(TEST_SETTINGS_PATH)
 	root.add_child(resumed)
 	await _settle()
 	_expect(not resumed.get_node("%ContinueButton").disabled, "E2E 新实例发现完成存档")
@@ -76,6 +81,7 @@ func _run() -> void:
 	resumed.queue_free()
 	await _settle()
 	SaveGameScript.remove(TEST_SAVE_PATH)
+	SettingsStoreScript.remove(TEST_SETTINGS_PATH)
 	if failures.is_empty():
 		print("RPG E2E passed: %d assertions, new game to replay." % assertions)
 		quit(0)

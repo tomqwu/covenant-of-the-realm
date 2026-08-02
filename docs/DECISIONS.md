@@ -36,6 +36,14 @@ stays at the marker until the player receives the risk and retreat briefing, the
 exploration. Quest guidance advances from briefing to herb preparation to the spring gate. This
 uses the same proximity and semantic-action path as every other world interaction.
 
+### 2026-08-01 — Opt-in procedural ambience
+
+The functional slice defaults to silence. A player may enable project-authored ambience and
+choose 35%, 60%, or 100% volume from either title or pause UI. GDScript synthesizes the placeholder
+sound at runtime through `AudioStreamGenerator`, so no third-party or generated sound asset enters
+the repository. Versioned settings are stored separately from journey progress; invalid settings
+fall back to silence without affecting the save game.
+
 ### 2026-08-01 — Recoverable first-combat failure
 
 The first combat teaches preparation without creating a hard fail state. The player may retreat
