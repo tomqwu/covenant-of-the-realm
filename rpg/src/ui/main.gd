@@ -27,6 +27,10 @@ const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 @onready var title_volume_button: Button = %TitleVolumeButton
 @onready var pause_audio_button: Button = %PauseAudioButton
 @onready var pause_volume_button: Button = %PauseVolumeButton
+@onready var title_battle_speed_button: Button = %TitleBattleSpeedButton
+@onready var pause_battle_speed_button: Button = %PauseBattleSpeedButton
+@onready var title_motion_button: Button = %TitleMotionButton
+@onready var pause_motion_button: Button = %PauseMotionButton
 @onready var audio_manager: AudioStreamPlayer = %AudioManager
 @onready var dialogue_overlay: Control = %DialogueOverlay
 @onready var dialogue_speaker_label: Label = %DialogueSpeakerLabel
@@ -64,6 +68,10 @@ func _ready() -> void:
 	_style_settings_button(title_volume_button)
 	_style_settings_button(pause_audio_button)
 	_style_settings_button(pause_volume_button)
+	_style_settings_button(title_battle_speed_button)
+	_style_settings_button(pause_battle_speed_button)
+	_style_settings_button(title_motion_button)
+	_style_settings_button(pause_motion_button)
 	_style_settings_button(dialogue_history_button)
 	_style_settings_button(dialogue_skip_button)
 	_style_settings_button(dialogue_next_button)
@@ -75,6 +83,10 @@ func _ready() -> void:
 	pause_audio_button.pressed.connect(toggle_audio)
 	title_volume_button.pressed.connect(cycle_audio_volume)
 	pause_volume_button.pressed.connect(cycle_audio_volume)
+	title_battle_speed_button.pressed.connect(toggle_battle_speed)
+	pause_battle_speed_button.pressed.connect(toggle_battle_speed)
+	title_motion_button.pressed.connect(toggle_reduced_motion)
+	pause_motion_button.pressed.connect(toggle_reduced_motion)
 	dialogue_history_button.pressed.connect(toggle_dialogue_history)
 	dialogue_skip_button.pressed.connect(skip_dialogue_to_response)
 	dialogue_next_button.pressed.connect(advance_dialogue)
@@ -161,6 +173,11 @@ func _render(event_ids: Array) -> void:
 	)
 	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"])
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
+	map_canvas.show_battle_feedback(
+		event_ids,
+		settings["battle_speed"] == "fast",
+		settings["reduced_motion"]
+	)
 	_build_actions(node)
 	_render_dialogue_overlay()
 
@@ -405,6 +422,18 @@ func cycle_audio_volume() -> void:
 	_apply_audio_settings()
 
 
+func toggle_battle_speed() -> void:
+	settings["battle_speed"] = "fast" if settings["battle_speed"] == "standard" else "standard"
+	SettingsStoreScript.write(settings, settings_path)
+	_apply_presentation_settings()
+
+
+func toggle_reduced_motion() -> void:
+	settings["reduced_motion"] = not settings["reduced_motion"]
+	SettingsStoreScript.write(settings, settings_path)
+	_apply_presentation_settings()
+
+
 func _apply_audio_settings() -> void:
 	audio_manager.set_audio_volume(float(settings["audio_volume"]))
 	audio_manager.set_audio_enabled(bool(settings["audio_enabled"]))
@@ -414,6 +443,16 @@ func _apply_audio_settings() -> void:
 	pause_audio_button.text = audio_text
 	title_volume_button.text = volume_text
 	pause_volume_button.text = volume_text
+	_apply_presentation_settings()
+
+
+func _apply_presentation_settings() -> void:
+	var speed_text := "战斗表现：快速" if settings["battle_speed"] == "fast" else "战斗表现：标准"
+	var motion_text := "动态效果：简化" if settings["reduced_motion"] else "动态效果：完整"
+	title_battle_speed_button.text = speed_text
+	pause_battle_speed_button.text = speed_text
+	title_motion_button.text = motion_text
+	pause_motion_button.text = motion_text
 
 
 func start_new_game() -> void:

@@ -44,6 +44,13 @@ func _run() -> void:
 	_expect(game.get_node("%PauseOverlay").visible, "手柄 Start 打开暂停界面")
 	await _settle()
 	_expect(root.gui_get_focus_owner() == game.get_node("%ResumeButton"), "暂停焦点落在继续修行")
+	game.get_node("%PauseBattleSpeedButton").grab_focus()
+	await _trigger_joy_button(JOY_BUTTON_A)
+	_expect(game.get_node("%PauseBattleSpeedButton").text == "战斗表现：快速", "手柄 A 切换快速战斗反馈")
+	game.get_node("%PauseMotionButton").grab_focus()
+	await _trigger_joy_button(JOY_BUTTON_A)
+	_expect(game.get_node("%PauseMotionButton").text == "动态效果：简化", "手柄 A 切换简化动态")
+	game.get_node("%ResumeButton").grab_focus()
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(not game.get_node("%PauseOverlay").visible, "手柄 A 从暂停恢复")
 

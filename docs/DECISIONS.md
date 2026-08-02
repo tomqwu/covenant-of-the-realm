@@ -126,6 +126,16 @@ sound at runtime through `AudioStreamGenerator`, so no third-party or generated 
 the repository. Versioned settings are stored separately from journey progress; invalid settings
 fall back to silence without affecting the save game.
 
+Settings v2 adds `battle_speed` and `reduced_motion`. V1 audio-only settings migrate to standard
+speed and full motion. Fast mode shortens only the lifetime of semantic feedback; reduced motion
+uses the same static label and border without pulsing. Neither preference is passed into the
+journey domain. A scene test resolves the same action through a feedback-enabled scene and a pure
+domain mirror, then requires byte-for-byte equivalent snapshots.
+
+Modal UI has an explicit rendering hierarchy: dialogue above map actors, title above dialogue,
+and pause above title. This prevents actor sprites and combat feedback from crossing paper panels
+or blocking menu labels as new presentation nodes are added.
+
 ### 2026-08-01 — Reproducible PCK as the overnight delivery boundary
 
 The overnight slice exports a cross-platform Godot resource pack and validates it by two

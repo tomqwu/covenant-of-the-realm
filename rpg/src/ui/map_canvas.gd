@@ -24,6 +24,11 @@ var enemy_id := "rock_armor_young"
 var player_position := Vector2(0.47, 0.51)
 var nearby_action := ""
 var player_motion := Vector2.ZERO
+var feedback_text := ""
+var feedback_remaining := 0.0
+var feedback_duration := 0.0
+var feedback_motion_enabled := true
+var feedback_phase := 0.0
 
 
 func set_story_state(next_phase: String, gathered: bool, talked: bool, active_lamp_turns: int, next_enemy_id: String) -> void:
@@ -52,6 +57,49 @@ func set_player_motion(direction: Vector2) -> void:
 		companion_sprite.set_motion(direction, talked_to_companion and not direction.is_zero_approx())
 
 
+func show_battle_feedback(event_ids: Array, fast_mode: bool, reduced_motion: bool) -> void:
+	var labels := {
+		"enemy_hit": "受到冲击",
+		"enemy_glanced": "化开冲势",
+		"spring_lamp_deployed": "石灯护阵",
+		"companion_supported": "砚青凝息",
+		"weakness_exposed": "识破弱点",
+		"regular_enemy_won": "灵物退开",
+		"boss_arrived": "首领现身",
+		"battle_won": "道路已开",
+	}
+	var next_text := ""
+	for event_id in [
+		"enemy_hit",
+		"enemy_glanced",
+		"spring_lamp_deployed",
+		"companion_supported",
+		"weakness_exposed",
+		"regular_enemy_won",
+		"boss_arrived",
+		"battle_won",
+	]:
+		if event_ids.has(event_id):
+			next_text = labels[event_id]
+	if next_text.is_empty():
+		return
+	feedback_text = next_text
+	feedback_duration = 0.18 if fast_mode else 0.70
+	feedback_remaining = feedback_duration
+	feedback_motion_enabled = not reduced_motion
+	feedback_phase = 0.0
+	queue_redraw()
+
+
+func feedback_contract() -> Dictionary:
+	return {
+		"text": feedback_text,
+		"duration": feedback_duration,
+		"motion_enabled": feedback_motion_enabled,
+		"active": feedback_remaining > 0.0,
+	}
+
+
 func actor_height_px() -> float:
 	return ACTOR_HEIGHT
 
@@ -75,6 +123,16 @@ func uses_mountain_path_tile_layers() -> bool:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and is_node_ready():
 		_sync_actor_visuals()
+
+
+func _process(delta: float) -> void:
+	if feedback_remaining <= 0.0:
+		return
+	feedback_remaining = maxf(0.0, feedback_remaining - delta)
+	feedback_phase += delta
+	if feedback_remaining <= 0.0:
+		feedback_text = ""
+	queue_redraw()
 
 
 func _sync_actor_visuals() -> void:
@@ -120,6 +178,7 @@ func _draw() -> void:
 			_draw_spring_chamber(false)
 		_:
 			_draw_spring_chamber(true)
+	_draw_battle_feedback()
 	_draw_vignette()
 
 
@@ -421,3 +480,29 @@ func _draw_vignette() -> void:
 	draw_rect(Rect2(0, size.y - 14, size.x, 14), edge)
 	draw_rect(Rect2(0, 0, 14, size.y), edge)
 	draw_rect(Rect2(size.x - 14, 0, 14, size.y), edge)
+
+
+func _draw_battle_feedback() -> void:
+	if feedback_text.is_empty() or feedback_duration <= 0.0:
+		return
+	var size := get_rect().size
+	var progress := feedback_remaining / feedback_duration
+	var pulse := 1.0
+	if feedback_motion_enabled:
+		pulse = 0.88 + sin(feedback_phase * 18.0) * 0.12
+	var center := Vector2(size.x * 0.54, size.y * 0.20)
+	var panel_size := Vector2(210, 54) * pulse
+	var panel := Rect2(center - panel_size * 0.5, panel_size)
+	draw_rect(panel, Color(0.15, 0.19, 0.18, 0.72 * progress), true)
+	draw_rect(panel, Color(0.89, 0.76, 0.43, 0.88 * progress), false, 3.0)
+	var font := ThemeDB.fallback_font
+	var text_width := font.get_string_size(feedback_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 23).x
+	draw_string(
+		font,
+		center + Vector2(-text_width * 0.5, 8),
+		feedback_text,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		23,
+		Color(0.95, 0.90, 0.80, progress)
+	)
