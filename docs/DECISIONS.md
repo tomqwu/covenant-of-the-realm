@@ -4,6 +4,17 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Dialogue portraits are finite motion-free painted-paper presentation
+
+The prologue dialogue uses three stable presentation IDs: `protagonist`, `yanqing`, and
+`journal`. Project-authored Godot drawing code renders the protagonist in clear indigo, 砚青 in
+warm ochre, and history mode as an unpeopled travel journal over the same bright paper landscape.
+The current speaker, player responses, and dialogue history select those IDs; an unknown ID falls
+back to the journal instead of inventing a person. A visible Chinese caption remains beside the
+art for identity and accessibility. Portraits ignore pointer input, contain no animation, do not
+enter saves, and never decide dialogue or journey rules. They are an auditable production
+placeholder, not a generated concept image or imported external asset.
+
 ### 2026-08-02 — Environmental discoveries are finite history, not hidden power
 
 The prologue now has three stable optional discovery IDs: the ferry flood marks, a branching

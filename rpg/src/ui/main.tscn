@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://src/ui/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://src/ui/map_canvas.gd" id="2_map"]
@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://src/ui/enemy_sprite.gd" id="9_enemy"]
 [ext_resource type="Texture2D" path="res://assets/pixel/enemy_profiles.png" id="10_enemy_profiles"]
 [ext_resource type="Script" path="res://src/ui/scene_transition.gd" id="11_transition"]
+[ext_resource type="Script" path="res://src/ui/dialogue_portrait.gd" id="12_portrait"]
 
 [sub_resource type="StyleBoxFlat" id="StyleMap"]
 bg_color = Color(0.286, 0.424, 0.38, 1)
@@ -446,12 +447,24 @@ custom_minimum_size = Vector2(138, 0)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleHud")
 
-[node name="DialoguePortraitLabel" type="Label" parent="DialogueOverlay/Panel/Margin/Row/Portrait"]
+[node name="PortraitColumn" type="VBoxContainer" parent="DialogueOverlay/Panel/Margin/Row/Portrait"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="DialoguePortrait" type="Control" parent="DialogueOverlay/Panel/Margin/Row/Portrait/PortraitColumn"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(134, 154)
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("12_portrait")
+
+[node name="DialoguePortraitLabel" type="Label" parent="DialogueOverlay/Panel/Margin/Row/Portrait/PortraitColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.949, 0.902, 0.796, 1)
-theme_override_font_sizes/font_size = 20
-text = "砚青\n照禾药师"
+theme_override_font_sizes/font_size = 14
+text = "砚青 · 照禾药师"
 horizontal_alignment = 1
 vertical_alignment = 1
 

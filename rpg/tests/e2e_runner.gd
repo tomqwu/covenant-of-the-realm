@@ -31,8 +31,10 @@ func _run() -> void:
 	await _trigger_semantic_action(game, "interact")
 	await _settle()
 	_expect(game.dialogue.active and game.get_node("%DialogueOverlay").visible, "E2E 交互开启逐句风险简报")
+	_expect(game.get_node("%DialoguePortrait").visual_contract()["portrait_id"] == "yanqing", "E2E 开场台词显示砚青纸绘头像")
 	game.show_full_dialogue_line()
 	game.advance_dialogue()
+	_expect(game.get_node("%DialoguePortrait").visual_contract()["portrait_id"] == "protagonist", "E2E 第二句切换为主角纸绘头像")
 	game.show_full_dialogue_line()
 	game.advance_dialogue()
 	var interrupted_line: int = game.dialogue.line_index
@@ -49,6 +51,7 @@ func _run() -> void:
 	_expect(game.get_node("%DialogueLabel").text == interrupted_text, "E2E 中断恢复保持当前台词")
 	game.skip_dialogue_to_response()
 	await _settle()
+	_expect(game.get_node("%DialoguePortrait").visual_contract()["portrait_id"] == "protagonist", "E2E 回应阶段明确由主角作出选择")
 	await _press_dialogue_choice(game, "先看退路，再进山。")
 	_expect(game.journey.talked_to_companion, "E2E 选择谨慎回应完成风险简报")
 	_expect(game.get_node("%ObjectiveLabel").text.contains("月芽田"), "E2E 简报后任务切换到采药")

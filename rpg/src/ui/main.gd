@@ -35,6 +35,7 @@ const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 @onready var dialogue_overlay: Control = %DialogueOverlay
 @onready var dialogue_speaker_label: Label = %DialogueSpeakerLabel
 @onready var dialogue_label: Label = %DialogueLabel
+@onready var dialogue_portrait: Control = %DialoguePortrait
 @onready var dialogue_portrait_label: Label = %DialoguePortraitLabel
 @onready var dialogue_choices: GridContainer = %DialogueChoices
 @onready var dialogue_history_button: Button = %DialogueHistoryButton
@@ -718,7 +719,7 @@ func _render_dialogue_overlay() -> void:
 	var line: Dictionary = lines[dialogue.line_index]
 	var speaker := str(line.get("speaker", ""))
 	dialogue_speaker_label.text = speaker
-	dialogue_portrait_label.text = "行旅者\n初入山河" if speaker == "你" else "砚青\n照禾药师"
+	_set_dialogue_portrait("protagonist" if speaker == "你" else "yanqing" if speaker == "砚青" else "journal")
 	dialogue_label.text = str(line.get("text", ""))
 	dialogue_label.visible_characters = 0
 	dialogue_reveal_elapsed = 0.0
@@ -730,7 +731,7 @@ func _render_dialogue_overlay() -> void:
 
 func _render_dialogue_choices(choices: Array) -> void:
 	dialogue_speaker_label.text = "你的回应"
-	dialogue_portrait_label.text = "行旅者\n初入山河"
+	_set_dialogue_portrait("protagonist")
 	dialogue_label.text = "砚青等着你的决定。回应只改变同行回声，不会锁死主线。"
 	dialogue_label.visible_characters = -1
 	dialogue_skip_button.hide()
@@ -761,13 +762,23 @@ func _render_dialogue_history(lines: Array) -> void:
 		var line: Dictionary = lines[index]
 		history_lines.append("%s：%s" % [line.get("speaker", ""), line.get("text", "")])
 	dialogue_speaker_label.text = "对话回顾"
-	dialogue_portrait_label.text = "行旅札记\n最近四句"
+	_set_dialogue_portrait("journal")
 	dialogue_label.text = "\n".join(history_lines)
 	dialogue_label.visible_characters = -1
 	dialogue_choices.hide()
 	dialogue_skip_button.hide()
 	dialogue_next_button.hide()
 	dialogue_history_button.grab_focus.call_deferred()
+
+
+func _set_dialogue_portrait(portrait_id: String) -> void:
+	var accepted: bool = dialogue_portrait.set_portrait(portrait_id)
+	var stable_id := portrait_id if accepted else "journal"
+	dialogue_portrait_label.text = {
+		"protagonist": "行旅者 · 初入山河",
+		"yanqing": "砚青 · 照禾药师",
+		"journal": "行旅札记 · 最近四句",
+	}.get(stable_id, "行旅札记 · 最近四句")
 
 
 func _process_dialogue_reveal(delta: float) -> void:

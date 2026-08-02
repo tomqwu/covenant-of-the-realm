@@ -15,6 +15,7 @@ REQUIRED_RESOURCES = [
     "res://assets/pixel/enemy_profiles.png",
     "res://content/prologue.json",
     "res://src/domain/journey_state.gd",
+    "res://src/ui/dialogue_portrait.gd",
     "res://src/ui/main.tscn",
 ]
 EXCLUDED_RESOURCES = [

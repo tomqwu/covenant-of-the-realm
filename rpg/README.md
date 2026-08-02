@@ -21,7 +21,7 @@ make play-rpg-package
 nearest Git revision, clean/dirty source state, required runtime resources, and excluded development
 resources. `make play-rpg-package` launches that pack with the pinned Godot entrypoint. The package
 gate exports the PCK and manifest twice, requires byte-identical results, verifies the manifest,
-probes the packed namespace for four runtime resources and nine excluded `tests/`/`tools/` files,
+probes the packed namespace for five runtime resources and nine excluded `tests/`/`tools/` files,
 then boots the pack headlessly. A native `.app`/`.exe` is intentionally deferred until platform export templates,
 signing identity, product icon, and distribution target are confirmed.
 
@@ -98,6 +98,10 @@ settings v2 还保存“标准/快速”战斗表现和“完整/简化”动态
 实际走过的脚印保持约 0.058 个地图单位的距离；拐角不斜切建筑，轨迹固定封顶 96 点。
 换图、读档或远距离调试跳转会在主角近旁重建轨迹，同行位置不进入旅程存档，也不
 成为第二套碰撞或任务规则。
+
+对话正文、主角回应与最近四句回顾分别使用砚青、行旅者和行旅札记三种明亮纸绘
+表现。头像由项目代码确定性绘制，不含外部图片或逐帧动态；身份文字始终可见，
+表现节点忽略指针输入，未知人物标识安全回退为札记，也不会进入规则或存档。
 
 渡口旧水痕、山道石缝泉纹与弃置药篓是三处可选近距离见闻。调查只补充照禾的
 治水、药圃和行旅生活历史，不提供隐藏战斗数值；每处只记一次，读后保留明确地图
