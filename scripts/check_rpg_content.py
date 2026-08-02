@@ -54,6 +54,8 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
     nodes = _mapping(story.get("nodes"), f"{source}.nodes", failures)
     messages = _mapping(story.get("messages"), f"{source}.messages", failures)
     dialogues = _mapping(story.get("dialogues"), f"{source}.dialogues", failures)
+    raw_transitions = story.get("transitions", {})
+    transitions = _mapping(raw_transitions, f"{source}.transitions", failures)
     start_node = _text(story.get("start_node"), f"{source}.start_node", failures)
     if start_node and start_node not in nodes:
         failures.append(f"{source}.start_node points to missing node '{start_node}'")
@@ -147,6 +149,14 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
                     failures.append(
                         f"{choice_label}.id has no matching message 'briefing_{choice_id}'"
                     )
+
+    for transition_id, transition_text in transitions.items():
+        _text(transition_id, f"{source}.transitions.id", failures)
+        _text(transition_text, f"{source}.transitions.{transition_id}", failures)
+        if transition_id not in nodes and transition_id not in messages:
+            failures.append(
+                f"{source}.transitions.{transition_id} must reference a node or message id"
+            )
 
     if start_node in nodes:
         reachable: set[str] = set()

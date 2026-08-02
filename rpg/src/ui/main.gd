@@ -40,6 +40,7 @@ const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 @onready var dialogue_history_button: Button = %DialogueHistoryButton
 @onready var dialogue_skip_button: Button = %DialogueSkipButton
 @onready var dialogue_next_button: Button = %DialogueNextButton
+@onready var scene_transition: Control = %SceneTransition
 
 var content: Dictionary = {}
 var journey = JourneyStateScript.new()
@@ -90,6 +91,7 @@ func _ready() -> void:
 	dialogue_history_button.pressed.connect(toggle_dialogue_history)
 	dialogue_skip_button.pressed.connect(skip_dialogue_to_response)
 	dialogue_next_button.pressed.connect(advance_dialogue)
+	scene_transition.transition_finished.connect(_restore_action_focus)
 	_apply_audio_settings()
 	pause_overlay.hide()
 	dialogue_overlay.hide()
@@ -102,6 +104,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if scene_transition.is_transitioning():
+		return
 	if dialogue.active and dialogue_overlay.visible and not pause_overlay.visible:
 		_process_dialogue_reveal(delta)
 		return
@@ -121,6 +125,9 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if scene_transition.is_transitioning():
+		get_viewport().set_input_as_handled()
+		return
 	if is_playing and event.is_action_pressed("pause_menu"):
 		toggle_pause_menu()
 		get_viewport().set_input_as_handled()
@@ -152,6 +159,7 @@ func _load_content() -> Dictionary:
 func _render(event_ids: Array) -> void:
 	if content.is_empty():
 		return
+	var previous_phase: String = map_canvas.current_visual_mode()
 	var snapshot := journey.snapshot()
 	var node: Dictionary = content["nodes"][snapshot["phase"]]
 	chapter_label.text = "序章 · 第一息"
@@ -181,6 +189,37 @@ func _render(event_ids: Array) -> void:
 	)
 	_build_actions(node)
 	_render_dialogue_overlay()
+	var transition_text: String = _transition_text(previous_phase, snapshot["phase"], event_ids)
+	if not transition_text.is_empty():
+		scene_transition.play(transition_text, bool(settings["reduced_motion"]))
+
+
+func _transition_text(previous_phase: String, next_phase: String, event_ids: Array) -> String:
+	if not is_playing:
+		return ""
+	var transitions: Dictionary = content.get("transitions", {})
+	if event_ids.has("boss_arrived"):
+		return str(transitions.get("boss_arrived", ""))
+	if previous_phase != next_phase:
+		return str(transitions.get(next_phase, ""))
+	return ""
+
+
+func _restore_action_focus() -> void:
+	if not is_playing or title_overlay.visible or pause_overlay.visible or dialogue_overlay.visible:
+		return
+	if _is_exploration_phase():
+		return
+	_focus_first_action.call_deferred()
+
+
+func _focus_first_action() -> void:
+	if not is_playing or title_overlay.visible or pause_overlay.visible or dialogue_overlay.visible:
+		return
+	for child in actions.get_children():
+		if child is Button and not child.disabled and not child.is_queued_for_deletion():
+			child.grab_focus()
+			return
 
 
 func _status_text(snapshot: Dictionary) -> String:
@@ -283,7 +322,7 @@ func _build_actions(node: Dictionary) -> void:
 		guidance.add_theme_color_override("font_color", Color("5f674f"))
 		actions.add_child(guidance)
 	if first_button != null and not _is_exploration_phase():
-		first_button.grab_focus.call_deferred()
+		_focus_first_action.call_deferred()
 	input_hint.text = "WASD / 方向键移动 · E / 空格 / 手柄 A 交互" if _is_exploration_phase() else "鼠标点击 · 方向键选择 · Enter / 手柄 A 确认"
 
 

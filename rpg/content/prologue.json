@@ -3,6 +3,14 @@
   "story_id": "zhaohe_first_breath",
   "origin": "original",
   "start_node": "riverbank",
+  "transitions": {
+    "riverbank": "照禾渡口 · 风过水明",
+    "mountain_path": "藏泉山道 · 石阶入云",
+    "battle": "碎甲声近 · 临势应战",
+    "spring": "藏泉石室 · 灵泉初醒",
+    "complete": "第一息 · 山河有应",
+    "boss_arrived": "守巢者现 · 先守后破"
+  },
   "nodes": {
     "riverbank": {
       "kind": "explore",

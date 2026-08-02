@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://src/ui/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://src/ui/map_canvas.gd" id="2_map"]
@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" path="res://assets/pixel/ferry_tiles.png" id="8_ferry_tiles"]
 [ext_resource type="Script" path="res://src/ui/enemy_sprite.gd" id="9_enemy"]
 [ext_resource type="Texture2D" path="res://assets/pixel/enemy_profiles.png" id="10_enemy_profiles"]
+[ext_resource type="Script" path="res://src/ui/scene_transition.gd" id="11_transition"]
 
 [sub_resource type="StyleBoxFlat" id="StyleMap"]
 bg_color = Color(0.286, 0.424, 0.38, 1)
@@ -48,6 +49,20 @@ corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 shadow_color = Color(0.08, 0.12, 0.11, 0.24)
 shadow_size = 7
+
+[sub_resource type="StyleBoxFlat" id="StyleTransitionPaper"]
+bg_color = Color(0.949, 0.902, 0.796, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.556, 0.733, 0.514, 0.92)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+shadow_color = Color(0.08, 0.12, 0.11, 0.32)
+shadow_size = 10
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -309,6 +324,86 @@ theme_override_colors/font_color = Color(0.286, 0.424, 0.38, 0.9)
 theme_override_font_sizes/font_size = 12
 text = "WASD / 方向键移动 · E / 空格 / 手柄 A 交互"
 horizontal_alignment = 2
+
+[node name="SceneTransition" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 70
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("11_transition")
+
+[node name="Wash" type="ColorRect" parent="SceneTransition"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.153, 0.192, 0.18, 0.9)
+
+[node name="TopBand" type="ColorRect" parent="SceneTransition"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 16.0
+grow_horizontal = 2
+mouse_filter = 2
+color = Color(0.556, 0.733, 0.514, 0.86)
+
+[node name="BottomBand" type="ColorRect" parent="SceneTransition"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+color = Color(0.894, 0.765, 0.431, 0.9)
+
+[node name="Center" type="CenterContainer" parent="SceneTransition"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Paper" type="PanelContainer" parent="SceneTransition/Center"]
+custom_minimum_size = Vector2(520, 112)
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleTransitionPaper")
+
+[node name="TransitionLabel" type="Label" parent="SceneTransition/Center/Paper"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.153, 0.192, 0.18, 1)
+theme_override_font_sizes/font_size = 27
+text = "藏泉山道 · 石阶入云"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TransitionInputSink" type="Button" parent="SceneTransition"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+focus_mode = 2
+flat = true
 
 [node name="DialogueOverlay" type="Control" parent="."]
 unique_name_in_owner = true

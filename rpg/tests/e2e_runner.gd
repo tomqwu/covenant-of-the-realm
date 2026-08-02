@@ -28,7 +28,7 @@ func _run() -> void:
 	game.get_node("%NewGameButton").pressed.emit()
 	await _settle()
 	_expect(game.get_node("%LocationLabel").text == "照禾渡口", "E2E 新游戏进入照禾渡口")
-	await _trigger_semantic_action("interact")
+	await _trigger_semantic_action(game, "interact")
 	await _settle()
 	_expect(game.dialogue.active and game.get_node("%DialogueOverlay").visible, "E2E 交互开启逐句风险简报")
 	game.show_full_dialogue_line()
@@ -56,7 +56,7 @@ func _run() -> void:
 	game.move_player(Vector2.DOWN, 0.40)
 	game.move_player(Vector2.RIGHT, 0.74)
 	await _settle()
-	await _trigger_semantic_action("interact")
+	await _trigger_semantic_action(game, "interact")
 	await _settle()
 	_expect(game.journey.gathered_moonleaf, "E2E 通过语义交互采集月芽草")
 	_expect(game.journey.moonleaf_method == "whole_plant", "E2E 语义交互保留向后兼容的旧规取药")
@@ -81,19 +81,19 @@ func _run() -> void:
 	_expect(game.journey.phase_id() == "mountain_path" and game.exploration.map_id == "cangquan_path", "E2E 中途恢复保持剧情与地图一致")
 	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": 0.10, "player_y": 0.68}), "E2E 到达山道退路")
 	game._render([])
-	await _trigger_semantic_action("interact")
+	await _trigger_semantic_action(game, "interact")
 	_expect(game.journey.phase_id() == "riverbank" and game.exploration.map_id == "zhaohe_ferry", "E2E 可从山道主动返回渡口")
 	_expect(game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.88, "player_y": 0.18}), "E2E 返回后再次到达山门")
 	game._render([])
-	await _trigger_semantic_action("interact")
+	await _trigger_semantic_action(game, "interact")
 	_expect(game.journey.phase_id() == "mountain_path", "E2E 返回后可以再次进入山道")
 	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": 0.43, "player_y": 0.57}), "E2E 到达旧石标")
 	game._render([])
-	await _trigger_semantic_action("interact")
+	await _trigger_semantic_action(game, "interact")
 	_expect(game.get_node("%EventLabel").text.contains("箭记"), "E2E 调查旧石标")
 	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": 0.73, "player_y": 0.34}), "E2E 到达敌人预警区")
 	game._render([])
-	await _trigger_semantic_action("interact")
+	await _trigger_semantic_action(game, "interact")
 	_expect(game.journey.phase_id() == "battle", "E2E 接近敌人才进入战斗")
 	await _press_action(game, "撤到旧石标")
 	_expect(game.journey.phase_id() == "mountain_path", "E2E 可沿退路撤到山道")
@@ -171,7 +171,7 @@ func _run() -> void:
 	resumed._on_action("enter_spring")
 	_expect(resumed.exploration.restore({"map_id": "cangquan_path", "player_x": 0.86, "player_y": 0.18}), "E2E 重游后到达绕行入口")
 	resumed._render([])
-	await _trigger_semantic_action("interact")
+	await _trigger_semantic_action(resumed, "interact")
 	_expect(resumed.journey.phase_id() == "spring", "E2E 沿溪绕行不进入战斗即可到泉室")
 	_expect(resumed.journey.player_hp == 12 and resumed.journey.talismans == 1 and resumed.journey.round_number == 1, "E2E 绕行保留气血、符箓和战斗回合")
 	await _press_action(resumed, "静心引息")
@@ -209,7 +209,11 @@ func _press_dialogue_choice(game: Node, label: String) -> void:
 	failures.append("E2E 找不到对话回应：%s" % label)
 
 
-func _trigger_semantic_action(action_name: StringName) -> void:
+func _trigger_semantic_action(game: Node, action_name: StringName) -> void:
+	var transition: Control = game.get_node("%SceneTransition")
+	if transition.is_transitioning():
+		transition.advance(1.0)
+		await process_frame
 	var pressed := InputEventAction.new()
 	pressed.action = action_name
 	pressed.pressed = true

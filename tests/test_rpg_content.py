@@ -138,6 +138,22 @@ def test_rejects_malformed_nested_values() -> None:
     assert "story.messages.gathered must be non-empty text" in failures
 
 
+def test_validates_optional_transition_prose_and_references() -> None:
+    data = story()
+    data["transitions"] = []
+    assert "story.transitions must be an object" in validate_story(data)
+
+    data = story()
+    data["transitions"]["mountain_path"] = ""
+    data["transitions"]["missing_transition"] = "无效转场"
+    failures = validate_story(data)
+    assert "story.transitions.mountain_path must be non-empty text" in failures
+    assert (
+        "story.transitions.missing_transition must reference a node or message id"
+        in failures
+    )
+
+
 def test_rejects_malformed_dialogue_contract() -> None:
     data = story()
     data["dialogues"] = {"": []}

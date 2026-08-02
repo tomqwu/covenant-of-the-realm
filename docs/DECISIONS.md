@@ -4,6 +4,18 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Scene transitions are content-driven presentation with an instant fallback
+
+Changes between ferry, mountain path, battle, spring, and completion use a 0.48-second bright
+paper-and-ink reveal at z 70; the warden arrival can trigger the same presentation without a
+domain phase change. Labels live in validated original story content and reference existing node
+or semantic-message IDs. While active, a transparent focus sink blocks mouse, keyboard, and
+controller confirmation so the input that entered a scene cannot also select its first action;
+battle focus is restored when the reveal ends. Reduced-motion mode records the same transition
+label but displays the destination instantly. The transition never delays or changes deterministic
+resolution, autosave, available actions, or journey snapshots. Dialogue/title/pause remain above
+it at z 80/100/110. The lifecycle budget now observes 96 nodes, below the existing cap of 120.
+
 ### 2026-08-02 — Map occlusion sorts by feet Y below modal UI
 
 Runtime-drawn roofs and tree canopies now have independent foreground nodes while their base forms
