@@ -76,6 +76,46 @@ def validate_contract(data: Any) -> list[str]:
             continue
         if actual != (width, height):
             failures.append(f"{file_name}: expected {(width, height)}, got {actual}")
+    map_atlas = data.get("map_atlas")
+    if not isinstance(map_atlas, dict):
+        failures.append("map_atlas must be an object")
+        return failures
+    if map_atlas.get("tile_size_px") != [32, 32]:
+        failures.append("map_atlas.tile_size_px must be [32, 32]")
+    if map_atlas.get("map_size_tiles") != [36, 20]:
+        failures.append("map_atlas.map_size_tiles must be [36, 20]")
+    tile_names = map_atlas.get("tiles")
+    columns = map_atlas.get("columns")
+    rows = map_atlas.get("rows")
+    if not isinstance(columns, int) or columns <= 0:
+        failures.append("map_atlas.columns must be a positive integer")
+        columns = 0
+    if not isinstance(rows, int) or rows <= 0:
+        failures.append("map_atlas.rows must be a positive integer")
+        rows = 0
+    if not isinstance(tile_names, list) or len(tile_names) != columns * rows:
+        failures.append("map_atlas.tiles must name every atlas cell")
+    map_file = map_atlas.get("file")
+    if not isinstance(map_file, str) or Path(map_file).name != map_file:
+        failures.append("map_atlas.file must be a local file name")
+    else:
+        path = ASSET_DIR / map_file
+        if not path.is_file():
+            failures.append(f"missing map atlas: {map_file}")
+        else:
+            try:
+                actual = _png_size(path)
+                if map_atlas.get("tile_size_px") == [32, 32] and columns and rows:
+                    expected_map_size = (
+                        map_atlas["tile_size_px"][0] * columns,
+                        map_atlas["tile_size_px"][1] * rows,
+                    )
+                    if actual != expected_map_size:
+                        failures.append(
+                            f"{map_file}: expected {expected_map_size}, got {actual}"
+                        )
+            except ValueError as error:
+                failures.append(f"{map_file}: {error}")
     return failures
 
 
@@ -87,7 +127,10 @@ def main() -> None:
     failures = validate_contract(data)
     if failures:
         raise SystemExit("RPG asset validation failed:\n" + "\n".join(failures))
-    print(f"RPG pixel assets passed: {len(data['atlases'])} atlases follow the 32x56 contract.")
+    print(
+        "RPG pixel assets passed: "
+        f"{len(data['atlases'])} actors and one 32 px map atlas validated."
+    )
 
 
 if __name__ == "__main__":

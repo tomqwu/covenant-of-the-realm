@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://src/ui/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://src/ui/map_canvas.gd" id="2_map"]
@@ -6,6 +6,8 @@
 [ext_resource type="Script" path="res://src/ui/actor_sprite.gd" id="4_actor"]
 [ext_resource type="Texture2D" path="res://assets/pixel/protagonist.png" id="5_protagonist"]
 [ext_resource type="Texture2D" path="res://assets/pixel/yanqing.png" id="6_yanqing"]
+[ext_resource type="Script" path="res://src/ui/ferry_tile_layer.gd" id="7_ferry_layer"]
+[ext_resource type="Texture2D" path="res://assets/pixel/ferry_tiles.png" id="8_ferry_tiles"]
 
 [sub_resource type="StyleBoxFlat" id="StyleMap"]
 bg_color = Color(0.286, 0.424, 0.38, 1)
@@ -74,10 +76,18 @@ offset_right = -12.0
 offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 2
+clip_contents = true
 theme_override_styles/panel = SubResource("StyleMap")
+
+[node name="FerryGround" type="TileMapLayer" parent="MapFrame"]
+unique_name_in_owner = true
+texture_filter = 1
+script = ExtResource("7_ferry_layer")
+atlas_texture = ExtResource("8_ferry_tiles")
 
 [node name="MapCanvas" type="Control" parent="MapFrame"]
 unique_name_in_owner = true
+clip_contents = true
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("2_map")

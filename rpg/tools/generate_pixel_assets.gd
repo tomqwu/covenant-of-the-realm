@@ -14,6 +14,7 @@ func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUTPUT_DIR))
 	_generate_actor("protagonist.png", Color("58738f"), Color("b89b63"), true)
 	_generate_actor("yanqing.png", Color("c6764f"), Color("73533d"), false)
+	_generate_ferry_tiles()
 	print("Generated original pixel atlases in %s." % OUTPUT_DIR)
 	quit(0)
 
@@ -29,6 +30,52 @@ func _generate_actor(file_name: String, robe: Color, accent: Color, protagonist:
 	if error != OK:
 		push_error("Unable to save %s: %s" % [output_path, error])
 		quit(1)
+
+
+func _generate_ferry_tiles() -> void:
+	var image := Image.create(256, 32, false, Image.FORMAT_RGBA8)
+	image.fill(TRANSPARENT)
+	_draw_tile_base(image, 0, Color("b7cf9f"), Color("9fbd89"), "grass")
+	_draw_tile_base(image, 1, Color("4e9da4"), Color("a7d7cc"), "water")
+	_draw_tile_base(image, 2, Color("d7cba5"), Color("b9aa80"), "bank")
+	_draw_tile_base(image, 3, Color("d8cca5"), Color("b6aa84"), "path")
+	_draw_tile_base(image, 4, Color("a9c98f"), Color("e4c36e"), "moonleaf")
+	_draw_tile_base(image, 5, Color("829a8f"), Color("355e63"), "stone")
+	_draw_tile_base(image, 6, Color("8ebb83"), Color("739b70"), "grass")
+	_draw_tile_base(image, 7, Color("4e9da4"), Color("f2e6cb"), "water")
+	var output_path := "%s/ferry_tiles.png" % OUTPUT_DIR
+	var error := image.save_png(ProjectSettings.globalize_path(output_path))
+	if error != OK:
+		push_error("Unable to save %s: %s" % [output_path, error])
+		quit(1)
+
+
+func _draw_tile_base(image: Image, column: int, base: Color, detail: Color, pattern: String) -> void:
+	var origin_x := column * 32
+	_fill(image, Rect2i(origin_x, 0, 32, 32), base)
+	match pattern:
+		"water":
+			_fill(image, Rect2i(origin_x + 3, 8, 17, 2), detail)
+			_fill(image, Rect2i(origin_x + 12, 22, 16, 2), detail)
+		"bank":
+			_fill(image, Rect2i(origin_x + 5, 6, 3, 2), detail)
+			_fill(image, Rect2i(origin_x + 20, 18, 5, 2), detail)
+			_fill(image, Rect2i(origin_x + 10, 28, 7, 2), detail)
+		"path":
+			_fill(image, Rect2i(origin_x, 3, 32, 2), detail)
+			_fill(image, Rect2i(origin_x + 4, 25, 28, 2), detail)
+			_fill(image, Rect2i(origin_x + 9, 13, 4, 2), detail.lightened(0.12))
+		"moonleaf":
+			for plant_x in [8, 23]:
+				_fill(image, Rect2i(origin_x + plant_x, 11, 2, 13), detail.darkened(0.30))
+				_fill(image, Rect2i(origin_x + plant_x - 4, 10, 5, 5), detail.lightened(0.16))
+				_fill(image, Rect2i(origin_x + plant_x + 1, 15, 5, 5), detail)
+		"stone":
+			_fill(image, Rect2i(origin_x + 4, 5, 25, 23), detail.lightened(0.30))
+			_fill(image, Rect2i(origin_x + 6, 7, 20, 3), detail.lightened(0.47))
+		_:
+			_fill(image, Rect2i(origin_x + 6, 8, 2, 5), detail)
+			_fill(image, Rect2i(origin_x + 22, 20, 2, 6), detail)
 
 
 func _draw_frame(image: Image, origin: Vector2i, direction: int, column: int, robe: Color, accent: Color, protagonist: bool) -> void:

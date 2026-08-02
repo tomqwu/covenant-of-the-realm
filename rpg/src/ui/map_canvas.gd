@@ -13,6 +13,7 @@ const DAWN_PEACH := Color("e7a76f")
 
 @onready var player_sprite = %PlayerSprite
 @onready var companion_sprite = %CompanionSprite
+@onready var ferry_ground: TileMapLayer = %FerryGround
 
 var phase_id := "riverbank"
 var gathered_moonleaf := false
@@ -60,6 +61,10 @@ func uses_animated_actor_sprites() -> bool:
 	return player_sprite is AnimatedSprite2D and companion_sprite is AnimatedSprite2D
 
 
+func uses_ferry_tile_layers() -> bool:
+	return ferry_ground is TileMapLayer and ferry_ground.tile_set != null
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and is_node_ready():
 		_sync_actor_visuals()
@@ -69,6 +74,7 @@ func _sync_actor_visuals() -> void:
 	if not is_node_ready() or not is_instance_valid(player_sprite) or not is_instance_valid(companion_sprite):
 		return
 	var size := get_rect().size
+	ferry_ground.visible = phase_id == "riverbank"
 	player_sprite.visible = true
 	companion_sprite.visible = true
 	match phase_id:
@@ -104,28 +110,29 @@ func _draw() -> void:
 
 func _draw_riverbank() -> void:
 	var size := get_rect().size
-	draw_rect(Rect2(Vector2.ZERO, size), Color("b7cf9f"))
-	_draw_water(Rect2(0, 0, size.x * 0.39, size.y))
+	if not is_instance_valid(ferry_ground) or not ferry_ground.visible:
+		draw_rect(Rect2(Vector2.ZERO, size), Color("b7cf9f"))
+		_draw_water(Rect2(0, 0, size.x * 0.39, size.y))
 
-	var bank := PackedVector2Array([
-		Vector2(size.x * 0.34, 0),
-		Vector2(size.x * 0.45, 0),
-		Vector2(size.x * 0.39, size.y),
-		Vector2(size.x * 0.29, size.y),
-	])
-	draw_colored_polygon(bank, Color("d7cba5"))
+		var bank := PackedVector2Array([
+			Vector2(size.x * 0.34, 0),
+			Vector2(size.x * 0.45, 0),
+			Vector2(size.x * 0.39, size.y),
+			Vector2(size.x * 0.29, size.y),
+		])
+		draw_colored_polygon(bank, Color("d7cba5"))
 
-	_draw_path(PackedVector2Array([
-		Vector2(size.x * 0.36, size.y * 0.84),
-		Vector2(size.x * 0.49, size.y * 0.60),
-		Vector2(size.x * 0.61, size.y * 0.48),
-		Vector2(size.x * 0.81, size.y * 0.23),
-	]), 58.0)
-	_draw_path(PackedVector2Array([
-		Vector2(size.x * 0.47, size.y * 0.60),
-		Vector2(size.x * 0.68, size.y * 0.72),
-		Vector2(size.x * 0.93, size.y * 0.67),
-	]), 48.0)
+		_draw_path(PackedVector2Array([
+			Vector2(size.x * 0.36, size.y * 0.84),
+			Vector2(size.x * 0.49, size.y * 0.60),
+			Vector2(size.x * 0.61, size.y * 0.48),
+			Vector2(size.x * 0.81, size.y * 0.23),
+		]), 58.0)
+		_draw_path(PackedVector2Array([
+			Vector2(size.x * 0.47, size.y * 0.60),
+			Vector2(size.x * 0.68, size.y * 0.72),
+			Vector2(size.x * 0.93, size.y * 0.67),
+		]), 48.0)
 
 	_draw_dock(Vector2(size.x * 0.21, size.y * 0.47))
 	_draw_building(Vector2(size.x * 0.51, size.y * 0.20), Vector2(148, 92), WARM_RUST.darkened(0.25))

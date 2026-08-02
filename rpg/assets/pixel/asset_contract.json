@@ -28,5 +28,22 @@
   "atlases": [
     "protagonist.png",
     "yanqing.png"
-  ]
+  ],
+  "map_atlas": {
+    "file": "ferry_tiles.png",
+    "tile_size_px": [32, 32],
+    "columns": 8,
+    "rows": 1,
+    "map_size_tiles": [36, 20],
+    "tiles": [
+      "grass",
+      "water",
+      "bank",
+      "path",
+      "moonleaf_field",
+      "stone",
+      "deep_grass",
+      "water_glint"
+    ]
+  }
 }

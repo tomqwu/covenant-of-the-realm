@@ -4,6 +4,16 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — TileMapLayer ferry-ground baseline
+
+照禾渡口 now composes its ground from a 36×20 grid of original 32 px tiles through Godot's
+`TileMapLayer`. Water, bank, road, moonleaf field, grass, and gate stone are explicit map cells;
+the existing vector-drawn buildings, trees, dock, actors, and interaction markers remain a
+temporary foreground comparison layer. The deterministic normalized exploration domain remains
+authoritative for collision and interactions, preventing display tiles from becoming a second
+gameplay rule set. Every cell, semantic region count, atlas dimension, filter mode, and packed boot
+is covered by the existing quality gates.
+
 ### 2026-08-02 — Reproducible pixel-character production contract
 
 The first in-engine character contract uses a 32 px map grid, 32×56 px actor frames, a fixed

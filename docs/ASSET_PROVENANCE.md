@@ -16,7 +16,7 @@ theme/font behavior. It commits no third-party font, music, map, sound file, or 
 dependency resolved separately from the repository; its official Linux build is checksum-pinned
 by `scripts/setup_rpg`.
 
-## 2026-08-02 · Deterministic protagonist and companion pixel atlases
+## 2026-08-02 · Deterministic character and ferry pixel atlases
 
 `rpg/assets/pixel/protagonist.png` and `yanqing.png` are original 128×224 RGBA atlases generated
 by the project-authored `rpg/tools/generate_pixel_assets.gd`. No model, input image, stock asset,
@@ -24,6 +24,11 @@ external palette, commercial sprite, font, or third-party art library is used. T
 two idle and two walking frames in four directions from rectangles and the confirmed project
 palette. `asset_contract.json` records the 32×56 frame, foot anchor, collision, animation, nearest-
 filter, and pixel-snap contract; `scripts/check_rpg_assets.py` verifies the metadata and PNG headers.
+
+The same generator creates `ferry_tiles.png`, an original 256×32 RGBA strip containing eight
+32 px ground tiles for grass, water, bank, road, moonleaf field, stone, deep grass, and water
+glints. `ferry_tile_layer.gd` composes these into a deterministic 36×20 `TileMapLayer`; no external
+map, texture, pattern, or tile-design input is used.
 
 These are reproducible first-production placeholders intended to validate the `AnimatedSprite2D`
 pipeline. They may be regenerated with the pinned Godot runtime and should be replaced or refined

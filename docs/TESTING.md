@@ -5,7 +5,7 @@
 | Boundary | Gate | Current result |
 | --- | --- | --- |
 | Deterministic cultivation rules | pytest + branch coverage, minimum 99% | 50 tests; 100% statements and branches |
-| Godot RPG rules and scenes | headless GDScript harness | 214 assertions passing, including pixel-asset animation contracts |
+| Godot RPG rules and scenes | headless GDScript harness | 225 assertions passing, including pixel animation and TileMapLayer contracts |
 | Godot RPG chapter path | independent headless E2E | 17 checks: briefing → exploration → retreat → deployable → battle → breakthrough → resume → replay |
 | Godot keyboard/controller path | physical events + focus assertions | 16 checks: title confirm → interaction → movement → pause → battle focus |
 | Godot RPG package | double PCK export + boot smoke | byte-reproducible pack; headless main scene boot passing |
