@@ -4,7 +4,7 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
-### 2026-08-03 — Text scenes stay textual after local clean-cache identity proof
+### 2026-08-03 — Text scenes stay textual after controlled clean-cache identity proof
 
 The former same-cache double-export gate hid a Godot 4.7.1 clean-import instability. Equal packaged RPG
 inputs on three Linux CI runs produced the same 697,160-byte size but different hashes, while each run's
@@ -19,11 +19,16 @@ and [random resource-ID creation](https://github.com/godotengine/godot/blob/a13d
 The project therefore sets `editor/export/convert_text_resources_to_binary=false`. Runtime still loads
 the authored `main.tscn`, and the package no longer depends on a generated binary-scene identity. The
 package gate now compares four outputs: two normal exports and two exports from independent project
-copies with empty `.godot` caches. All four local macOS/arm64 outputs are 709,100 bytes at SHA-256
-`e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`; the 22-required /
-nine-excluded resource probe and headless boot still pass. Keeping the scene textual costs 11,940
-bytes (1.71%) in the current pack. Hosted and cross-OS equality are recorded only after controlled
-equal-source evidence rather than inferred from an OS/architecture tuple.
+copies with empty `.godot` caches. For the packaged runtime inputs committed in `f5c60e2`, all four
+local macOS/arm64 outputs and all four outputs in each of two independent GitHub-hosted Linux/x86_64
+RPG job attempts are 709,100 bytes at SHA-256
+`e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`.
+Both hosted attempts passed the 22-required / nine-excluded resource probe, manifest verification,
+and headless boot; their lifecycle samples were 5,771.41 ms and 5,912.40 ms. Keeping the scene
+textual adds 11,940 bytes (1.71% relative to the former 697,160-byte pack). This is a controlled
+same-input observation, not a future cross-platform guarantee, and is not inferred from an
+OS/architecture tuple. Only the PCK bytes are equal across OSes; each manifest separately records
+and verifies its own build tuple.
 
 Manifest schema v2 records normalized `build_os` (`macos` or `linux`) and `build_architecture`
 (`arm64` or `x86_64`) beside the existing source, engine, preset, resource, size, and hash fields.

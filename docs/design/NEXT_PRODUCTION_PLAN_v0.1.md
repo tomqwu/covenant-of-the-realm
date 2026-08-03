@@ -20,9 +20,11 @@ Godot 规则/场景断言、330 项完整章节 E2E、169 项原始鼠标/键盘
 以及存档 v1–v15 到当前 v16 的迁移。save v16 不新增字段，只为四段可恢复巡路端点
 对话扩展合法 ID；settings v4 独立保存标准/快速/整句对话显字。Godot 4.7.1 导出时关闭
 文本场景二进制转换，门禁把当前 checkout 的两次导出与两个独立空导入缓存的项目副本
-逐字节比较。四个本地 macOS/arm64 PCK 均为 709,100 bytes，SHA-256 为
-`e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`；manifest v2 另记录
-规范化构建元组，但元组不是 canonical hash 键，托管与跨 OS 等同性只接受同源受控证据。
+逐字节比较。对 `f5c60e2` 提交的打包运行输入，四个本地 macOS/arm64 PCK，以及两次
+独立 GitHub-hosted Linux/x86_64 RPG job 中各自的四个 PCK，均为 709,100 bytes，
+SHA-256 为 `e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`；这是同输入的
+受控观察，不是未来跨平台保证。manifest v2 按每次构建另记录规范化构建元组，但元组不是
+canonical hash 键或可执行 ABI。
 包门禁要求 22 项运行资源、排除 9 项开发资源。两轮连续 41 张 PNG 的聚合 SHA-256 均为
 `6e1c0f5b3bca174f25726bfec6de61c86bb9962e57641ca29de90717dc68f4b7`。
 现阶段最大缺口不再是底层闭环，而是正式人物精修、探索密度和内容时长。

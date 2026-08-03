@@ -86,10 +86,13 @@ The repository pytest gate passes 152 tests at 100% statement and branch coverag
 330-check chapter E2E and 169-check physical-input/focus path. Eight committed pixel atlases are
 regenerated twice and must match the Git index byte for byte. With pinned Godot 4.7.1 and export-time
 text-to-binary scene conversion disabled, the package gate compares two normal exports plus exports
-from two independent clean import caches. All four local macOS/arm64 PCKs are 709,100 bytes at
-SHA-256 `e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`.
-The normalized build tuple is provenance rather than a canonical-hash key; hosted and cross-OS
-identity are reported only from controlled equal-source evidence. The probe requires 22 runtime
+from two independent clean import caches. For the packaged runtime inputs committed in `f5c60e2`,
+four local macOS/arm64 exports and four exports in each of two independent GitHub-hosted Linux/x86_64
+RPG job attempts all match at 709,100 bytes and SHA-256
+`e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`.
+This is controlled same-input evidence, not a future cross-platform guarantee: the normalized build
+tuple remains provenance rather than a canonical-hash key or executable ABI. The probe requires 22
+runtime
 resources and excludes nine development resources; two consecutive
 41-PNG capture runs produce aggregate SHA-256
 `6e1c0f5b3bca174f25726bfec6de61c86bb9962e57641ca29de90717dc68f4b7`.

@@ -13,8 +13,8 @@
 - [x] Keep authored text scenes textual during export and compare two normal plus two independent
   clean-cache PCKs while retaining manifest verification, content probing, and boot smoke.
 - [x] Re-run RPG and repository gates; review and prepare the clean-cache fix for commit.
-- [ ] Push and compare two independent hosted runs at the same RPG tree before closing Draft PR #7;
-  do not merge it.
+- [x] Push and compare two independent hosted RPG job attempts at the same commit before closing the
+  clean-cache loop on Draft PR #7; do not merge it.
 
 ## Recently completed
 

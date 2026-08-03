@@ -32,10 +32,13 @@ each empty import cache, so sequential exports sharing one cache were stable whi
 checkouts were not. The project now keeps text scenes as source text during export. The gate compares
 two normal exports with two independent project copies that each build an empty `.godot` cache, then
 verifies the manifest, probes 22 required and nine excluded `tests/`/`tools/` resources, and boots the
-pack headlessly. All four current local macOS/arm64 PCKs are 709,100 bytes at SHA-256
-`e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`. Build tuples remain coarse,
-privacy-preserving provenance; hosted or cross-OS equality requires equal-source evidence and is not
-inferred from the tuple alone.
+pack headlessly. For the packaged runtime inputs committed in `f5c60e2`, four local macOS/arm64
+exports and four exports in each of two independent GitHub-hosted Linux/x86_64 RPG job attempts all
+match at 709,100 bytes and SHA-256
+`e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`. This controlled
+same-input observation is not inferred from the build tuple and does not promise future
+cross-platform identity; tuples remain coarse, privacy-preserving provenance rather than a
+canonical-hash key or executable ABI.
 A native `.app`/`.exe` is intentionally deferred until the owner selects the first platform and public
 license, then confirms export templates, signing identity, product icon, and distribution target.
 

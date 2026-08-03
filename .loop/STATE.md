@@ -5,9 +5,9 @@
 - Repository: `/Users/tomwu/Projects/covenant-of-the-realm`
 - Branch: `codex/rpg-foundation`
 - Draft PR: <https://github.com/tomqwu/covenant-of-the-realm/pull/7>
-- Schema-v2 head `0b863a6b3f5ad1e5368d866d79c3e5c70b60e841` is pushed. Actions run
-  `30861429246` is green across MUD, multiplayer, RPG, and Journey, but its Linux PCK supplied the
-  evidence that triggered the current clean-cache correction. The last confirmed remote `main` remains
+- Clean-cache implementation head `f5c60e2fcc2ec6806e1434bac01a40f16551c2ec` is pushed. Actions run
+  `30862795331` attempt 1 is green across MUD, multiplayer, RPG, and Journey; its independently rerun
+  RPG job in attempt 2 is also green. The last confirmed remote `main` remains
   `7256ade54792ff481ffc30517ca2c693f78be198` and must not be merged without authorization.
 - Manifest schema v2 records normalized `build_os` / `build_architecture`, keeps exact schema-v1
   verification, and rejects partial, unknown, noncanonical, wrong-type, future-schema, and unexpected
@@ -21,18 +21,22 @@
 - Three equal-source Linux runs and independent local worktrees proved that the old 697,160-byte PCK
   changed across empty import caches even though sequential exports sharing one cache matched. Entry
   comparison isolated all drift to Godot's generated binary `main.scn`; the other 60 entries matched.
-- The uncommitted correction sets `editor/export/convert_text_resources_to_binary=false` and extends
-  the package gate to two normal exports plus two independent empty-cache project copies. All four
-  local macOS/arm64 PCKs match at 709,100 bytes and SHA-256
+- The fix sets `editor/export/convert_text_resources_to_binary=false` and extends the package gate to
+  two normal exports plus two independent empty-cache project copies. For the packaged runtime inputs
+  committed in `f5c60e2`, all four local macOS/arm64 PCKs and all four PCKs in each of two independent
+  hosted Linux/x86_64 RPG job attempts match at 709,100 bytes and SHA-256
   `e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`; strict manifests, 22/9
-  content probing, and headless boot pass. `make check` is green with the same 152 / 600 / 306 Python
-  coverage and one `967.67` ms Godot lifecycle sample; hosted equal-source confirmation remains pending.
+  content probing, and headless boot pass. The hosted lifecycle samples were `5,771.41` ms and
+  `5,912.40` ms. This controlled same-input cross-OS PCK observation is not a future identity promise;
+  manifests remain per-build provenance artifacts.
+- Local `make check` is green with the same 152 / 600 / 306 Python coverage and one `929.22` ms
+  lifecycle sample. The implementation has been independently audited for code, scope, tests, and
+  documentation with no blocking findings.
 
 ## Next action
 
-Commit and push the locally green clean-cache correction, then compare its Linux package with a
-second docs-only hosted run at the same RPG tree. Refresh the ignored clean package, update the PR
-body and closeout state, and keep `main` unchanged.
+Begin the next unblocked gameplay-density loop after this evidence closeout is pushed and its checks
+are monitored. Keep the ignored package and Draft PR body current while leaving `main` unchanged.
 
 ## Blockers
 
