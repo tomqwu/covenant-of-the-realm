@@ -206,7 +206,8 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		instance._on_action("gather_moonleaf")
 		instance._on_action("enter_spring")
 		instance.get_node("%SceneTransition").finish()
-		await process_frame
+		# An explicit transition finish is synchronous; one frame drains queued
+		# action children before the stable tree and detail contracts are sampled.
 		await process_frame
 		state_peaks["path"] = maxi(int(state_peaks["path"]), _count_nodes(instance))
 		var path_detail_contract: Dictionary = detail_layer.map_contract()
@@ -216,7 +217,6 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 
 		instance._on_action("approach_enemy")
 		instance.get_node("%SceneTransition").finish()
-		await process_frame
 		await process_frame
 		state_peaks["battle"] = maxi(int(state_peaks["battle"]), _count_nodes(instance))
 		var battle_detail_contract: Dictionary = detail_layer.map_contract()
@@ -234,11 +234,12 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		await process_frame
 		state_peaks["journal"] = maxi(int(state_peaks["journal"]), _count_nodes(instance))
 		instance.close_journal()
+		# Closing restores focus on the next frame. Keep that boundary, then sample
+		# phase transitions one frame after their explicit synchronous `finish()`.
 		await process_frame
 		instance._on_action("retreat")
 		instance._on_action("bypass_enemy")
 		instance.get_node("%SceneTransition").finish()
-		await process_frame
 		await process_frame
 		state_peaks["spring_unstarted"] = maxi(int(state_peaks["spring_unstarted"]), _count_nodes(instance))
 		var spring_detail_contract: Dictionary = detail_layer.map_contract()
@@ -256,7 +257,6 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		state_peaks["spring_warmed"] = maxi(int(state_peaks["spring_warmed"]), _count_nodes(instance))
 		instance._on_action("breakthrough")
 		instance.get_node("%SceneTransition").finish()
-		await process_frame
 		await process_frame
 		state_peaks["complete"] = maxi(int(state_peaks["complete"]), _count_nodes(instance))
 		var complete_detail_contract: Dictionary = detail_layer.map_contract()
