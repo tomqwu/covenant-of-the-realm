@@ -6,18 +6,27 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ### 2026-08-03 — Hosted-runner lifecycle timing confirms a clean overage before failing
 
-The lifecycle benchmark still requires one complete 20-cycle sample under 7 seconds. Every sample
-executes the same 13-state create/destroy route, settings and save writes, static/peak node checks,
-map-detail and camera contracts, and per-cycle root-child cleanup. Any correctness, structure, node,
-or leak failure remains an immediate gate failure and is never retried.
+The lifecycle benchmark still requires one complete 20-cycle sample under 7 seconds. Every cycle
+executes the same 13-state create/destroy route, dialogue progression and save writes, static/peak
+node checks, map-detail and camera contracts, and root-child cleanup. Any correctness, structure,
+node, or leak failure remains an immediate gate failure and is never retried.
+
+The first cycle in every complete sample additionally executes the full standard → fast → instant
+→ standard → fast reveal profile with four real settings writes. The other 19 cycles still start
+standard reveal, complete and advance a line, save, and traverse the same dialogue response and
+remaining 13-state route; they do not multiply an already-covered settings flush, verification,
+backup rotation, and full accessibility-theme refresh by 20. Unit, E2E, and physical-input suites
+remain the exhaustive owners of reveal and settings semantics. The lifecycle result reports the
+actual probe-cycle and settings-write counts so a future edit cannot silently remove this coverage.
 
 Wall-clock timing also includes awaited tree frames, local file-system work, and shared-runner VM
 preemption that fixed FPS and a disabled render loop cannot remove. A first sample that is otherwise
 clean but exceeds 7 seconds therefore triggers exactly one complete confirmation sample in the same
 Godot process. The lower of the two complete timings is the accepted low-contention measurement;
 both must exceed 7 seconds for a timing failure. The runner reports every sample, sample count, total
-cycles, and the maximum structural observations across both runs. The 20-cycle workload, 7-second
-ceiling, exact 114 static nodes, 124 peak cap, 13 states, and zero-leak contract are not relaxed.
+cycles, probe/write counts, and the maximum structural observations across both runs. The 20-cycle
+workload, 7-second ceiling, exact 114 static nodes, 124 peak cap, 13 states, and zero-leak contract
+are not relaxed.
 
 ### 2026-08-03 — Dialogue reveal speed is a presentation preference, not a reading timer
 

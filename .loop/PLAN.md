@@ -10,7 +10,13 @@
   both complete samples exceed the unchanged ceiling and report all timings plus merged maxima.
 - [x] Exercise the normal one-sample path, six synthetic policy branches, and a deliberate 1 ms
   negative budget proving two sustained slow samples still fail; restore the checked-in budget.
-- [ ] Review the complete verified diff, commit, push, and monitor Draft PR #7 without merging it.
+- [x] Use the first hosted confirmation to prove both complete samples can inherit shared-runner
+  slowdown, then remove 19-fold duplicate settings persistence without changing the 20-cycle,
+  13-state, dialogue-save, node, map/camera, or zero-leak workload.
+- [x] Re-exercise the normal one-sample, deliberate two-sample, and prior-failure/no-confirmation
+  paths with explicit probe-cycle and settings-write evidence; restore both temporary budgets.
+- [ ] Run both complete gates, review the verified diff, commit, push, and monitor Draft PR #7
+  without merging it.
 
 ## Recently completed
 

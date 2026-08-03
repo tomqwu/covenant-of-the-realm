@@ -252,6 +252,8 @@ func _benchmark_scene_lifecycle_sample(budget: Dictionary) -> Dictionary:
 	var static_scene_nodes := 0
 	var maximum_detail_rebuilds := 0
 	var maximum_landmark_nodes := 0
+	var dialogue_speed_probe_cycles := 0
+	var dialogue_settings_writes := 0
 	var state_peaks := {
 		"title": 0,
 		"path": 0,
@@ -301,30 +303,49 @@ func _benchmark_scene_lifecycle_sample(budget: Dictionary) -> Dictionary:
 			or instance.get_node("%PauseDialogueSpeedButton").text != "对话显字：标准"
 		):
 			failures.append("生命周期新场景必须从持久设置的标准对话显字开始")
-		instance.toggle_dialogue_speed()
-		if instance.settings.get("dialogue_speed") != "fast":
-			failures.append("生命周期无法切到快速对话显字")
-		instance.toggle_dialogue_speed()
-		if instance.settings.get("dialogue_speed") != "instant":
-			failures.append("生命周期无法切到整句显示")
+		# Unit, E2E, and physical-input suites own exhaustive reveal behavior.
+		# Exercise all four real persistence writes once per complete lifecycle
+		# sample without multiplying shared-runner file-system noise by 20.
+		if _cycle == 0:
+			dialogue_speed_probe_cycles += 1
+			instance.toggle_dialogue_speed()
+			dialogue_settings_writes += 1
+			if instance.settings.get("dialogue_speed") != "fast":
+				failures.append("生命周期无法切到快速对话显字")
+			instance.toggle_dialogue_speed()
+			dialogue_settings_writes += 1
+			if instance.settings.get("dialogue_speed") != "instant":
+				failures.append("生命周期无法切到整句显示")
 
 		instance.start_new_game()
 		await process_frame
 		await process_frame
 		instance._start_companion_dialogue()
-		if instance.get_node("%DialogueLabel").visible_characters != -1:
-			failures.append("整句显示必须在生命周期中直接显示全文")
-		instance.toggle_dialogue_speed()
-		instance.advance_dialogue()
-		if instance.settings.get("dialogue_speed") != "standard" or instance.get_node("%DialogueLabel").visible_characters != 0:
-			failures.append("整句循环回标准后下一句必须恢复逐字显示")
-		instance._process_dialogue_reveal(0.10)
-		var standard_reveal_count: int = instance.get_node("%DialogueLabel").visible_characters
-		instance.toggle_dialogue_speed()
-		instance._process_dialogue_reveal(0.10)
-		var fast_reveal_count: int = instance.get_node("%DialogueLabel").visible_characters
-		if standard_reveal_count <= 0 or fast_reveal_count <= standard_reveal_count:
-			failures.append("快速对话显字必须在相同固定增量内推进更多文字")
+		if _cycle == 0:
+			if instance.get_node("%DialogueLabel").visible_characters != -1:
+				failures.append("整句显示必须在生命周期中直接显示全文")
+			instance.toggle_dialogue_speed()
+			dialogue_settings_writes += 1
+			instance.advance_dialogue()
+			if instance.settings.get("dialogue_speed") != "standard" or instance.get_node("%DialogueLabel").visible_characters != 0:
+				failures.append("整句循环回标准后下一句必须恢复逐字显示")
+			instance._process_dialogue_reveal(0.10)
+			var standard_reveal_count: int = instance.get_node("%DialogueLabel").visible_characters
+			instance.toggle_dialogue_speed()
+			dialogue_settings_writes += 1
+			instance._process_dialogue_reveal(0.10)
+			var fast_reveal_count: int = instance.get_node("%DialogueLabel").visible_characters
+			if instance.settings.get("dialogue_speed") != "fast":
+				failures.append("生命周期无法从标准切回快速对话显字")
+			if standard_reveal_count <= 0 or fast_reveal_count <= standard_reveal_count:
+				failures.append("快速对话显字必须在相同固定增量内推进更多文字")
+		else:
+			if instance.get_node("%DialogueLabel").visible_characters != 0:
+				failures.append("生命周期后续场景必须从标准逐字显字开始")
+			instance.show_full_dialogue_line()
+			instance.advance_dialogue()
+			if instance.get_node("%DialogueLabel").visible_characters != 0:
+				failures.append("生命周期后续场景推进下一句后必须继续逐字显字")
 		instance.skip_dialogue_to_response()
 		await process_frame
 		await process_frame
@@ -447,12 +468,19 @@ func _benchmark_scene_lifecycle_sample(budget: Dictionary) -> Dictionary:
 			failures.append("主场景销毁后仍残留根节点")
 			break
 	var elapsed_ms := float(Time.get_ticks_usec() - started) / 1000.0
+	if dialogue_speed_probe_cycles != 1 or dialogue_settings_writes != 4:
+		failures.append(
+			"每个完整生命周期样本必须执行一次显字探针和四次设置写入：%d / %d"
+			% [dialogue_speed_probe_cycles, dialogue_settings_writes]
+		)
 	if maximum_nodes > int(budget["max_main_scene_nodes"]):
 		failures.append("主场景节点数超预算：%d > %d（%s）" % [maximum_nodes, int(budget["max_main_scene_nodes"]), JSON.stringify(state_peaks)])
 	SaveGameScript.remove(PERFORMANCE_SAVE_PATH)
 	SettingsStoreScript.remove(PERFORMANCE_SETTINGS_PATH)
 	return {
 		"cycles": cycles,
+		"dialogue_speed_probe_cycles": dialogue_speed_probe_cycles,
+		"dialogue_settings_writes": dialogue_settings_writes,
 		"elapsed_ms": elapsed_ms,
 		"maximum_nodes": maximum_nodes,
 		"static_scene_nodes": static_scene_nodes,
@@ -489,6 +517,8 @@ func _merge_lifecycle_samples(sample_results: Array[Dictionary]) -> Dictionary:
 	var merged: Dictionary = sample_results[0].duplicate(true)
 	var raw_samples_ms := _lifecycle_elapsed_samples(sample_results)
 	var displayed_samples_ms: Array[float] = []
+	var dialogue_speed_probe_cycles := 0
+	var dialogue_settings_writes := 0
 	for sample_ms in raw_samples_ms:
 		displayed_samples_ms.append(snappedf(sample_ms, 0.01))
 	var maximum_fields := [
@@ -499,6 +529,8 @@ func _merge_lifecycle_samples(sample_results: Array[Dictionary]) -> Dictionary:
 		"root_children_after",
 	]
 	for sample in sample_results:
+		dialogue_speed_probe_cycles += int(sample["dialogue_speed_probe_cycles"])
+		dialogue_settings_writes += int(sample["dialogue_settings_writes"])
 		for field in maximum_fields:
 			merged[field] = maxi(int(merged[field]), int(sample[field]))
 		var merged_peaks: Dictionary = merged["state_peaks"]
@@ -510,6 +542,8 @@ func _merge_lifecycle_samples(sample_results: Array[Dictionary]) -> Dictionary:
 	merged["samples_ms"] = displayed_samples_ms
 	merged["sample_count"] = sample_results.size()
 	merged["total_cycles"] = int(merged["cycles"]) * sample_results.size()
+	merged["dialogue_speed_probe_cycles"] = dialogue_speed_probe_cycles
+	merged["dialogue_settings_writes"] = dialogue_settings_writes
 	merged["confirmation_policy_checks"] = LIFECYCLE_CONFIRMATION_POLICY_CHECKS
 	return merged
 
