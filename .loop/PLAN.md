@@ -11,7 +11,7 @@
 - [x] Cover all profiles, event-order priority, unknown inputs, invalid/oversized presentation deltas,
   fast/reduced motion, terminal suppression, input parity, save restore, lifecycle, assets, captures,
   package contents, and boot behavior.
-- [ ] Run the repository-wide `make check`, review the complete diff, commit, push, and monitor Draft
+- [x] Run the repository-wide `make check`, review the complete diff, commit, push, and monitor Draft
   PR #7 without merging it.
 
 ## Recently completed — 48×27 bounded rolling camera
