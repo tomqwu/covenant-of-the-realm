@@ -7,7 +7,7 @@
 
 **《山河有契》**（英文工作名：**Covenant of the Realm**）正在发展为一款原创、
 中文优先、章节式的 2D 修仙剧情 RPG。Godot 可玩章节已经串联自由移动、碰撞、
-双地图地表与原创像素细节层、可恢复分支与章节余波对话、明亮纸绘头像、可选择“见闻/灵物志”的行旅札记、脚印式同伴跟随、持久环境见闻、三痕辨势、守堤与药篓双结果支线、近距离采集、三类意图窗口敌人、守巢首领、可撤退回合战斗、同伴援护、版本化存档和首次境界突破；现有多人
+双地图地表、第三张藏泉石室微地图与原创像素细节层、可恢复分支与章节余波对话、明亮纸绘头像、可选择“见闻/灵物志”的行旅札记、脚印式同伴跟随、持久环境见闻、三痕辨势、守堤与药篓双结果支线、近距离采集、三类意图窗口敌人、守巢首领、可撤退回合战斗、同伴援护、版本化存档和“听泉辨脉 → 月芽温脉 → 静坐引息”的首次境界突破；现有多人
 MUD 与单人 PWA 作为可运行研究原型保留。
 
 ## Play the RPG graybox
@@ -28,8 +28,9 @@ make play-rpg-package
 ```
 
 The current graybox uses original project locations and characters only. It is playable from a
-Chinese title screen through exploration, preparation, a recoverable deterministic battle,
-`引息境一层`, chapter settlement, save resume, and replay. Keyboard, mouse, and controller
+Chinese title screen through exploration, preparation, a recoverable deterministic battle, the
+three-point spatial ritual `听泉辨脉 → 月芽温脉 → 静坐引息`, `引息境一层`, chapter settlement,
+save resume, and replay. Keyboard, mouse, and controller
 share semantic actions. Expanding this tested short chapter toward the complete 90-minute content
 target is the next production milestone. See the [RPG foundation](docs/design/RPG_FOUNDATION_v0.1.md).
 
@@ -79,9 +80,12 @@ make check                   # RPG, MUD, and preserved PWA gates
 make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
-The deterministic multiplayer domain rules have an enforced 99% statement/branch minimum and
-currently reach 100%. Godot behavior is covered by 1,290 headless rule/scene assertions plus an
-independent 149-check chapter E2E and 78-check physical-input/focus path. The MUD adapter has
+The repository pytest gate passes 77 tests at 100% statement and branch coverage (481 statements /
+230 branches). Godot behavior is covered by 1,408 headless rule/scene assertions plus an independent
+183-check chapter E2E and 91-check physical-input/focus path. The reproducible 550,840-byte PCK has
+SHA-256 `779bb5fbb0d8f6ee472d8e09480bce3b08bd2c2f064321107c1eedfc3922c605`; its probe requires
+11 runtime resources, excludes nine development resources, and two consecutive 34-PNG capture runs
+produce identical SHA-256 sets. The MUD adapter has
 isolated Evennia tests, and its release path
 is exercised through two real concurrent Telnet clients. The preserved browser prototype retains
 its own 100% unit result and 53-execution Playwright matrix. See [testing](docs/TESTING.md),

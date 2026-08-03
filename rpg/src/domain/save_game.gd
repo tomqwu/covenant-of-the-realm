@@ -6,7 +6,7 @@ const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 
-const SAVE_VERSION := 13
+const SAVE_VERSION := 14
 const STORY_ID := "zhaohe_first_breath"
 const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 
@@ -227,6 +227,11 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["save_version"] = SAVE_VERSION
 		_migrate_enemy_intel_snapshot(migrated["journey"])
 		return _validated_migration(migrated, 12)
+	if version_number == 13:
+		var migrated := payload.duplicate(true)
+		migrated["save_version"] = SAVE_VERSION
+		_migrate_first_breath_snapshot(migrated["journey"])
+		return _validated_migration(migrated, 13)
 	return _validate_current(payload)
 
 
@@ -246,12 +251,15 @@ static func _validate_current(payload: Dictionary) -> Dictionary:
 	var restored_exploration = ExplorationStateScript.new()
 	if not restored_exploration.restore(payload["exploration"]):
 		return _result(false, {}, "invalid_exploration")
+	if not _exploration_matches_journey(restored_exploration, restored_journey):
+		return _result(false, {}, "invalid_map_phase")
 	if not _dialogue_matches_journey(restored_dialogue, restored_journey):
 		return _result(false, {}, "invalid_dialogue")
 	return _result(true, payload, "")
 
 
 static func _validated_migration(payload: Dictionary, source_version: int) -> Dictionary:
+	_normalize_migrated_exploration(payload["journey"], payload["exploration"])
 	var result := _validate_current(payload)
 	if result["ok"]:
 		result["migrated_from_version"] = source_version
@@ -275,6 +283,55 @@ static func _dialogue_matches_journey(dialogue, journey) -> bool:
 				and journey.basket_response == JourneyStateScript.BASKET_UNANSWERED
 			)
 	return false
+
+
+static func _exploration_matches_journey(exploration, journey) -> bool:
+	return exploration.map_id == _expected_map_id(str(journey.phase_id()))
+
+
+static func _expected_map_id(phase_id: String) -> String:
+	match phase_id:
+		"riverbank":
+			return ExplorationStateScript.DEFAULT_MAP_ID
+		"mountain_path", "battle":
+			return ExplorationStateScript.MOUNTAIN_PATH_MAP_ID
+		"spring", "complete":
+			return ExplorationStateScript.CANGQUAN_SPRING_MAP_ID
+	return ""
+
+
+static func _normalize_migrated_exploration(journey_snapshot: Dictionary, exploration_snapshot: Dictionary) -> void:
+	var phase_id := str(journey_snapshot.get("phase", ""))
+	if phase_id == "spring":
+		_set_exploration_position(
+			exploration_snapshot,
+			ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
+			ExplorationStateScript.SPRING_START_POSITION
+		)
+		return
+	if phase_id == "complete":
+		_set_exploration_position(
+			exploration_snapshot,
+			ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
+			ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION
+		)
+		return
+	var expected_map_id := _expected_map_id(phase_id)
+	if expected_map_id.is_empty():
+		return
+	var restored_exploration = ExplorationStateScript.new()
+	if exploration_snapshot.get("map_id") == expected_map_id and restored_exploration.restore(exploration_snapshot):
+		return
+	var spawn_position := ExplorationStateScript.START_POSITION
+	if expected_map_id == ExplorationStateScript.MOUNTAIN_PATH_MAP_ID:
+		spawn_position = ExplorationStateScript.PATH_START_POSITION
+	_set_exploration_position(exploration_snapshot, expected_map_id, spawn_position)
+
+
+static func _set_exploration_position(exploration_snapshot: Dictionary, map_id: String, position: Vector2) -> void:
+	exploration_snapshot["map_id"] = map_id
+	exploration_snapshot["player_x"] = position.x
+	exploration_snapshot["player_y"] = position.y
 
 
 static func _recovery_set(path: String) -> Dictionary:
@@ -370,6 +427,17 @@ static func _migrate_enemy_intel_snapshot(journey_snapshot: Dictionary) -> void:
 	# knowledge from an encounter or combat round: migration must not invent a
 	# choice the player did not make.
 	journey_snapshot["enemy_intel"] = []
+	_migrate_first_breath_snapshot(journey_snapshot)
+
+
+static func _migrate_first_breath_snapshot(journey_snapshot: Dictionary) -> void:
+	# Old saves only knew a single atomic breakthrough. Preserve a completed
+	# chapter, but never invent progress within the new three-step ritual.
+	journey_snapshot["first_breath_stage"] = (
+		JourneyStateScript.FIRST_BREATH_COMPLETED
+		if journey_snapshot.get("phase") == "complete"
+		else JourneyStateScript.FIRST_BREATH_UNSTARTED
+	)
 
 
 static func _result(ok: bool, data: Dictionary, reason: String) -> Dictionary:

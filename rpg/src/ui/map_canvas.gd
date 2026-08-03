@@ -2,6 +2,7 @@ extends Control
 
 const MapOccluderScript := preload("res://src/ui/map_occluder.gd")
 const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
+const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const ACTOR_HEIGHT := 56.0
 const INK_ROOT := Color("27312e")
 const COOL_SHADOW := Color("355e63")
@@ -52,6 +53,7 @@ var discoveries: Array[String] = []
 var enemy_intel: Array[String] = []
 var ferryman_response := "unanswered"
 var basket_response := "unanswered"
+var first_breath_stage := "unstarted"
 
 
 func set_story_state(
@@ -64,7 +66,8 @@ func set_story_state(
 	next_discoveries: Array,
 	next_ferryman_response: String,
 	next_basket_response: String,
-	next_enemy_intel: Array = []
+	next_enemy_intel: Array = [],
+	next_first_breath_stage: String = "unstarted"
 ) -> void:
 	if next_phase != phase_id or talked != talked_to_companion:
 		companion_trail_needs_reset = true
@@ -82,6 +85,7 @@ func set_story_state(
 		enemy_intel.append(str(intel_id))
 	ferryman_response = next_ferryman_response
 	basket_response = next_basket_response
+	first_breath_stage = next_first_breath_stage
 	_sync_actor_visuals()
 	queue_redraw()
 
@@ -255,6 +259,22 @@ func basket_visual_contract() -> Dictionary:
 	}
 
 
+func first_breath_visual_contract() -> Dictionary:
+	var completed := _completed_first_breath_actions()
+	return {
+		"stage": first_breath_stage,
+		"positions": {
+			"listen_to_spring": ExplorationStateScript.SPRING_LISTEN_POSITION,
+			"warm_meridians": ExplorationStateScript.SPRING_WARM_POSITION,
+			"breakthrough": ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION,
+		},
+		"current_action": _current_first_breath_action(),
+		"completed": completed,
+		"completed_actions": completed.duplicate(),
+		"rule_authority": false,
+	}
+
+
 func depth_for_y(feet_y: float) -> int:
 	var height := maxf(get_rect().size.y, 1.0)
 	return 10 + clampi(int(round(feet_y / height * 50.0)), 0, 50)
@@ -343,6 +363,11 @@ func _sync_actor_visuals() -> void:
 			player_sprite.position = path_feet
 			companion_sprite.position = Vector2(companion_position.x * size.x, companion_position.y * size.y).round()
 			set_player_motion(player_motion)
+		"spring":
+			player_sprite.position = Vector2(player_position.x * size.x, player_position.y * size.y).round()
+			companion_sprite.position = Vector2(size.x * 0.72, size.y * 0.65).round()
+			player_sprite.set_motion(player_motion, not player_motion.is_zero_approx())
+			companion_sprite.set_motion(Vector2.LEFT, false)
 		"battle":
 			player_sprite.position = Vector2(size.x * 0.43, size.y * 0.58).round()
 			companion_sprite.position = Vector2(size.x * 0.36, size.y * 0.54).round()
@@ -597,12 +622,105 @@ func _draw_spring_chamber(completed: bool) -> void:
 
 	draw_circle(Vector2(size.x * 0.53, size.y * 0.62), 82.0, RIVER_JADE.lightened(0.25))
 	draw_circle(Vector2(size.x * 0.53, size.y * 0.62), 68.0, RIVER_JADE)
+	var listen_position: Vector2 = ExplorationStateScript.SPRING_LISTEN_POSITION * size
+	var warm_position: Vector2 = ExplorationStateScript.SPRING_WARM_POSITION * size
+	var breakthrough_position: Vector2 = ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION * size
+	var completed_actions := _completed_first_breath_actions()
+	_draw_listening_spring(listen_position, completed_actions.has("listen_to_spring"))
+	_draw_warming_stone(warm_position, completed_actions.has("warm_meridians"))
+	_draw_sitting_vein(breakthrough_position, completed_actions.has("breakthrough"))
+
 	var energy_end := Vector2(size.x * 0.54, size.y * 0.16)
 	var energy_start := Vector2(size.x * 0.48, size.y * 0.59)
-	draw_line(energy_start, energy_end, SPIRIT_GOLD, 4.0)
-	for index in range(5):
-		var point := energy_start.lerp(energy_end, float(index) / 4.0)
-		draw_circle(point, 5.0, SPIRIT_GOLD)
+	if completed_actions.has("listen_to_spring"):
+		draw_line(energy_start, breakthrough_position, Color(SPIRIT_GOLD.r, SPIRIT_GOLD.g, SPIRIT_GOLD.b, 0.56), 3.0)
+	if completed_actions.has("warm_meridians"):
+		draw_line(energy_start, breakthrough_position, SPIRIT_GOLD, 4.0)
+		draw_line(breakthrough_position, energy_end, Color(SPIRIT_GOLD.r, SPIRIT_GOLD.g, SPIRIT_GOLD.b, 0.48), 3.0)
+	if completed:
+		draw_line(breakthrough_position, energy_end, SPIRIT_GOLD, 4.0)
+		for index in range(5):
+			var point := energy_start.lerp(energy_end, float(index) / 4.0)
+			draw_circle(point, 5.0, SPIRIT_GOLD)
+	_draw_first_breath_markers(size)
+
+
+func _draw_listening_spring(center: Vector2, listened: bool) -> void:
+	var ripple_color := SPIRIT_GOLD if listened else Color("b9ded4")
+	for index in range(3):
+		draw_arc(center + Vector2(13.0, 0.0), 10.0 + float(index) * 8.0, -0.82, 0.82, 16, ripple_color, 2.5)
+	if listened:
+		draw_circle(center + Vector2(8.0, 0.0), 3.5, SPIRIT_GOLD)
+
+
+func _draw_warming_stone(center: Vector2, warmed: bool) -> void:
+	var stone_color := Color("8aa89d") if warmed else COOL_SHADOW.lightened(0.32)
+	draw_colored_polygon(PackedVector2Array([
+		center + Vector2(-31.0, 10.0),
+		center + Vector2(-25.0, -8.0),
+		center + Vector2(25.0, -8.0),
+		center + Vector2(31.0, 10.0),
+	]), stone_color)
+	draw_line(center + Vector2(-31.0, 10.0), center + Vector2(31.0, 10.0), COOL_SHADOW, 3.0)
+	var leaf_color := DAWN_PEACH if warmed else FRESH_CELADON
+	draw_arc(center + Vector2(-7.0, -8.0), 9.0, -2.7, 0.15, 14, leaf_color, 3.0)
+	draw_arc(center + Vector2(8.0, -8.0), 9.0, PI - 0.15, TAU - 0.45, 14, leaf_color, 3.0)
+	draw_line(center + Vector2(0.0, -7.0), center + Vector2(0.0, 2.0), leaf_color, 2.0)
+
+
+func _draw_sitting_vein(center: Vector2, awakened: bool) -> void:
+	var vein_color := SPIRIT_GOLD if awakened else Color("7ba094")
+	draw_line(center + Vector2(0.0, 20.0), center + Vector2(0.0, -22.0), vein_color, 4.0)
+	draw_line(center + Vector2(0.0, -7.0), center + Vector2(-24.0, -28.0), vein_color, 3.0)
+	draw_line(center + Vector2(0.0, -13.0), center + Vector2(22.0, -34.0), vein_color, 3.0)
+	draw_arc(center + Vector2(0.0, 17.0), 22.0, PI, TAU, 18, COOL_SHADOW.lightened(0.18), 4.0)
+
+
+func _draw_first_breath_markers(size: Vector2) -> void:
+	var positions := {
+		"listen_to_spring": ExplorationStateScript.SPRING_LISTEN_POSITION,
+		"warm_meridians": ExplorationStateScript.SPRING_WARM_POSITION,
+		"breakthrough": ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION,
+	}
+	var current_action := _current_first_breath_action()
+	var completed_actions := _completed_first_breath_actions()
+	for action_id in ["listen_to_spring", "warm_meridians", "breakthrough"]:
+		var center: Vector2 = positions[action_id] * size
+		if completed_actions.has(action_id):
+			_draw_first_breath_completion_mark(center)
+		elif action_id == current_action:
+			_draw_interaction_marker(center, nearby_action == action_id)
+		elif nearby_action == action_id:
+			_draw_interaction_marker(center, true)
+
+
+func _draw_first_breath_completion_mark(center: Vector2) -> void:
+	draw_colored_polygon(PackedVector2Array([
+		center + Vector2(0.0, -31.0),
+		center + Vector2(6.0, -25.0),
+		center + Vector2(0.0, -19.0),
+		center + Vector2(-6.0, -25.0),
+	]), SPIRIT_GOLD)
+	draw_circle(center + Vector2(0.0, -25.0), 11.0, Color(SPIRIT_GOLD.r, SPIRIT_GOLD.g, SPIRIT_GOLD.b, 0.24), false, 2.0)
+
+
+func _current_first_breath_action() -> String:
+	return {
+		"unstarted": "listen_to_spring",
+		"listened": "warm_meridians",
+		"warmed": "breakthrough",
+	}.get(first_breath_stage, "")
+
+
+func _completed_first_breath_actions() -> Array[String]:
+	var result: Array[String] = []
+	if first_breath_stage in ["listened", "warmed", "completed"]:
+		result.append("listen_to_spring")
+	if first_breath_stage in ["warmed", "completed"]:
+		result.append("warm_meridians")
+	if first_breath_stage == "completed":
+		result.append("breakthrough")
+	return result
 
 func _draw_water(area: Rect2) -> void:
 	draw_rect(area, RIVER_JADE)

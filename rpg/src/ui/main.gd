@@ -267,9 +267,11 @@ func _render(event_ids: Array) -> void:
 		snapshot["discoveries"],
 		snapshot["ferryman_response"],
 		snapshot["basket_response"],
-		snapshot.get("enemy_intel", [])
+		snapshot.get("enemy_intel", []),
+		str(snapshot.get("first_breath_stage", "unstarted"))
 	)
 	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"], snapshot["discoveries"], snapshot["ferryman_response"], snapshot["basket_response"], snapshot.get("enemy_intel", []))
+	nearby_action_id = _visible_nearby_action(nearby_action_id, snapshot)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	map_canvas.show_battle_feedback(
 		event_ids,
@@ -312,7 +314,8 @@ func _focus_first_action() -> void:
 
 
 func _status_text(snapshot: Dictionary) -> String:
-	var herb := "有" if snapshot["gathered_moonleaf"] else "无"
+	var first_breath_stage := str(snapshot.get("first_breath_stage", "unstarted"))
+	var herb := "已温脉" if first_breath_stage in ["warmed", "completed"] else ("有" if snapshot["gathered_moonleaf"] else "无")
 	if snapshot["phase"] == "battle":
 		var profile := journey.current_enemy_profile()
 		var effects: Array[String] = []
@@ -333,7 +336,10 @@ func _status_text(snapshot: Dictionary) -> String:
 			snapshot["round"],
 			effect_text,
 		])
-	return "%s　气血 %d/12　月芽草：%s　同行：砚青" % [snapshot["realm"], snapshot["player_hp"], herb]
+	var first_breath_text := ""
+	if snapshot["phase"] == "spring":
+		first_breath_text = "　引息仪轨 %d/3" % _first_breath_progress(first_breath_stage)
+	return "%s　气血 %d/12　月芽草：%s　同行：砚青%s" % [snapshot["realm"], snapshot["player_hp"], herb, first_breath_text]
 
 
 func _objective_text(snapshot: Dictionary) -> String:
@@ -364,7 +370,13 @@ func _objective_text(snapshot: Dictionary) -> String:
 		"mountain_path":
 			return "当前目标　沿石标探查碎甲声，随时可以折返"
 		"spring":
-			return "当前目标　借月芽草完成第一次引息"
+			match str(snapshot.get("first_breath_stage", "unstarted")):
+				"listened":
+					return "当前目标　引息仪轨 1/3 · 回到砚青身旁，以月芽温脉"
+				"warmed":
+					return "当前目标　引息仪轨 2/3 · 循亮起的石纹静坐引息"
+				_:
+					return "当前目标　引息仪轨 0/3 · 到泉池西沿听泉辨脉"
 		_:
 			return "本节完成　山河自此显出第一道灵息"
 
@@ -536,6 +548,7 @@ func move_player(direction: Vector2, delta: float) -> Vector2:
 	exploration.move(direction, delta)
 	map_canvas.set_player_motion(direction if not exploration.player_position.is_equal_approx(previous_position) else Vector2.ZERO)
 	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion, journey.discoveries, journey.ferryman_response, journey.basket_response, journey.enemy_intel)
+	nearby_action_id = _visible_nearby_action(nearby_action_id, journey.snapshot())
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	if nearby_action_id != previous_action:
 		_build_actions(content["nodes"][journey.phase_id()])
@@ -563,7 +576,7 @@ func interact() -> Dictionary:
 
 
 func _is_exploration_phase() -> bool:
-	return journey.phase_id() in ["riverbank", "mountain_path"]
+	return journey.phase_id() in ["riverbank", "mountain_path", "spring"]
 
 
 func _action_matches_nearby(action_id: String) -> bool:
@@ -572,10 +585,36 @@ func _action_matches_nearby(action_id: String) -> bool:
 	return action_id == nearby_action_id
 
 
+func _visible_nearby_action(candidate: String, snapshot: Dictionary) -> String:
+	if snapshot.get("phase") != "spring":
+		return candidate
+	var stage := str(snapshot.get("first_breath_stage", "unstarted"))
+	var completed_actions: Array[String] = []
+	if stage in ["listened", "warmed", "completed"]:
+		completed_actions.append(JourneyStateScript.LISTEN_TO_SPRING)
+	if stage in ["warmed", "completed"]:
+		completed_actions.append(JourneyStateScript.WARM_MERIDIANS)
+	if stage == "completed":
+		completed_actions.append(JourneyStateScript.BREAKTHROUGH)
+	return "" if completed_actions.has(candidate) else candidate
+
+
+func _first_breath_progress(stage: String) -> int:
+	return {
+		"unstarted": 0,
+		"listened": 1,
+		"warmed": 2,
+		"completed": 3,
+	}.get(stage, 0)
+
+
 func _sync_exploration_after_action(action_id: String, event_ids: Array) -> void:
 	if action_id == JourneyStateScript.REPLAY_CHAPTER:
 		exploration = ExplorationStateScript.new()
 		dialogue = DialogueStateScript.new()
+		return
+	if journey.phase_id() == "spring" and (event_ids.has("battle_won") or event_ids.has("enemy_bypassed")):
+		exploration.transition_to(ExplorationStateScript.CANGQUAN_SPRING_MAP_ID, ExplorationStateScript.SPRING_START_POSITION)
 		return
 	if action_id == JourneyStateScript.ENTER_SPRING and journey.phase_id() == "mountain_path":
 		exploration.transition_to(ExplorationStateScript.MOUNTAIN_PATH_MAP_ID)

@@ -43,7 +43,7 @@ func _run() -> void:
 	_test_enemy_profile_combat()
 	_test_boss_and_statuses()
 	_test_companion_retreat_and_rescue()
-	_test_breakthrough_and_completion()
+	_test_first_breath_ritual_and_completion()
 	await _test_visual_scale_scene()
 	await _test_scene_smoke()
 	await _test_scene_save_recovery()
@@ -71,6 +71,7 @@ func _test_initial_state() -> void:
 	_expect_equal(state.snapshot()["discoveries"], [], "新旅程没有伪造已读见闻")
 	_expect_equal(state.snapshot()["enemy_intel"], [], "新旅程没有伪造已识别敌情")
 	_expect_equal(state.snapshot()["moonleaf_method"], "unselected", "采集前没有伪造取药方式")
+	_expect_equal(state.snapshot()["first_breath_stage"], "unstarted", "新旅程尚未开始第一次引息仪轨")
 	_expect_true(state.available_actions().has("enter_spring"), "初始可尝试进山")
 	_expect_false(state.choose("unknown")["ok"], "未知行动不改变状态")
 
@@ -194,6 +195,41 @@ func _test_exploration_rules() -> void:
 	_expect_equal(state.interaction_action(true, true), "inspect_puppet_spoor", "未识别石傀敌情时提供拖痕调查")
 	_expect_equal(state.interaction_action(true, true, [], "unanswered", "unanswered", ["unbalanced_stone_puppet"]), "", "已识别石傀敌情后拖痕不重复交互")
 
+	_expect_true(state.transition_to(ExplorationStateScript.CANGQUAN_SPRING_MAP_ID), "可进入藏泉石室独立探索地图")
+	_expect_equal(state.map_id, "cangquan_spring", "泉室使用稳定地图标识")
+	_expect_equal(state.player_position, ExplorationStateScript.SPRING_START_POSITION, "泉室从洞口内侧安全点开始")
+	_expect_equal(state.interaction_action(true, true), "", "泉室出生点不直接触发任一仪轨")
+	_expect_false(state.is_walkable(Vector2(0.53, 0.60)), "泉池水面不可行走")
+	var spring_points := [
+		{"position": ExplorationStateScript.SPRING_LISTEN_POSITION, "action": "listen_to_spring"},
+		{"position": ExplorationStateScript.SPRING_WARM_POSITION, "action": "warm_meridians"},
+		{"position": ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION, "action": "breakthrough"},
+	]
+	for spring_case in spring_points:
+		var spring_position: Vector2 = spring_case["position"]
+		_expect_true(state.is_walkable(spring_position), "泉室仪轨点位于可行走区域")
+		_expect_true(state.restore({"map_id": "cangquan_spring", "player_x": spring_position.x, "player_y": spring_position.y}), "泉室仪轨点可从存档恢复")
+		_expect_equal(state.interaction_action(true, true), spring_case["action"], "泉室仪轨点映射到稳定语义行动")
+	for left_index in range(spring_points.size()):
+		for right_index in range(left_index + 1, spring_points.size()):
+			_expect_true(
+				spring_points[left_index]["position"].distance_to(spring_points[right_index]["position"]) > ExplorationStateScript.INTERACTION_RADIUS * 2.0,
+				"三处引息仪轨的交互半径彼此分离"
+			)
+	var walked_spring = ExplorationStateScript.new()
+	walked_spring.transition_to(ExplorationStateScript.CANGQUAN_SPRING_MAP_ID)
+	walked_spring.move(Vector2.UP, 0.70)
+	walked_spring.move(Vector2.LEFT, 1.20)
+	walked_spring.move(Vector2.DOWN, 0.70)
+	_expect_equal(walked_spring.interaction_action(true, true), "listen_to_spring", "可从泉室出生点绕泉池上缘走到听泉点")
+	walked_spring.move(Vector2.UP, 0.70)
+	walked_spring.move(Vector2.RIGHT, 0.92)
+	walked_spring.move(Vector2.DOWN, 0.37)
+	_expect_equal(walked_spring.interaction_action(true, true), "warm_meridians", "可从听泉点继续步行到温脉石床")
+	walked_spring.move(Vector2.UP, 0.67)
+	walked_spring.move(Vector2.LEFT, 0.55)
+	_expect_equal(walked_spring.interaction_action(true, true), "breakthrough", "可从温脉石床继续步行到静坐息石")
+
 
 func _test_state_restore() -> void:
 	var source = _battle_state()
@@ -262,22 +298,52 @@ func _test_state_restore() -> void:
 	var impossible_initial_intel := JourneyStateScript.new().snapshot()
 	impossible_initial_intel["enemy_intel"] = ["rock_armor_young"]
 	_expect_false(restored.restore(impossible_initial_intel), "未进山的初始状态不能伪造已调查敌情")
+	var missing_first_breath := snapshot.duplicate(true)
+	missing_first_breath.erase("first_breath_stage")
+	_expect_false(restored.restore(missing_first_breath), "当前规则快照缺少引息仪轨阶段时拒绝恢复")
+	var malformed_first_breath := snapshot.duplicate(true)
+	malformed_first_breath["first_breath_stage"] = 1
+	_expect_false(restored.restore(malformed_first_breath), "引息仪轨阶段必须使用稳定文本标识")
+	var unknown_first_breath := snapshot.duplicate(true)
+	unknown_first_breath["first_breath_stage"] = "licensed_breakthrough"
+	_expect_false(restored.restore(unknown_first_breath), "未知引息仪轨阶段不会进入规则状态")
+	var battle_with_breath_progress := snapshot.duplicate(true)
+	battle_with_breath_progress["first_breath_stage"] = "listened"
+	_expect_false(restored.restore(battle_with_breath_progress), "战斗阶段不能伪造泉室仪轨进度")
 	var zero_hp_battle := snapshot.duplicate(true)
 	zero_hp_battle["player_hp"] = 0
 	_expect_false(restored.restore(zero_hp_battle), "战斗阶段拒绝零气血死档")
+	_expect_equal(restored.snapshot(), before, "敌情、引息字段与气血的无效恢复不部分修改战斗状态")
 	var spring_state = JourneyStateScript.new()
 	spring_state.choose("talk_to_companion")
 	spring_state.choose("gather_moonleaf")
 	spring_state.choose("enter_spring")
 	spring_state.choose("bypass_enemy")
+	var impossible_completed_spring := spring_state.snapshot()
+	impossible_completed_spring["first_breath_stage"] = "completed"
+	_expect_false(restored.restore(impossible_completed_spring), "泉室进行态不能伪造已完成仪轨")
+	var listened_without_moonleaf := spring_state.snapshot()
+	listened_without_moonleaf["first_breath_stage"] = "listened"
+	listened_without_moonleaf["gathered_moonleaf"] = false
+	_expect_false(restored.restore(listened_without_moonleaf), "听泉后尚未温脉时必须仍持有月芽草")
+	var warmed_with_moonleaf := spring_state.snapshot()
+	warmed_with_moonleaf["first_breath_stage"] = "warmed"
+	_expect_false(restored.restore(warmed_with_moonleaf), "温脉完成态不能仍持有已消耗月芽草")
+	_expect_true(spring_state.choose("listen_to_spring")["ok"], "泉室合法听泉步骤可用于恢复校验")
+	_expect_true(spring_state.choose("warm_meridians")["ok"], "泉室合法温脉步骤可用于恢复校验")
+	_expect_true(restored.restore(spring_state.snapshot()), "已温脉且月芽草耗尽的泉室快照可以恢复")
+	var restored_warmed_snapshot := restored.snapshot()
 	var zero_hp_spring := spring_state.snapshot()
 	zero_hp_spring["player_hp"] = 0
 	_expect_false(restored.restore(zero_hp_spring), "泉室阶段拒绝零气血死档")
 	spring_state.choose("breakthrough")
+	var incomplete_complete := spring_state.snapshot()
+	incomplete_complete["first_breath_stage"] = "warmed"
+	_expect_false(restored.restore(incomplete_complete), "完成阶段必须记录完整的三步引息")
 	var zero_hp_complete := spring_state.snapshot()
 	zero_hp_complete["player_hp"] = 0
 	_expect_false(restored.restore(zero_hp_complete), "完成阶段拒绝零气血死档")
-	_expect_equal(restored.snapshot(), before, "敌情与气血无效恢复均保持原状态原子不变")
+	_expect_equal(restored.snapshot(), restored_warmed_snapshot, "后续无效泉室与完成态恢复保持当前规则状态原子不变")
 
 
 func _test_dialogue_state() -> void:
@@ -333,7 +399,7 @@ func _test_versioned_save() -> void:
 	journey.choose("approach_enemy")
 	journey.choose("guard")
 	var exploration = ExplorationStateScript.new()
-	_expect_true(exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.88, "player_y": 0.18}), "准备合法探索存档")
+	_expect_true(exploration.restore({"map_id": "cangquan_path", "player_x": 0.64, "player_y": 0.44}), "准备与战斗阶段一致的合法山道存档")
 	var written: Dictionary = SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)
 	_expect_true(written["ok"], "版本化存档写入成功")
 	_expect_true(SaveGameScript.exists(TEST_SAVE_PATH), "写入后可检测继续游戏")
@@ -343,7 +409,8 @@ func _test_versioned_save() -> void:
 	_expect_equal(loaded["data"]["journey"]["moonleaf_method"], "whole_plant", "新版存档保留取药方式")
 	_expect_equal(loaded["data"]["journey"]["enemy_id"], "rock_armor_young", "新版存档声明稳定敌人标识")
 	_expect_equal(loaded["data"]["journey"]["enemy_intel"], ["spring_moss_shell", "rock_armor_young"], "v13 磁盘往返保持敌情调查顺序")
-	_expect_equal(loaded["data"]["exploration"]["map_id"], "zhaohe_ferry", "新版存档声明稳定地图标识")
+	_expect_equal(loaded["data"]["journey"]["first_breath_stage"], "unstarted", "v14 磁盘往返保持尚未开始的引息仪轨")
+	_expect_equal(loaded["data"]["exploration"]["map_id"], "cangquan_path", "新版战斗存档声明一致的山道地图标识")
 	var restored_dialogue = DialogueStateScript.new()
 	_expect_true(restored_dialogue.restore(loaded["data"]["dialogue"]), "新版存档包含可恢复的空闲对话状态")
 	_expect_equal(restored_dialogue.snapshot(), DialogueStateScript.default_snapshot(), "新版空闲对话状态保持默认值")
@@ -363,6 +430,7 @@ func _test_versioned_save() -> void:
 	legacy_journey.erase("spring_lamps")
 	legacy_journey.erase("lamp_turns")
 	legacy_journey.erase("briefing_response")
+	legacy_journey.erase("first_breath_stage")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 1,
 		"story_id": SaveGameScript.STORY_ID,
@@ -374,7 +442,8 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated["migrated_from_version"], 1, "迁移结果声明来源版本")
 	_expect_equal(migrated["data"]["save_version"], SaveGameScript.SAVE_VERSION, "迁移后的内存快照升级为当前版本")
 	_expect_equal(migrated["data"]["journey"]["enemy_id"], "rock_armor_young", "旧版迁移补入默认敌人标识")
-	_expect_equal(migrated["data"]["exploration"]["map_id"], "zhaohe_ferry", "v1 迁移补入照禾渡口地图标识")
+	_expect_equal(migrated["data"]["exploration"]["map_id"], "cangquan_path", "v1 战斗存档按阶段补入山道地图标识")
+	_expect_equal(migrated["data"]["journey"]["first_breath_stage"], "unstarted", "v1 战斗存档不虚构引息仪轨进度")
 	_expect_equal(migrated["data"]["journey"]["companion_supports"], 1, "迁移补入同伴援护资源")
 	_expect_equal(migrated["data"]["journey"]["setbacks"], 0, "迁移补入挫败计数")
 	_expect_true(migrated["data"]["journey"]["talked_to_companion"], "战斗中的 v1 存档迁移为已完成简报")
@@ -389,6 +458,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated["data"]["dialogue"], DialogueStateScript.default_snapshot(), "旧版迁移补入空闲对话状态")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "迁移后可写回新版存档")
 	var version_two_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_two_journey.erase("first_breath_stage")
 	version_two_journey.erase("talked_to_companion")
 	version_two_journey.erase("spring_lamps")
 	version_two_journey.erase("lamp_turns")
@@ -405,6 +475,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v2["data"]["journey"]["spring_lamps"], 1, "v2 存档补入战术石灯")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v2 迁移后可写回新版存档")
 	var version_three_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_three_journey.erase("first_breath_stage")
 	version_three_journey.erase("spring_lamps")
 	version_three_journey.erase("lamp_turns")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
@@ -418,18 +489,21 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v3["migrated_from_version"], 3, "v3 迁移声明来源版本")
 	_expect_equal(migrated_v3["data"]["journey"]["spring_lamps"], 1, "v3 存档补入战术石灯")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v3 迁移后可写回新版存档")
+	var version_four_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_four_journey.erase("first_breath_stage")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 4,
 		"story_id": SaveGameScript.STORY_ID,
-		"journey": journey.snapshot(),
+		"journey": version_four_journey,
 		"exploration": legacy_exploration,
 	}))
 	var migrated_v4: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_true(migrated_v4["ok"], "v4 存档可迁移到地图感知版本")
 	_expect_equal(migrated_v4["migrated_from_version"], 4, "v4 迁移声明来源版本")
-	_expect_equal(migrated_v4["data"]["exploration"]["map_id"], "zhaohe_ferry", "v4 迁移补入照禾渡口地图标识")
+	_expect_equal(migrated_v4["data"]["exploration"]["map_id"], "cangquan_path", "v4 战斗存档按阶段补入山道地图标识")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v4 迁移后可写回新版存档")
 	var version_five_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_five_journey.erase("first_breath_stage")
 	version_five_journey.erase("briefing_response")
 	version_five_journey.erase("enemy_id")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
@@ -444,6 +518,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v5["data"]["dialogue"], DialogueStateScript.default_snapshot(), "v5 迁移补入空闲对话状态")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v5 迁移后可写回新版存档")
 	var version_six_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_six_journey.erase("first_breath_stage")
 	version_six_journey.erase("enemy_id")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 6,
@@ -458,6 +533,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v6["data"]["journey"]["enemy_id"], "rock_armor_young", "v6 迁移补入默认敌人标识")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v6 迁移后可写回新版存档")
 	var version_seven_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_seven_journey.erase("first_breath_stage")
 	version_seven_journey.erase("armor_break_turns")
 	version_seven_journey.erase("focus_turns")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
@@ -474,6 +550,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v7["data"]["journey"]["focus_turns"], 0, "v7 迁移不虚构凝息状态")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v7 迁移后可写回新版存档")
 	var version_eight_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_eight_journey.erase("first_breath_stage")
 	version_eight_journey.erase("moonleaf_method")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 8,
@@ -488,6 +565,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v8["data"]["journey"]["moonleaf_method"], "whole_plant", "v8 持药状态迁移为保守整株记录")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v8 迁移后可写回新版存档")
 	var version_nine_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_nine_journey.erase("first_breath_stage")
 	version_nine_journey.erase("discoveries")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 9,
@@ -502,6 +580,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v9["data"]["journey"]["discoveries"], [], "v9 迁移不虚构未记录见闻")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v9 迁移后可写回新版存档")
 	var version_ten_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_ten_journey.erase("first_breath_stage")
 	version_ten_journey.erase("ferryman_response")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 10,
@@ -516,6 +595,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v10["data"]["journey"]["ferryman_response"], "unanswered", "v10 迁移不替玩家作守堤选择")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v10 迁移后可写回新版存档")
 	var version_eleven_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_eleven_journey.erase("first_breath_stage")
 	version_eleven_journey.erase("basket_response")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 11,
@@ -531,6 +611,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v11["data"]["journey"]["enemy_intel"], [], "v11 迁移不从遭遇推断敌情")
 	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v11 迁移后可写回新版存档")
 	var version_twelve_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_twelve_journey.erase("first_breath_stage")
 	version_twelve_journey.erase("enemy_intel")
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
 		"save_version": 12,
@@ -544,7 +625,79 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v12["migrated_from_version"], 12, "v12 迁移声明来源版本")
 	_expect_equal(migrated_v12["data"]["save_version"], SaveGameScript.SAVE_VERSION, "v12 迁移升级到当前版本")
 	_expect_equal(migrated_v12["data"]["journey"]["enemy_intel"], [], "v12 战斗存档迁移为空敌情而不虚构调查")
-	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v12 迁移后可写回 v13 存档")
+	_expect_equal(migrated_v12["data"]["journey"]["first_breath_stage"], "unstarted", "v12 战斗存档不虚构引息仪轨进度")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v12 迁移后可写回 v14 存档")
+
+	var version_thirteen_journey: Dictionary = journey.snapshot().duplicate(true)
+	version_thirteen_journey.erase("first_breath_stage")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 13,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": version_thirteen_journey,
+		"exploration": exploration.snapshot(),
+		"dialogue": DialogueStateScript.default_snapshot(),
+	}))
+	var migrated_v13: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v13["ok"], "v13 敌情存档可迁移到三步引息版本")
+	_expect_equal(migrated_v13["migrated_from_version"], 13, "v13 迁移声明来源版本")
+	_expect_equal(migrated_v13["data"]["journey"]["first_breath_stage"], "unstarted", "v13 战斗存档迁移为未开始引息")
+	_expect_equal(migrated_v13["data"]["exploration"]["map_id"], exploration.map_id, "v13 已匹配阶段的合法山道地图原样保留")
+	_expect_true(Vector2(
+		float(migrated_v13["data"]["exploration"]["player_x"]),
+		float(migrated_v13["data"]["exploration"]["player_y"])
+	).is_equal_approx(exploration.player_position), "v13 已匹配阶段的合法山道坐标原样保留")
+
+	var legacy_spring_state = JourneyStateScript.new()
+	legacy_spring_state.choose("talk_to_companion")
+	legacy_spring_state.choose("gather_moonleaf")
+	legacy_spring_state.choose("enter_spring")
+	legacy_spring_state.choose("bypass_enemy")
+	var legacy_spring_journey: Dictionary = legacy_spring_state.snapshot()
+	legacy_spring_journey.erase("first_breath_stage")
+	var legacy_spring_exploration := {
+		"map_id": "cangquan_path",
+		"player_x": ExplorationStateScript.PATH_BYPASS_POSITION.x,
+		"player_y": ExplorationStateScript.PATH_BYPASS_POSITION.y,
+	}
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 13,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": legacy_spring_journey,
+		"exploration": legacy_spring_exploration,
+		"dialogue": DialogueStateScript.default_snapshot(),
+	}))
+	var migrated_v13_spring: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v13_spring["ok"], "v13 旧泉室存档可迁移到空间仪轨起点")
+	_expect_equal(migrated_v13_spring["data"]["journey"]["first_breath_stage"], "unstarted", "旧泉室存档不虚构任何引息步骤")
+	_expect_true(migrated_v13_spring["data"]["journey"]["gathered_moonleaf"], "旧泉室迁移保留尚未温脉的月芽草")
+	_expect_equal(migrated_v13_spring["data"]["exploration"]["map_id"], "cangquan_spring", "旧泉室迁入独立藏泉石室地图")
+	_expect_true(Vector2(
+		float(migrated_v13_spring["data"]["exploration"]["player_x"]),
+		float(migrated_v13_spring["data"]["exploration"]["player_y"])
+	).is_equal_approx(ExplorationStateScript.SPRING_START_POSITION), "旧泉室迁移到不触发仪轨的安全出生点")
+
+	legacy_spring_state.choose("listen_to_spring")
+	legacy_spring_state.choose("warm_meridians")
+	legacy_spring_state.choose("breakthrough")
+	var legacy_complete_journey: Dictionary = legacy_spring_state.snapshot()
+	legacy_complete_journey.erase("first_breath_stage")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+		"save_version": 13,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": legacy_complete_journey,
+		"exploration": legacy_spring_exploration,
+		"dialogue": DialogueStateScript.default_snapshot(),
+	}))
+	var migrated_v13_complete: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v13_complete["ok"], "v13 完成存档迁移后不会倒退章节")
+	_expect_equal(migrated_v13_complete["data"]["journey"]["first_breath_stage"], "completed", "旧完成态推断为完整三步引息")
+	_expect_equal(migrated_v13_complete["data"]["exploration"]["map_id"], "cangquan_spring", "旧完成态迁入藏泉石室完成锚点")
+	_expect_true(Vector2(
+		float(migrated_v13_complete["data"]["exploration"]["player_x"]),
+		float(migrated_v13_complete["data"]["exploration"]["player_y"])
+	).is_equal_approx(ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION), "旧完成态迁移到静坐引息位置")
+
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "v13 迁移后可写回 v14 存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -562,7 +715,47 @@ func _test_versioned_save() -> void:
 	var future: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_false(future["ok"], "未知未来版本不会被静默加载")
 	_expect_equal(future["reason"], "unsupported_version", "未知版本返回稳定原因")
-	SaveGameScript.remove(TEST_SAVE_PATH + ".bak")
+	SaveGameScript.remove(TEST_SAVE_PATH)
+	var current_spring_state = JourneyStateScript.new()
+	current_spring_state.choose("talk_to_companion")
+	current_spring_state.choose("gather_moonleaf")
+	current_spring_state.choose("enter_spring")
+	current_spring_state.choose("bypass_enemy")
+	var mismatched_phase_map_cases := [
+		{
+			"label": "渡口阶段配山道地图",
+			"journey": JourneyStateScript.new().snapshot(),
+			"exploration": {"map_id": "cangquan_path", "player_x": 0.64, "player_y": 0.44},
+		},
+		{
+			"label": "战斗阶段配渡口地图",
+			"journey": journey.snapshot(),
+			"exploration": {"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51},
+		},
+		{
+			"label": "泉室阶段配山道地图",
+			"journey": current_spring_state.snapshot(),
+			"exploration": {"map_id": "cangquan_path", "player_x": 0.64, "player_y": 0.44},
+		},
+		{
+			"label": "完成阶段配渡口地图",
+			"journey": legacy_spring_state.snapshot(),
+			"exploration": {"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51},
+		},
+	]
+	for mismatch_case in mismatched_phase_map_cases:
+		SaveGameScript.remove(TEST_SAVE_PATH)
+		_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+			"save_version": SaveGameScript.SAVE_VERSION,
+			"story_id": SaveGameScript.STORY_ID,
+			"journey": mismatch_case["journey"],
+			"exploration": mismatch_case["exploration"],
+			"dialogue": DialogueStateScript.default_snapshot(),
+		}))
+		var mismatched_result: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+		_expect_false(mismatched_result["ok"], "%s不能作为当前存档恢复" % mismatch_case["label"])
+		_expect_equal(mismatched_result["reason"], "invalid_map_phase", "%s返回稳定跨对象校验原因" % mismatch_case["label"])
+	SaveGameScript.remove(TEST_SAVE_PATH)
 	var unknown_map_exploration := exploration.snapshot().duplicate(true)
 	unknown_map_exploration["map_id"] = "unreleased_secret_realm"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
@@ -1015,6 +1208,8 @@ func _test_environment_discoveries() -> void:
 	_expect_true(restored.restore(state.snapshot()), "三处见闻可以随规则快照恢复")
 	_expect_equal(restored.discoveries, state.discoveries, "恢复保持环境见闻顺序")
 	state.choose("bypass_enemy")
+	state.choose("listen_to_spring")
+	state.choose("warm_meridians")
 	state.choose("breakthrough")
 	_expect_true(state.snapshot()["discoveries"].size() == 3, "完成章节保留本轮见闻用于结算")
 	state.choose("replay_chapter")
@@ -1060,6 +1255,8 @@ func _test_enemy_intel() -> void:
 	_expect_equal(state.enemy_intel.size(), 3, "主动返回渡口保留敌情")
 	state.choose("enter_spring")
 	state.choose("bypass_enemy")
+	state.choose("listen_to_spring")
+	state.choose("warm_meridians")
 	state.choose("breakthrough")
 	_expect_equal(state.enemy_intel.size(), 3, "绕行与章节完成保留敌情结算")
 	state.choose("replay_chapter")
@@ -1287,7 +1484,7 @@ func _test_companion_retreat_and_rescue() -> void:
 	_expect_equal(final_guard["snapshot"]["setbacks"], 1, "救援记录一次挫败")
 
 
-func _test_breakthrough_and_completion() -> void:
+func _test_first_breath_ritual_and_completion() -> void:
 	var incomplete = JourneyStateScript.new()
 	var incomplete_snapshot: Dictionary = incomplete.snapshot()
 	_expect_false(incomplete.complete_epilogue("record")["ok"], "章节完成前不能结算余波回应")
@@ -1300,10 +1497,49 @@ func _test_breakthrough_and_completion() -> void:
 	_defeat_boss(state)
 	_expect_equal(state.phase_id(), "spring", "组合行动可以获胜")
 	_expect_false(state.choose("invalid")["ok"], "泉室拒绝未知行动")
+	_expect_equal(state.first_breath_stage, "unstarted", "进入泉室从三步引息起点开始")
+	_expect_equal(
+		state.available_actions(),
+		PackedStringArray(["listen_to_spring", "warm_meridians", "breakthrough"]),
+		"泉室三个空间仪点都可被亲自尝试"
+	)
+	var initial_ritual_snapshot: Dictionary = state.snapshot()
+	for initial_wrong_action in ["warm_meridians", "breakthrough"]:
+		var initial_wrong_result: Dictionary = state.choose(initial_wrong_action)
+		_expect_false(initial_wrong_result["ok"], "未听泉前越级仪轨被安全拒绝")
+		_expect_equal(initial_wrong_result["events"], ["first_breath_out_of_order"], "越级仪轨返回稳定顺序提示")
+		_expect_equal(state.snapshot(), initial_ritual_snapshot, "未听泉越级不损耗任何资源或推进状态")
+
+	var listened: Dictionary = state.choose("listen_to_spring")
+	_expect_true(listened["ok"], "第一步听泉辨脉成功")
+	_expect_equal(listened["events"], ["spring_listened"], "听泉返回稳定语义事件")
+	_expect_equal(state.first_breath_stage, "listened", "听泉后记录第一步完成")
+	_expect_true(state.gathered_moonleaf, "听泉不会提前消耗月芽草")
+	var listened_snapshot: Dictionary = state.snapshot()
+	for listened_wrong_action in ["listen_to_spring", "breakthrough"]:
+		var listened_wrong_result: Dictionary = state.choose(listened_wrong_action)
+		_expect_false(listened_wrong_result["ok"], "听泉后重复或越级仪轨被安全拒绝")
+		_expect_equal(listened_wrong_result["events"], ["first_breath_out_of_order"], "听泉后的错误步骤返回同一稳定提示")
+		_expect_equal(state.snapshot(), listened_snapshot, "听泉后的错误步骤保持完整快照原子不变")
+
+	var warmed: Dictionary = state.choose("warm_meridians")
+	_expect_true(warmed["ok"], "第二步月芽温脉成功")
+	_expect_equal(warmed["events"], ["meridians_warmed"], "温脉返回稳定语义事件")
+	_expect_equal(state.first_breath_stage, "warmed", "温脉后记录第二步完成")
+	_expect_false(state.gathered_moonleaf, "月芽草只在正确温脉步骤被消耗")
+	var warmed_snapshot: Dictionary = state.snapshot()
+	for warmed_wrong_action in ["listen_to_spring", "warm_meridians"]:
+		var warmed_wrong_result: Dictionary = state.choose(warmed_wrong_action)
+		_expect_false(warmed_wrong_result["ok"], "温脉后倒退或重复仪轨被安全拒绝")
+		_expect_equal(warmed_wrong_result["events"], ["first_breath_out_of_order"], "温脉后的错误步骤返回稳定提示")
+		_expect_equal(state.snapshot(), warmed_snapshot, "温脉后的错误步骤不会再次消耗资源")
+
 	var result: Dictionary = state.choose("breakthrough")
-	_expect_true(result["ok"], "突破成功")
+	_expect_true(result["ok"], "第三步静坐引息成功")
+	_expect_equal(result["events"], ["breakthrough"], "静坐引息沿用稳定突破事件")
 	_expect_equal(result["snapshot"]["realm"], "引息境一层", "境界更新")
-	_expect_false(result["snapshot"]["gathered_moonleaf"], "突破消耗灵草")
+	_expect_equal(result["snapshot"]["first_breath_stage"], "completed", "完成态记录三步仪轨闭环")
+	_expect_false(result["snapshot"]["gathered_moonleaf"], "最终引息不会返还或重复消耗灵草")
 	_expect_equal(result["snapshot"]["moonleaf_method"], "whole_plant", "突破后仍保留采集方式用于结算")
 	_expect_equal(state.available_actions(), PackedStringArray(["review_journey", "return_to_title", "replay_chapter"]), "完成后可回顾、返回标题或重游")
 	_expect_true(state.choose("review_journey")["ok"], "回顾不重复奖励")
@@ -1323,6 +1559,7 @@ func _test_breakthrough_and_completion() -> void:
 	_expect_equal(replay["snapshot"]["spring_lamps"], 1, "重游重置战术部署物")
 	_expect_false(replay["snapshot"]["talked_to_companion"], "重游重置开场交谈")
 	_expect_equal(replay["snapshot"]["moonleaf_method"], "unselected", "重游重置采集选择")
+	_expect_equal(replay["snapshot"]["first_breath_stage"], "unstarted", "重游清空三步引息进度")
 	_expect_false(state.choose("breakthrough")["ok"], "突破不能重复")
 
 
@@ -1885,8 +2122,45 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉石室", "胜利进入泉室")
 	_expect_equal(instance.get_node("%MapCanvas").occlusion_contract()["count"], 0, "泉室不残留上一地图的树冠节点")
 	_expect_false(map_detail.map_contract()["visible"], "泉室不残留山道细节画面")
+	_expect_equal(instance.exploration.map_id, "cangquan_spring", "胜利后切换到独立泉室探索地图")
+	_expect_equal(instance.exploration.player_position, ExplorationStateScript.SPRING_START_POSITION, "胜利路线落在泉室安全出生点")
+	_expect_true(instance._is_exploration_phase(), "泉室仪轨沿用可移动语义输入路径")
+	var initial_breath_visual: Dictionary = instance.get_node("%MapCanvas").first_breath_visual_contract()
+	_expect_equal(initial_breath_visual["stage"], "unstarted", "泉室画面从未开始仪轨状态绘制")
+	_expect_equal(initial_breath_visual["positions"]["listen_to_spring"], ExplorationStateScript.SPRING_LISTEN_POSITION, "泉室画面合同锁定听泉点")
+	_expect_false(initial_breath_visual["rule_authority"], "泉室仪点明确不拥有领域权威")
 
-	await _press_action(instance, "静心引息")
+	_expect_true(instance.exploration.restore({"map_id": "cangquan_spring", "player_x": ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION.x, "player_y": ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION.y}), "场景可先走到最终静坐点测试乱序保护")
+	instance._render([])
+	var before_out_of_order: Dictionary = instance.journey.snapshot()
+	var before_out_of_order_save := FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH)
+	await _press_action(instance, "静坐引息")
+	_expect_equal(instance.journey.snapshot(), before_out_of_order, "乱序静坐不会改变规则资源或仪轨阶段")
+	_expect_equal(FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH), before_out_of_order_save, "乱序仪轨不会改写磁盘存档")
+	_expect_true(instance.get_node("%EventLabel").text.contains("先听泉"), "乱序仪轨提供可操作的中文顺序提示")
+
+	_expect_true(instance.exploration.restore({"map_id": "cangquan_spring", "player_x": ExplorationStateScript.SPRING_LISTEN_POSITION.x, "player_y": ExplorationStateScript.SPRING_LISTEN_POSITION.y}), "场景走到泉沿听息点")
+	instance._render([])
+	await _press_action(instance, "听泉辨脉")
+	_expect_equal(instance.journey.first_breath_stage, "listened", "场景第一步推进为已听泉")
+	_expect_true(instance.journey.gathered_moonleaf, "听泉后仍持有护脉月芽草")
+	var listened_save: Dictionary = SaveGameScript.read(TEST_SCENE_SAVE_PATH)
+	_expect_equal(listened_save["data"]["journey"]["first_breath_stage"], "listened", "听泉步骤立即自动存档")
+	_expect_true(Vector2(float(listened_save["data"]["exploration"]["player_x"]), float(listened_save["data"]["exploration"]["player_y"])).is_equal_approx(ExplorationStateScript.SPRING_LISTEN_POSITION), "听泉自动存档保留准确空间点")
+
+	_expect_true(instance.exploration.restore({"map_id": "cangquan_spring", "player_x": ExplorationStateScript.SPRING_WARM_POSITION.x, "player_y": ExplorationStateScript.SPRING_WARM_POSITION.y}), "场景走到月芽温脉石台")
+	instance._render([])
+	await _press_action(instance, "月芽温脉")
+	_expect_equal(instance.journey.first_breath_stage, "warmed", "场景第二步推进为已温脉")
+	_expect_false(instance.journey.gathered_moonleaf, "场景只在温脉步骤消耗月芽草")
+	var warmed_save: Dictionary = SaveGameScript.read(TEST_SCENE_SAVE_PATH)
+	_expect_equal(warmed_save["data"]["journey"]["first_breath_stage"], "warmed", "温脉步骤立即自动存档")
+	_expect_false(warmed_save["data"]["journey"]["gathered_moonleaf"], "温脉存档记录月芽草已被正确消耗")
+	_expect_equal(instance.get_node("%MapCanvas").first_breath_visual_contract()["completed_actions"], ["listen_to_spring", "warm_meridians"], "泉室画面留下前两步完成印记")
+
+	_expect_true(instance.exploration.restore({"map_id": "cangquan_spring", "player_x": ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION.x, "player_y": ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION.y}), "场景沿亮起石纹到达静坐点")
+	instance._render([])
+	await _press_action(instance, "静坐引息")
 	_expect_equal(instance.get_node("%LocationLabel").text, "第一息", "场景完成章节")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("引息境一层"), "场景显示突破境界")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "complete", "结算切换明亮突破画面")

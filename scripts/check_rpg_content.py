@@ -60,6 +60,30 @@ ALLOWED_DIALOGUE_TOKENS = {
     "setback_reflection",
 }
 TOKEN_PATTERN = re.compile(r"\{([^{}]+)\}")
+FIRST_BREATH_STORY_ID = "zhaohe_first_breath"
+FIRST_BREATH_SPRING_ACTIONS = [
+    {
+        "id": "listen_to_spring",
+        "label": "听泉辨脉",
+        "possible_targets": ["spring"],
+    },
+    {
+        "id": "warm_meridians",
+        "label": "月芽温脉",
+        "possible_targets": ["spring"],
+    },
+    {
+        "id": "breakthrough",
+        "label": "静坐引息",
+        "possible_targets": ["complete"],
+    },
+]
+FIRST_BREATH_MESSAGE_IDS = {
+    "breakthrough",
+    "first_breath_out_of_order",
+    "meridians_warmed",
+    "spring_listened",
+}
 
 
 def _mapping(value: Any, label: str, failures: list[str]) -> dict[str, Any]:
@@ -85,6 +109,50 @@ def _find_forbidden(value: Any, path: str, failures: list[str]) -> None:
     elif isinstance(value, list):
         for index, child in enumerate(value):
             _find_forbidden(child, f"{path}[{index}]", failures)
+
+
+def _validate_first_breath_contract(
+    story: dict[str, Any],
+    nodes: dict[str, Any],
+    messages: dict[str, Any],
+    source: str,
+    failures: list[str],
+) -> None:
+    """Lock the shipped first-breath ritual without constraining other stories."""
+    if story.get("story_id") != FIRST_BREATH_STORY_ID:
+        return
+
+    spring = nodes.get("spring")
+    if not isinstance(spring, dict):
+        failures.append(f"{source}.nodes.spring must define the first-breath ritual")
+    else:
+        actions = spring.get("actions")
+        if not isinstance(actions, list):
+            failures.append(
+                f"{source}.nodes.spring.actions must contain exactly three first-breath actions"
+            )
+        else:
+            if len(actions) != len(FIRST_BREATH_SPRING_ACTIONS):
+                failures.append(
+                    f"{source}.nodes.spring.actions must contain exactly three first-breath actions"
+                )
+            for index, expected in enumerate(FIRST_BREATH_SPRING_ACTIONS):
+                if index >= len(actions) or not isinstance(actions[index], dict):
+                    continue
+                action = actions[index]
+                for field, expected_value in expected.items():
+                    if action.get(field) != expected_value:
+                        failures.append(
+                            f"{source}.nodes.spring.actions[{index}].{field} must be "
+                            f"{expected_value!r}"
+                        )
+
+    missing_messages = sorted(FIRST_BREATH_MESSAGE_IDS - set(messages))
+    if missing_messages:
+        failures.append(
+            f"{source}.messages is missing first-breath events: "
+            + ", ".join(missing_messages)
+        )
 
 
 def validate_story(data: Any, source: str = "story") -> list[str]:
@@ -167,6 +235,8 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
         for message_id, message in messages.items():
             _text(message_id, f"{source}.messages.id", failures)
             _text(message, f"{source}.messages.{message_id}", failures)
+
+    _validate_first_breath_contract(story, nodes, messages, source, failures)
 
     if not dialogues:
         failures.append(f"{source}.dialogues must not be empty")

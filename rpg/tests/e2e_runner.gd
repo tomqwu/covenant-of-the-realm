@@ -238,14 +238,77 @@ func _run() -> void:
 	await _press_action(game, "引气术")
 	await _press_action(game, "引气术")
 	_expect(game.journey.phase_id() == "spring", "E2E 击败首领后打开泉室")
-	await _press_action(game, "静心引息")
+	_expect(game.exploration.map_id == ExplorationStateScript.CANGQUAN_SPRING_MAP_ID, "E2E 战斗路线汇入独立藏泉石室地图")
+	_expect(game.journey.first_breath_stage == "unstarted", "E2E 战斗路线从未开始的引息仪轨汇入")
+	game.get_node("%SceneTransition").finish()
+	await _settle()
+
+	await _place_at_spring(game, ExplorationStateScript.SPRING_WARM_POSITION, "E2E 乱序测试先到温脉位置")
+	var before_wrong_journey: Dictionary = game.journey.snapshot()
+	var before_wrong_exploration: Dictionary = game.exploration.snapshot()
+	var before_wrong_save := FileAccess.get_file_as_string(TEST_SAVE_PATH)
+	await _press_action(game, "月芽温脉")
+	_expect(game.journey.snapshot() == before_wrong_journey, "E2E 乱序温脉不修改完整旅程快照")
+	_expect(game.exploration.snapshot() == before_wrong_exploration, "E2E 乱序温脉不移动或替换石室位置")
+	_expect(FileAccess.get_file_as_string(TEST_SAVE_PATH) == before_wrong_save, "E2E 乱序提示不触发自动存档写入")
+	_expect(game.get_node("%MapCanvas").first_breath_visual_contract()["current_action"] == "listen_to_spring", "E2E 乱序后仍指向正确的听泉步骤而不死锁")
+
+	await _place_at_spring(game, ExplorationStateScript.SPRING_LISTEN_POSITION, "E2E 到达听泉辨脉位置")
+	await _press_action(game, "听泉辨脉")
+	_expect(game.journey.first_breath_stage == "listened" and game.journey.gathered_moonleaf, "E2E 第一步听泉完成且尚未消耗月芽草")
+	var listened_journey: Dictionary = game.journey.snapshot()
+	var listened_exploration: Dictionary = game.exploration.snapshot()
+	var listened_disk: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect(_snapshots_match(listened_disk["data"]["journey"], listened_journey), "E2E 听泉后完整旅程立即自动存档")
+	_expect(_snapshots_match(listened_disk["data"]["exploration"], listened_exploration), "E2E 听泉后石室地图与坐标立即自动存档")
+	game.queue_free()
+	await _settle()
+	game = scene.instantiate()
+	game.configure_save_path(TEST_SAVE_PATH)
+	game.configure_settings_path(TEST_SETTINGS_PATH)
+	root.add_child(game)
+	await _settle()
+	_expect(game.continue_game(), "E2E 可从新场景恢复听泉后的中间存档")
+	_expect(_snapshots_match(game.journey.snapshot(), listened_journey), "E2E 听泉重启恢复完整旅程快照")
+	_expect(_snapshots_match(game.exploration.snapshot(), listened_exploration), "E2E 听泉重启恢复完整石室地图与坐标")
+	_expect(game.get_node("%MapCanvas").first_breath_visual_contract()["current_action"] == "warm_meridians", "E2E 听泉恢复后准确指向月芽温脉")
+	game.get_node("%SceneTransition").finish()
+	await _settle()
+
+	await _place_at_spring(game, ExplorationStateScript.SPRING_WARM_POSITION, "E2E 到达月芽温脉位置")
+	await _press_action(game, "月芽温脉")
+	_expect(game.journey.first_breath_stage == "warmed" and not game.journey.gathered_moonleaf, "E2E 第二步温脉原子消耗月芽草")
+	var warmed_journey: Dictionary = game.journey.snapshot()
+	var warmed_exploration: Dictionary = game.exploration.snapshot()
+	var warmed_disk: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect(_snapshots_match(warmed_disk["data"]["journey"], warmed_journey), "E2E 温脉后完整旅程立即自动存档")
+	_expect(_snapshots_match(warmed_disk["data"]["exploration"], warmed_exploration), "E2E 温脉后石室地图与坐标立即自动存档")
+	game.queue_free()
+	await _settle()
+	game = scene.instantiate()
+	game.configure_save_path(TEST_SAVE_PATH)
+	game.configure_settings_path(TEST_SETTINGS_PATH)
+	root.add_child(game)
+	await _settle()
+	_expect(game.continue_game(), "E2E 可从新场景恢复温脉后的中间存档")
+	_expect(_snapshots_match(game.journey.snapshot(), warmed_journey), "E2E 温脉重启恢复完整旅程快照")
+	_expect(_snapshots_match(game.exploration.snapshot(), warmed_exploration), "E2E 温脉重启恢复完整石室地图与坐标")
+	_expect(game.get_node("%MapCanvas").first_breath_visual_contract()["current_action"] == "breakthrough", "E2E 温脉恢复后准确指向静坐引息")
+	game.get_node("%SceneTransition").finish()
+	await _settle()
+
+	await _place_at_spring(game, ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION, "E2E 到达静坐引息位置")
+	await _press_action(game, "静坐引息")
 	_expect(game.journey.phase_id() == "complete", "E2E 完成第一次引息")
+	_expect(game.journey.first_breath_stage == "completed" and game.journey.realm == "引息境一层", "E2E 最终步骤完成仪轨并更新境界")
 	_expect(game.get_node("%DescriptionLabel").text.contains("本节结算"), "E2E 显示章节结算")
 	_expect(game.get_node("%DescriptionLabel").text.contains("见闻 3/3"), "E2E 章节结算回显实际探索完成度")
 	_expect(game.get_node("%DescriptionLabel").text.contains("敌情 3/3"), "E2E 章节结算回显三痕辨势完成度")
 	_expect(game.get_node("%DescriptionLabel").text.contains("水尺扶正"), "E2E 章节结算回显扶尺选择")
 	_expect(game.get_node("%DescriptionLabel").text.contains("药篓归圃"), "E2E 章节结算回显药篓归圃选择")
-	_expect(SaveGameScript.read(TEST_SAVE_PATH)["data"]["journey"]["phase"] == "complete", "E2E 完成态已落盘")
+	var completed_disk: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect(_snapshots_match(completed_disk["data"]["journey"], game.journey.snapshot()), "E2E 完成态完整旅程已落盘")
+	_expect(_snapshots_match(completed_disk["data"]["exploration"], game.exploration.snapshot()), "E2E 完成态仍精确保留藏泉石室地图")
 	await _press_action(game, "回顾此行")
 	_expect(game.dialogue.active and game.dialogue.dialogue_id == "chapter_epilogue", "E2E 完成态进入章节余波对话")
 	_expect(game.get_node("%DialogueLabel").text.contains("沿途3处生活痕迹"), "E2E 余波回显实际见闻数量")
@@ -299,6 +362,8 @@ func _run() -> void:
 	await _press_action(resumed, "重游序章（重置进度）")
 	_expect(resumed.journey.phase_id() == "riverbank", "E2E 重游回到序章起点")
 	_expect(resumed.exploration.player_position == ExplorationStateScript.START_POSITION, "E2E 重游重置地图坐标")
+	_expect(resumed.exploration.map_id == ExplorationStateScript.DEFAULT_MAP_ID, "E2E 重游从藏泉石室清回渡口地图")
+	_expect(resumed.journey.first_breath_stage == "unstarted", "E2E 重游清空三步引息进度")
 	_expect(resumed.journey.enemy_intel.is_empty(), "E2E 重游只在明确重置时清空灵物志")
 	resumed._on_action("talk_to_companion")
 	resumed.skip_dialogue_to_response()
@@ -339,8 +404,18 @@ func _run() -> void:
 	resumed._render([])
 	await _trigger_semantic_action(resumed, "interact")
 	_expect(resumed.journey.phase_id() == "spring", "E2E 沿溪绕行不进入战斗即可到泉室")
+	_expect(resumed.exploration.map_id == ExplorationStateScript.CANGQUAN_SPRING_MAP_ID, "E2E 绕行与战斗汇入同一藏泉石室地图")
+	_expect(resumed.journey.first_breath_stage == "unstarted", "E2E 绕行不会跳过任何引息步骤")
 	_expect(resumed.journey.player_hp == 12 and resumed.journey.talismans == 1 and resumed.journey.round_number == 1, "E2E 绕行保留气血、符箓和战斗回合")
-	await _press_action(resumed, "静心引息")
+	resumed.get_node("%SceneTransition").finish()
+	await _settle()
+	await _place_at_spring(resumed, ExplorationStateScript.SPRING_LISTEN_POSITION, "E2E 绕行路线到达听泉位置")
+	await _press_action(resumed, "听泉辨脉")
+	await _place_at_spring(resumed, ExplorationStateScript.SPRING_WARM_POSITION, "E2E 绕行路线到达温脉位置")
+	await _press_action(resumed, "月芽温脉")
+	await _place_at_spring(resumed, ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION, "E2E 绕行路线到达引息位置")
+	await _press_action(resumed, "静坐引息")
+	_expect(resumed.journey.first_breath_stage == "completed", "E2E 绕行路线也完成同一三步引息")
 	_expect(resumed.get_node("%DescriptionLabel").text.contains("以信任同行"), "E2E 结算回应重游时的信任选择")
 	_expect(resumed.get_node("%DescriptionLabel").text.contains("敌情 0/3"), "E2E 绕行结算不伪造未调查敌情")
 	_expect(resumed.get_node("%DescriptionLabel").text.contains("月芽留根"), "E2E 结算回应重游时的采集选择")
@@ -376,6 +451,16 @@ func _run() -> void:
 		for failure in failures:
 			push_error(failure)
 		quit(1)
+
+
+func _place_at_spring(game: Node, position: Vector2, label: String) -> void:
+	_expect(game.exploration.restore({
+		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
+		"player_x": position.x,
+		"player_y": position.y,
+	}), label)
+	game._render([])
+	await _settle()
 
 
 func _press_action(game: Node, label: String) -> void:
@@ -416,6 +501,34 @@ func _trigger_semantic_action(game: Node, action_name: StringName) -> void:
 func _settle() -> void:
 	await process_frame
 	await process_frame
+
+
+func _snapshots_match(left: Variant, right: Variant) -> bool:
+	var left_type := typeof(left)
+	var right_type := typeof(right)
+	if left_type in [TYPE_INT, TYPE_FLOAT] and right_type in [TYPE_INT, TYPE_FLOAT]:
+		return is_equal_approx(float(left), float(right))
+	if left_type != right_type:
+		return false
+	if left_type == TYPE_DICTIONARY:
+		var left_dictionary: Dictionary = left
+		var right_dictionary: Dictionary = right
+		if left_dictionary.size() != right_dictionary.size():
+			return false
+		for key in right_dictionary:
+			if not left_dictionary.has(key) or not _snapshots_match(left_dictionary[key], right_dictionary[key]):
+				return false
+		return true
+	if left_type == TYPE_ARRAY:
+		var left_array: Array = left
+		var right_array: Array = right
+		if left_array.size() != right_array.size():
+			return false
+		for index in right_array.size():
+			if not _snapshots_match(left_array[index], right_array[index]):
+				return false
+		return true
+	return left == right
 
 
 func _expect(value: bool, label: String) -> void:

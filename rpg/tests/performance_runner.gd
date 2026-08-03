@@ -24,6 +24,8 @@ const COMPLETE_BATTLE_ACTIONS := [
 	"companion_support",
 	"use_art",
 	"use_art",
+	"listen_to_spring",
+	"warm_meridians",
 	"breakthrough",
 ]
 
@@ -163,6 +165,10 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		"battle_action_immediate": 0,
 		"battle_action_stable": 0,
 		"journal": 0,
+		"spring_unstarted": 0,
+		"spring_listened": 0,
+		"spring_warmed": 0,
+		"complete": 0,
 	}
 	var started := Time.get_ticks_usec()
 	for _cycle in range(cycles):
@@ -227,6 +233,36 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		await process_frame
 		await process_frame
 		state_peaks["journal"] = maxi(int(state_peaks["journal"]), _count_nodes(instance))
+		instance.close_journal()
+		await process_frame
+		instance._on_action("retreat")
+		instance._on_action("bypass_enemy")
+		instance.get_node("%SceneTransition").finish()
+		await process_frame
+		await process_frame
+		state_peaks["spring_unstarted"] = maxi(int(state_peaks["spring_unstarted"]), _count_nodes(instance))
+		var spring_detail_contract: Dictionary = detail_layer.map_contract()
+		maximum_detail_rebuilds = maxi(maximum_detail_rebuilds, int(spring_detail_contract["rebuild_count"]))
+		if int(spring_detail_contract["rebuild_count"]) != 2 or bool(spring_detail_contract["visible"]):
+			failures.append("藏泉石室必须隐藏山道细节且不得重建细节缓存")
+
+		instance._on_action("listen_to_spring")
+		await process_frame
+		await process_frame
+		state_peaks["spring_listened"] = maxi(int(state_peaks["spring_listened"]), _count_nodes(instance))
+		instance._on_action("warm_meridians")
+		await process_frame
+		await process_frame
+		state_peaks["spring_warmed"] = maxi(int(state_peaks["spring_warmed"]), _count_nodes(instance))
+		instance._on_action("breakthrough")
+		instance.get_node("%SceneTransition").finish()
+		await process_frame
+		await process_frame
+		state_peaks["complete"] = maxi(int(state_peaks["complete"]), _count_nodes(instance))
+		var complete_detail_contract: Dictionary = detail_layer.map_contract()
+		maximum_detail_rebuilds = maxi(maximum_detail_rebuilds, int(complete_detail_contract["rebuild_count"]))
+		if int(complete_detail_contract["rebuild_count"]) != 2 or bool(complete_detail_contract["visible"]):
+			failures.append("三步引息与完成态不得重建或重新显示地图细节")
 		for state_peak in state_peaks.values():
 			maximum_nodes = maxi(maximum_nodes, int(state_peak))
 		instance.queue_free()

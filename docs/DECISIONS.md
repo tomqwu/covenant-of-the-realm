@@ -4,6 +4,33 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — First breath is a saved three-point spatial ritual
+
+The chapter now enters a third micro-map, `cangquan_spring`, after the mountain path. Three fixed,
+reachable points remain present in the chamber and express one ordered ritual: listen at the spring
+to distinguish its pulse, warm the meridians with moonleaf at the stone bed, then sit at the breath
+stone to draw in the first breath (`听泉辨脉 → 月芽温脉 → 静坐引息`). Keyboard, mouse, and
+controller interaction all reach the same domain actions. Presentation may show every point, but the
+domain alone owns the order. A repeated or out-of-order action returns
+`first_breath_out_of_order` atomically: the journey snapshot, inventory, save generation, and scene
+position do not change; presentation changes only to show the Chinese recovery hint. Only the
+warming step consumes the moonleaf.
+
+Save v14 records one of four stable stages — `unstarted`, `listened`, `warmed`, or `completed` —
+plus the stable map and normalized coordinate. Every successful ritual step autosaves, so scene
+destruction, title return, and continuation restore the exact stage and location. Current saves
+strictly pair riverbank with `zhaohe_ferry`, mountain-path/battle with `cangquan_path`, and
+spring/complete with `cangquan_spring`; contradictory stage, phase, map, inventory, or realm states
+fail validation. V1–v13 migration preserves a completed chapter as `completed`, resets every other
+legacy snapshot to `unstarted`, and normalizes spring/complete saves to their authored spring
+positions rather than inventing intermediate progress. Explicit chapter replay clears the ritual
+stage with the rest of the route state.
+
+The lifecycle evidence remains inside the existing budget: 110 static nodes, 120 maximum, 111 in
+each of the three spring states, 113 at completion, and zero root-child leaks. Two consecutive
+34-PNG reference-capture runs produce identical SHA-256 sets, including the three ritual states and
+the completed scene.
+
 ### 2026-08-03 — Sparse map details remain deterministic presentation
 
 The existing 256×32 ferry atlas now keeps its original eight ground tiles unchanged in row zero

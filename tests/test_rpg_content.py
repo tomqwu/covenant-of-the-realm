@@ -15,6 +15,64 @@ def test_repository_story_is_valid() -> None:
     assert validate_story(story()) == []
 
 
+def test_first_breath_story_locks_spatial_ritual_contract() -> None:
+    data = story()
+    data["nodes"]["spring"]["actions"][0]["id"] = "skip_listening"
+    data["nodes"]["spring"]["actions"][1]["label"] = "强行冲脉"
+    data["nodes"]["spring"]["actions"][2]["possible_targets"] = ["spring"]
+    data["messages"].pop("first_breath_out_of_order")
+    failures = validate_story(data)
+    assert (
+        "story.nodes.spring.actions[0].id must be 'listen_to_spring'" in failures
+    )
+    assert "story.nodes.spring.actions[1].label must be '月芽温脉'" in failures
+    assert (
+        "story.nodes.spring.actions[2].possible_targets must be ['complete']"
+        in failures
+    )
+    assert (
+        "story.messages is missing first-breath events: first_breath_out_of_order"
+        in failures
+    )
+
+    data = story()
+    data["nodes"]["spring"]["actions"].append(
+        {"id": "extra_breath", "label": "多余步骤", "possible_targets": ["spring"]}
+    )
+    assert (
+        "story.nodes.spring.actions must contain exactly three first-breath actions"
+        in validate_story(data)
+    )
+
+
+def test_first_breath_contract_does_not_constrain_other_story_ids() -> None:
+    data = story()
+    data["story_id"] = "another_original_story"
+    data["nodes"]["spring"]["actions"][0]["label"] = "另一故事的行动"
+    data["messages"].pop("first_breath_out_of_order")
+    assert validate_story(data) == []
+
+
+def test_first_breath_contract_rejects_malformed_spring_shapes() -> None:
+    data = story()
+    data["nodes"]["spring"] = []
+    assert (
+        "story.nodes.spring must define the first-breath ritual"
+        in validate_story(data)
+    )
+
+    data = story()
+    data["nodes"]["spring"]["actions"] = {}
+    assert (
+        "story.nodes.spring.actions must contain exactly three first-breath actions"
+        in validate_story(data)
+    )
+
+    data = story()
+    data["nodes"]["spring"]["actions"][1] = []
+    assert "story.nodes.spring.actions[1] must be an object" in validate_story(data)
+
+
 def test_rejects_non_object_and_missing_contract() -> None:
     assert validate_story([]) == ["story must be an object"]
     failures = validate_story({"schema_version": 2})

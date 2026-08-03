@@ -156,11 +156,21 @@
     "spring": {
       "kind": "cultivation",
       "title": "藏泉石室",
-      "description": "泉息从石脉间涌出。砚青守住洞口，你终于能安静梳理体内灵气。",
+      "description": "泉息从石脉间涌出。砚青守住洞口；你须先听泉辨脉，再以月芽温脉，最后静坐引息。",
       "actions": [
         {
+          "id": "listen_to_spring",
+          "label": "听泉辨脉",
+          "possible_targets": ["spring"]
+        },
+        {
+          "id": "warm_meridians",
+          "label": "月芽温脉",
+          "possible_targets": ["spring"]
+        },
+        {
           "id": "breakthrough",
-          "label": "静心引息",
+          "label": "静坐引息",
           "possible_targets": ["complete"]
         }
       ]
@@ -370,7 +380,10 @@
     "regular_enemy_won": "眼前灵物退开，石门后的泉息却让更沉重的甲片开始摩擦。",
     "boss_arrived": "岩甲兽守巢者撞开石门。砚青替你重新包扎，提醒你先看清它的动作再出手。",
     "battle_won": "{enemy}退出山道，通往泉室的道路已经打开。",
-    "breakthrough": "月芽草化开寒意，你完成第一次引息，踏入引息境一层。",
+    "spring_listened": "你在泉沿听出水声一急一缓，呼吸渐渐与石脉同拍。",
+    "meridians_warmed": "月芽草在舌下化开寒意，温润药性护住尚未启灵的经脉。",
+    "breakthrough": "你在石纹前静坐，引入第一缕泉息，灵气完成周天，踏入引息境一层。",
+    "first_breath_out_of_order": "气息未能接续。先听泉辨脉，再以月芽温脉，最后静坐引息。",
     "review": "渡口、月芽田与藏泉连成了你的第一段修行记忆。",
     "chapter_closed": "序章进度已经保存。山河会在你下次归来时继续展开。",
     "chapter_replayed": "序章状态已经重置。你再次站在照禾渡口。",

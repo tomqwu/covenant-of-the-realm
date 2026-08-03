@@ -1,5 +1,7 @@
 extends SceneTree
 
+const JourneyStateScript := preload("res://src/domain/journey_state.gd")
+const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const SAVE_PATH := "user://automated-input-save.json"
@@ -207,6 +209,65 @@ func _run() -> void:
 	game.get_node("%AudioManager").set_audio_enabled(false)
 	game.queue_free()
 	await _settle()
+
+	SaveGameScript.remove(SAVE_PATH)
+	var breath_journey = JourneyStateScript.new()
+	breath_journey.choose("talk_to_companion")
+	breath_journey.choose("gather_moonleaf")
+	breath_journey.choose("enter_spring")
+	breath_journey.choose("bypass_enemy")
+	var breath_exploration = ExplorationStateScript.new()
+	_expect(breath_exploration.transition_to(ExplorationStateScript.CANGQUAN_SPRING_MAP_ID), "输入验收建立合法藏泉石室地图")
+	_expect(SaveGameScript.write(breath_journey.snapshot(), breath_exploration.snapshot(), SAVE_PATH)["ok"], "输入验收建立未开始的三步引息存档")
+
+	game = scene.instantiate()
+	game.configure_save_path(SAVE_PATH)
+	game.configure_settings_path(SETTINGS_PATH)
+	root.add_child(game)
+	await _settle()
+	_expect(game.continue_game(), "输入验收从标题恢复藏泉石室")
+	game.get_node("%SceneTransition").finish()
+	await _settle()
+
+	_expect(game.exploration.restore({
+		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
+		"player_x": ExplorationStateScript.SPRING_LISTEN_POSITION.x,
+		"player_y": ExplorationStateScript.SPRING_LISTEN_POSITION.y,
+	}), "输入验收到达听泉辨脉位置")
+	game._render([])
+	await _settle()
+	var listen_button := _find_action_button(game, "听泉辨脉")
+	_expect(listen_button != null and listen_button.focus_mode == Control.FOCUS_NONE, "石室鼠标行动存在且不抢探索焦点")
+	if listen_button != null:
+		await _trigger_mouse_click(listen_button.get_global_rect().get_center())
+	_expect(game.journey.first_breath_stage == "listened", "真实鼠标点击完成听泉辨脉")
+	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "listened", "鼠标步骤立即写入 v14 存档")
+
+	_expect(game.exploration.restore({
+		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
+		"player_x": ExplorationStateScript.SPRING_WARM_POSITION.x,
+		"player_y": ExplorationStateScript.SPRING_WARM_POSITION.y,
+	}), "输入验收到达月芽温脉位置")
+	game._render([])
+	await _settle()
+	await _trigger_key(KEY_E)
+	_expect(game.journey.first_breath_stage == "warmed" and not game.journey.gathered_moonleaf, "真实键盘 E 完成月芽温脉并消耗灵草")
+	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "warmed", "键盘步骤立即写入 v14 存档")
+
+	_expect(game.exploration.restore({
+		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
+		"player_x": ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION.x,
+		"player_y": ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION.y,
+	}), "输入验收到达静坐引息位置")
+	game._render([])
+	await _settle()
+	await _trigger_joy_button(JOY_BUTTON_A)
+	_expect(game.journey.first_breath_stage == "completed" and game.journey.phase_id() == "complete", "真实手柄 A 完成静坐引息")
+	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "completed", "手柄步骤立即写入 v14 存档")
+
+	game.get_node("%AudioManager").set_audio_enabled(false)
+	game.queue_free()
+	await _settle()
 	SaveGameScript.remove(SAVE_PATH)
 	SettingsStoreScript.remove(SETTINGS_PATH)
 	if failures.is_empty():
@@ -216,6 +277,13 @@ func _run() -> void:
 		for failure in failures:
 			push_error(failure)
 		quit(1)
+
+
+func _find_action_button(game: Node, label: String) -> Button:
+	for child in game.get_node("%Actions").get_children():
+		if child is Button and child.text == label:
+			return child
+	return null
 
 
 func _trigger_action(action_name: StringName) -> void:

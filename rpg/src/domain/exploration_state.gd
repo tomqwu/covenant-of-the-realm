@@ -18,8 +18,12 @@ const APPROACH_MOSS_SHELL := "approach_moss_shell"
 const APPROACH_STONE_PUPPET := "approach_stone_puppet"
 const BYPASS_ENEMY := "bypass_enemy"
 const RETURN_TO_FERRY := "return_to_ferry"
+const LISTEN_TO_SPRING := "listen_to_spring"
+const WARM_MERIDIANS := "warm_meridians"
+const BREAKTHROUGH := "breakthrough"
 const DEFAULT_MAP_ID := "zhaohe_ferry"
 const MOUNTAIN_PATH_MAP_ID := "cangquan_path"
+const CANGQUAN_SPRING_MAP_ID := "cangquan_spring"
 
 # Positions are normalized world coordinates. Rendering resolution never changes
 # traversal, collision, or interaction outcomes.
@@ -43,6 +47,10 @@ const PATH_MOSS_POSITION := Vector2(0.56, 0.48)
 const PATH_PUPPET_POSITION := Vector2(0.80, 0.25)
 const PATH_BYPASS_POSITION := Vector2(0.86, 0.18)
 const PATH_RETREAT_POSITION := Vector2(0.64, 0.44)
+const SPRING_START_POSITION := Vector2(0.7917, 0.625)
+const SPRING_LISTEN_POSITION := Vector2(0.4306, 0.625)
+const SPRING_WARM_POSITION := Vector2(0.7083, 0.525)
+const SPRING_BREAKTHROUGH_POSITION := Vector2(0.5417, 0.325)
 const MOVE_SPEED := 0.30
 const MAX_STEP_SECONDS := 0.10
 const INTERACTION_RADIUS := 0.065
@@ -62,6 +70,8 @@ const PATH_OBSTACLES: Array[Rect2] = [
 	Rect2(0.77, 0.48, 0.17, 0.20),
 	Rect2(0.28, 0.68, 0.16, 0.17),
 ]
+const SPRING_WALK_BOUNDS := Rect2(0.16, 0.18, 0.68, 0.50)
+const SPRING_OBSTACLES: Array[Rect2] = [Rect2(0.46, 0.50, 0.14, 0.19)]
 
 var player_position := START_POSITION
 var map_id := DEFAULT_MAP_ID
@@ -88,6 +98,14 @@ func interaction_action(
 	basket_response: String = "unanswered",
 	enemy_intel: Array = []
 ) -> String:
+	if map_id == CANGQUAN_SPRING_MAP_ID:
+		if player_position.distance_to(SPRING_LISTEN_POSITION) <= INTERACTION_RADIUS:
+			return LISTEN_TO_SPRING
+		if player_position.distance_to(SPRING_WARM_POSITION) <= INTERACTION_RADIUS:
+			return WARM_MERIDIANS
+		if player_position.distance_to(SPRING_BREAKTHROUGH_POSITION) <= INTERACTION_RADIUS:
+			return BREAKTHROUGH
+		return ""
 	if map_id == MOUNTAIN_PATH_MAP_ID:
 		if player_position.distance_to(PATH_RETURN_POSITION) <= INTERACTION_RADIUS:
 			return RETURN_TO_FERRY
@@ -150,7 +168,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 
 
 static func supports_map_id(candidate: Variant) -> bool:
-	return typeof(candidate) == TYPE_STRING and candidate in [DEFAULT_MAP_ID, MOUNTAIN_PATH_MAP_ID]
+	return typeof(candidate) == TYPE_STRING and candidate in [DEFAULT_MAP_ID, MOUNTAIN_PATH_MAP_ID, CANGQUAN_SPRING_MAP_ID]
 
 
 func transition_to(next_map_id: String, spawn_position := Vector2(-1, -1)) -> bool:
@@ -158,7 +176,13 @@ func transition_to(next_map_id: String, spawn_position := Vector2(-1, -1)) -> bo
 		return false
 	var next_position: Vector2 = spawn_position
 	if next_position.x < 0.0 or next_position.y < 0.0:
-		next_position = START_POSITION if next_map_id == DEFAULT_MAP_ID else PATH_START_POSITION
+		match next_map_id:
+			DEFAULT_MAP_ID:
+				next_position = START_POSITION
+			MOUNTAIN_PATH_MAP_ID:
+				next_position = PATH_START_POSITION
+			CANGQUAN_SPRING_MAP_ID:
+				next_position = SPRING_START_POSITION
 	if not _is_walkable_on_map(next_position, next_map_id):
 		return false
 	map_id = next_map_id
@@ -183,8 +207,15 @@ func _is_walkable(position: Vector2) -> bool:
 
 
 func _is_walkable_on_map(position: Vector2, target_map_id: String) -> bool:
-	var bounds := WALK_BOUNDS if target_map_id == DEFAULT_MAP_ID else PATH_WALK_BOUNDS
-	var obstacles := OBSTACLES if target_map_id == DEFAULT_MAP_ID else PATH_OBSTACLES
+	var bounds := WALK_BOUNDS
+	var obstacles := OBSTACLES
+	match target_map_id:
+		MOUNTAIN_PATH_MAP_ID:
+			bounds = PATH_WALK_BOUNDS
+			obstacles = PATH_OBSTACLES
+		CANGQUAN_SPRING_MAP_ID:
+			bounds = SPRING_WALK_BOUNDS
+			obstacles = SPRING_OBSTACLES
 	var safe_bounds := bounds.grow_individual(
 		-PLAYER_EXTENTS.x,
 		-PLAYER_EXTENTS.y,

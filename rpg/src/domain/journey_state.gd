@@ -29,6 +29,8 @@ const GUARD := "guard"
 const COMPANION_SUPPORT := "companion_support"
 const DEPLOY_SPRING_LAMP := "deploy_spring_lamp"
 const RETREAT := "retreat"
+const LISTEN_TO_SPRING := "listen_to_spring"
+const WARM_MERIDIANS := "warm_meridians"
 const BREAKTHROUGH := "breakthrough"
 const REVIEW_JOURNEY := "review_journey"
 const RETURN_TO_TITLE := "return_to_title"
@@ -56,6 +58,17 @@ const DISCOVERY_FERRY_WATERMARK := "ferry_watermark"
 const DISCOVERY_SPRING_SEAM := "spring_seam"
 const DISCOVERY_ABANDONED_BASKET := "abandoned_basket"
 const DISCOVERY_IDS := [DISCOVERY_FERRY_WATERMARK, DISCOVERY_SPRING_SEAM, DISCOVERY_ABANDONED_BASKET]
+const FIRST_BREATH_UNSTARTED := "unstarted"
+const FIRST_BREATH_LISTENED := "listened"
+const FIRST_BREATH_WARMED := "warmed"
+const FIRST_BREATH_COMPLETED := "completed"
+const FIRST_BREATH_STAGES := [
+	FIRST_BREATH_UNSTARTED,
+	FIRST_BREATH_LISTENED,
+	FIRST_BREATH_WARMED,
+	FIRST_BREATH_COMPLETED,
+]
+const FIRST_BREATH_ACTIONS := [LISTEN_TO_SPRING, WARM_MERIDIANS, BREAKTHROUGH]
 
 var phase := Phase.RIVERBANK
 var gathered_moonleaf := false
@@ -78,6 +91,7 @@ var discoveries: Array[String] = []
 var ferryman_response := FERRYMAN_UNANSWERED
 var basket_response := BASKET_UNANSWERED
 var enemy_intel: Array[String] = []
+var first_breath_stage := FIRST_BREATH_UNSTARTED
 
 
 func phase_id() -> String:
@@ -143,7 +157,7 @@ func available_actions() -> PackedStringArray:
 			battle_actions.append(RETREAT)
 			return battle_actions
 		Phase.SPRING:
-			return PackedStringArray([BREAKTHROUGH])
+			return PackedStringArray(FIRST_BREATH_ACTIONS)
 		_:
 			return PackedStringArray([REVIEW_JOURNEY, RETURN_TO_TITLE, REPLAY_CHAPTER])
 
@@ -184,11 +198,7 @@ func choose(action_id: String) -> Dictionary:
 		Phase.BATTLE:
 			return _choose_battle(action_id)
 		Phase.SPRING:
-			if action_id == BREAKTHROUGH:
-				gathered_moonleaf = false
-				realm = "引息境一层"
-				phase = Phase.COMPLETE
-				return _result(true, ["breakthrough"])
+			return _choose_first_breath(action_id)
 		Phase.COMPLETE:
 			if action_id == REVIEW_JOURNEY:
 				return _result(true, ["review"])
@@ -223,6 +233,7 @@ func snapshot() -> Dictionary:
 		"ferryman_response": ferryman_response,
 		"basket_response": basket_response,
 		"enemy_intel": enemy_intel.duplicate(),
+		"first_breath_stage": first_breath_stage,
 	}
 
 
@@ -249,6 +260,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		"ferryman_response",
 		"basket_response",
 		"enemy_intel",
+		"first_breath_stage",
 	]
 	for key in required_keys:
 		if not snapshot_data.has(key):
@@ -272,6 +284,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if typeof(snapshot_data["basket_response"]) != TYPE_STRING:
 		return false
 	if not _valid_enemy_intel(snapshot_data["enemy_intel"]):
+		return false
+	if typeof(snapshot_data["first_breath_stage"]) != TYPE_STRING:
 		return false
 	if not EnemyCatalogScript.supports(snapshot_data["enemy_id"]):
 		return false
@@ -335,6 +349,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	var next_enemy_intel: Array[String] = []
 	for intel_id in snapshot_data["enemy_intel"]:
 		next_enemy_intel.append(intel_id)
+	var next_first_breath_stage: String = snapshot_data["first_breath_stage"]
 	if not _valid_phase_invariants(
 		next_phase,
 		next_gathered,
@@ -356,7 +371,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_discoveries,
 		next_ferryman_response,
 		next_basket_response,
-		next_enemy_intel
+		next_enemy_intel,
+		next_first_breath_stage
 	):
 		return false
 
@@ -381,6 +397,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	ferryman_response = next_ferryman_response
 	basket_response = next_basket_response
 	enemy_intel = next_enemy_intel
+	first_breath_stage = next_first_breath_stage
 	return true
 
 
@@ -493,6 +510,41 @@ func _choose_battle(action_id: String) -> Dictionary:
 		return _result(true, events)
 	round_number += 1
 	return _result(true, events)
+
+
+func _choose_first_breath(action_id: String) -> Dictionary:
+	if action_id not in FIRST_BREATH_ACTIONS:
+		return _result(false, ["invalid_action"])
+	var expected_action := ""
+	match first_breath_stage:
+		FIRST_BREATH_UNSTARTED:
+			expected_action = LISTEN_TO_SPRING
+		FIRST_BREATH_LISTENED:
+			expected_action = WARM_MERIDIANS
+		FIRST_BREATH_WARMED:
+			expected_action = BREAKTHROUGH
+	if action_id != expected_action:
+		return _result(false, ["first_breath_out_of_order"])
+	match action_id:
+		LISTEN_TO_SPRING:
+			if not gathered_moonleaf:
+				return _result(false, ["first_breath_out_of_order"])
+			first_breath_stage = FIRST_BREATH_LISTENED
+			return _result(true, ["spring_listened"])
+		WARM_MERIDIANS:
+			if not gathered_moonleaf:
+				return _result(false, ["first_breath_out_of_order"])
+			gathered_moonleaf = false
+			first_breath_stage = FIRST_BREATH_WARMED
+			return _result(true, ["meridians_warmed"])
+		BREAKTHROUGH:
+			if gathered_moonleaf:
+				return _result(false, ["first_breath_out_of_order"])
+			first_breath_stage = FIRST_BREATH_COMPLETED
+			realm = "引息境一层"
+			phase = Phase.COMPLETE
+			return _result(true, ["breakthrough"])
+	return _result(false, ["invalid_action"])
 
 
 func _result(ok: bool, events: Array[String]) -> Dictionary:
@@ -628,6 +680,7 @@ func _reset_chapter() -> void:
 	ferryman_response = FERRYMAN_UNANSWERED
 	basket_response = BASKET_UNANSWERED
 	enemy_intel.clear()
+	first_breath_stage = FIRST_BREATH_UNSTARTED
 
 
 func _integer_in_range(value: Variant, minimum: int, maximum: int) -> bool:
@@ -658,7 +711,8 @@ func _valid_phase_invariants(
 	next_discoveries: Array[String],
 	next_ferryman_response: String,
 	next_basket_response: String,
-	next_enemy_intel: Array[String]
+	next_enemy_intel: Array[String],
+	next_first_breath_stage: String
 ) -> bool:
 	if next_ferryman_response not in FERRYMAN_RESPONSES:
 		return false
@@ -683,21 +737,21 @@ func _valid_phase_invariants(
 		return false
 	if next_moonleaf_method not in MOONLEAF_METHODS:
 		return false
-	if next_phase == Phase.COMPLETE:
-		if next_moonleaf_method == MOONLEAF_UNSELECTED:
-			return false
-	elif next_gathered != (next_moonleaf_method != MOONLEAF_UNSELECTED):
+	if next_first_breath_stage not in FIRST_BREATH_STAGES:
 		return false
+	var moonleaf_selected := next_moonleaf_method != MOONLEAF_UNSELECTED
 	var next_enemy_max := EnemyCatalogScript.max_hp(next_enemy_id)
 	if next_phase == Phase.RIVERBANK:
-		return next_realm == "凡身" and next_player_hp > 0 and next_enemy_hp == next_enemy_max and next_round == 1 and next_companion_supports == 1 and next_spring_lamps == 1 and next_lamp_turns == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
+		return next_first_breath_stage == FIRST_BREATH_UNSTARTED and next_gathered == moonleaf_selected and next_realm == "凡身" and next_player_hp > 0 and next_enemy_hp == next_enemy_max and next_round == 1 and next_companion_supports == 1 and next_spring_lamps == 1 and next_lamp_turns == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
 	if next_phase == Phase.MOUNTAIN_PATH:
-		return next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp == next_enemy_max and next_round == 1 and next_lamp_turns == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
+		return next_first_breath_stage == FIRST_BREATH_UNSTARTED and moonleaf_selected and next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp == next_enemy_max and next_round == 1 and next_lamp_turns == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
 	if next_phase == Phase.BATTLE:
-		return next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp > 0 and (next_lamp_turns == 0 or next_spring_lamps == 0)
+		return next_first_breath_stage == FIRST_BREATH_UNSTARTED and moonleaf_selected and next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp > 0 and (next_lamp_turns == 0 or next_spring_lamps == 0)
 	if next_phase == Phase.SPRING:
-		return next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
-	return next_realm == "引息境一层" and not next_gathered and next_player_hp > 0 and next_enemy_hp == 0 and next_setbacks >= 0 and next_armor_break_turns == 0 and next_focus_turns == 0
+		var valid_spring_stage := next_first_breath_stage in [FIRST_BREATH_UNSTARTED, FIRST_BREATH_LISTENED, FIRST_BREATH_WARMED]
+		var expected_gathered := next_first_breath_stage != FIRST_BREATH_WARMED
+		return valid_spring_stage and moonleaf_selected and next_gathered == expected_gathered and next_realm == "凡身" and next_talked and next_player_hp > 0 and next_enemy_hp == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
+	return next_first_breath_stage == FIRST_BREATH_COMPLETED and moonleaf_selected and next_realm == "引息境一层" and not next_gathered and next_player_hp > 0 and next_enemy_hp == 0 and next_setbacks >= 0 and next_armor_break_turns == 0 and next_focus_turns == 0
 
 
 func _valid_discoveries(candidate: Variant) -> bool:

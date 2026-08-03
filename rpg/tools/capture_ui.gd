@@ -4,6 +4,7 @@ const OUTPUT_DIR := "res://../docs/concepts/gameplay-ui-v1"
 const CAPTURE_SAVE_PATH := "user://capture-ui-save.json"
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
+const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const CAPTURE_SETTINGS_PATH := "user://capture-ui-settings.json"
 
 
@@ -198,7 +199,42 @@ func _capture_flow() -> void:
 	instance.get_node("%SceneTransition").finish()
 	await _settle()
 	await _save_frame("03-spring-chamber.png")
+	# The player cannot physically reach the first ritual point before the
+	# short victory banner expires. Teleported reference states clear it so
+	# the captures represent what a player sees on arrival at each point.
+	instance.get_node("%MapCanvas").feedback_remaining = 0.0
+	instance.get_node("%MapCanvas").feedback_text = ""
+	instance.get_node("%MapCanvas").queue_redraw()
 
+	var listen_position: Vector2 = ExplorationStateScript.SPRING_LISTEN_POSITION
+	assert(instance.exploration.restore({
+		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
+		"player_x": listen_position.x,
+		"player_y": listen_position.y,
+	}), "听泉辨脉截图点必须可以恢复")
+	instance._render([])
+	instance._on_action("listen_to_spring")
+	await _settle()
+	await _save_frame("03-spring-listened.png")
+
+	var warm_position: Vector2 = ExplorationStateScript.SPRING_WARM_POSITION
+	assert(instance.exploration.restore({
+		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
+		"player_x": warm_position.x,
+		"player_y": warm_position.y,
+	}), "月芽温脉截图点必须可以恢复")
+	instance._render([])
+	instance._on_action("warm_meridians")
+	await _settle()
+	await _save_frame("03-moonleaf-warmed.png")
+
+	var breakthrough_position: Vector2 = ExplorationStateScript.SPRING_BREAKTHROUGH_POSITION
+	assert(instance.exploration.restore({
+		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
+		"player_x": breakthrough_position.x,
+		"player_y": breakthrough_position.y,
+	}), "静坐引息截图点必须可以恢复")
+	instance._render([])
 	instance._on_action("breakthrough")
 	instance.get_node("%SceneTransition").finish()
 	await _settle()
