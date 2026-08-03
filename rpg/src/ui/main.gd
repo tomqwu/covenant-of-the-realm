@@ -67,6 +67,7 @@ var settings_path := SettingsStoreScript.DEFAULT_PATH
 var settings := SettingsStoreScript.defaults()
 var is_playing := false
 var autosave_elapsed := 0.0
+var save_recovery_pending := false
 var dialogue_history_visible := false
 var dialogue_reveal_elapsed := 0.0
 var journal_previous_focus: Control = null
@@ -666,6 +667,7 @@ func _begin_new_game() -> void:
 	dialogue_history_visible = false
 	nearby_action_id = ""
 	autosave_elapsed = 0.0
+	save_recovery_pending = false
 	is_playing = true
 	title_overlay.hide()
 	pause_overlay.hide()
@@ -686,27 +688,31 @@ func continue_game() -> bool:
 	if new_game_confirmation_visible:
 		cancel_new_game_confirmation()
 		return false
-	var loaded: Dictionary = SaveGameScript.read(save_path)
-	var decoded := _decode_save(loaded)
+	var selection := _decodable_save()
+	var loaded: Dictionary = selection["loaded"]
+	var decoded: Dictionary = selection["decoded"]
 	if not decoded["ok"]:
 		_refresh_title_state()
 		return false
 	journey = decoded["journey"]
 	exploration = decoded["exploration"]
 	dialogue = decoded["dialogue"]
+	save_recovery_pending = loaded["recovered_from_temporary"] or loaded["recovered_from_backup"]
 	is_playing = true
 	autosave_elapsed = 0.0
 	title_overlay.hide()
 	pause_overlay.hide()
 	journal_overlay.hide()
 	var load_event := "save_loaded"
-	if loaded["recovered_from_backup"]:
+	if loaded["recovered_from_temporary"]:
+		load_event = "save_loaded_temporary"
+	elif loaded["recovered_from_backup"]:
 		load_event = "save_loaded_backup"
 	elif loaded["migrated_from_version"] > 0:
 		load_event = "save_migrated"
 	_render([load_event])
-	if loaded["migrated_from_version"] > 0:
-		_save_game()
+	if save_recovery_pending or loaded["migrated_from_version"] > 0:
+		_save_game(save_recovery_pending)
 	return true
 
 
@@ -740,12 +746,15 @@ func return_to_title() -> void:
 		continue_button.grab_focus.call_deferred()
 
 
-func _save_game() -> bool:
+func _save_game(preserve_existing_backup: bool = false) -> bool:
 	if not is_playing:
 		return false
-	var result: Dictionary = SaveGameScript.write(journey.snapshot(), exploration.snapshot(), save_path, dialogue.snapshot())
+	var protect_recovery := preserve_existing_backup or save_recovery_pending
+	var result: Dictionary = SaveGameScript.write(journey.snapshot(), exploration.snapshot(), save_path, dialogue.snapshot(), protect_recovery)
 	if not result["ok"]:
 		event_label.text = "自动存档失败（%s）。当前游戏仍可继续。" % result["reason"]
+	else:
+		save_recovery_pending = false
 	return result["ok"]
 
 
@@ -753,8 +762,9 @@ func _refresh_title_state() -> void:
 	new_game_confirmation_visible = false
 	continue_button.text = "继续旅程"
 	_set_title_settings_disabled(false)
-	var loaded: Dictionary = SaveGameScript.read(save_path)
-	var decoded := _decode_save(loaded)
+	var selection := _decodable_save()
+	var loaded: Dictionary = selection["loaded"]
+	var decoded: Dictionary = selection["decoded"]
 	continue_button.disabled = not decoded["ok"]
 	if decoded["ok"]:
 		var phase_name := _phase_display_name(str(loaded["data"]["journey"].get("phase", "")))
@@ -773,8 +783,8 @@ func _refresh_title_state() -> void:
 
 func _show_new_game_confirmation() -> void:
 	new_game_confirmation_visible = true
-	var loaded: Dictionary = SaveGameScript.read(save_path)
-	var decoded := _decode_save(loaded)
+	var selection := _decodable_save()
+	var decoded: Dictionary = selection["decoded"]
 	title_status.text = "要删除现有进度与备份吗？此操作无法撤销。" if decoded["ok"] else "要删除异常存档与备份吗？此操作无法撤销。"
 	continue_button.disabled = false
 	continue_button.text = "取消，保留存档"
@@ -795,6 +805,7 @@ func _has_local_save_artifact() -> bool:
 		FileAccess.file_exists(save_path)
 		or FileAccess.file_exists(save_path + ".bak")
 		or FileAccess.file_exists(save_path + ".tmp")
+		or FileAccess.file_exists(save_path + ".repair")
 	)
 
 
@@ -858,6 +869,16 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 		"exploration": restored_exploration,
 		"dialogue": restored_dialogue,
 	}
+
+
+func _decodable_save() -> Dictionary:
+	var candidates: Array[Dictionary] = SaveGameScript.read_candidates(save_path)
+	for loaded in candidates:
+		var decoded := _decode_save(loaded)
+		if decoded["ok"]:
+			return {"loaded": loaded, "decoded": decoded}
+	var failure: Dictionary = SaveGameScript.read(save_path)
+	return {"loaded": failure, "decoded": _decode_save(failure)}
 
 
 func _start_companion_dialogue() -> Dictionary:

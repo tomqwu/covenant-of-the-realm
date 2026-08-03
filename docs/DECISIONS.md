@@ -4,6 +4,28 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Journey saves keep a validated recovery generation
+
+The journey transaction keeps three deliberate candidates without changing save v12: the committed
+primary file, a fully written interrupted temporary file, and the previous committed primary as a
+long-lived backup. A valid primary wins; when it is missing, malformed, or domain-invalid, recovery
+tries a valid temporary candidate before the older backup. Every v1–v11 migration now passes the
+same current Journey, Exploration, and Dialogue restoration checks before it can be selected.
+The UI may reject a structurally valid candidate whose dialogue position no longer maps to current
+authored content and continue to the next validated candidate. Successful recovery immediately
+rewrites the selected state as the primary file.
+
+An unsupported-version or different-story artifact in the primary, `.tmp`, `.repair`, or `.bak`
+slot is an anti-downgrade barrier: an older runtime neither falls back past it nor overwrites it
+during autosave. A normal save replaces any stale `.tmp` before rotating the committed primary, so
+an abandoned branch cannot outrank the last committed generation after a second interruption.
+`.repair` is never a read candidate; it is scratch space used only while healing from a selected
+temporary or backup source, which remains byte-for-byte intact until promotion succeeds. A second
+and every later successful write retains the prior valid primary at `.bak`; invalid candidates never
+replace a known-good backup. Read failure does not modify any candidate bytes. These are transaction
+and validation semantics only, so the payload schema remains save v12 and scene/node budgets are
+unchanged.
+
 ### 2026-08-02 — A found public basket becomes a bounded cross-map choice
 
 After identifying the abandoned basket's public herb-garden mark on the mountain path, the player

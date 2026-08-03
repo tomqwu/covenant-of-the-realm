@@ -130,7 +130,7 @@ Expand the executable RPG graybox into a complete 90-minute original chapter:
 4. 藏泉山道 free exploration, warning, optional stone-marker investigation, return/retreat, no-combat bypass, mid-map save, and companion rescue path (implemented);
 5. three regular enemy profiles plus a shared-resolver boss, telegraphed intents, material weaknesses, armor-break and focus states (implemented);
 6. an active chapter companion and a visible two-turn tactical deployable (implemented);
-7. side-story-, discovery-, harvest-, battle-status-, enemy-, dialogue-, and map-aware save v12, title/continue, two-step new-game protection, safe backup recovery, chapter replay, and an input-safe no-spoiler journey journal (implemented; v1–v11 migrate explicitly);
+7. side-story-, discovery-, harvest-, battle-status-, enemy-, dialogue-, and map-aware save v12, title/continue, two-step new-game protection, crash-consistent temporary/backup recovery with anti-downgrade validation, chapter replay, and an input-safe no-spoiler journey journal (implemented; v1–v11 migrate explicitly and pass current-domain validation);
 8. mouse, keyboard, and controller parity with physical-event/focus acceptance coverage (implemented);
 9. original visual direction and opt-in procedural ambience with recorded provenance (reproducible protagonist/companion/ferryman/herbkeeper and enemy atlases, animated map actors, and bright painted-paper dialogue portraits implemented; map/final asset refinement remains);
 10. new-game-to-ending-to-save-resume-to-replay automated Godot acceptance path (implemented).

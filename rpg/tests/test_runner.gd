@@ -28,6 +28,9 @@ func _run() -> void:
 	_test_state_restore()
 	_test_dialogue_state()
 	_test_versioned_save()
+	_test_crash_consistent_save_recovery()
+	_test_stale_temporary_branch_replacement()
+	_test_all_save_artifact_barriers()
 	_test_settings_store()
 	_test_companion_trail()
 	_test_dialogue_portraits()
@@ -42,6 +45,7 @@ func _run() -> void:
 	_test_breakthrough_and_completion()
 	await _test_visual_scale_scene()
 	await _test_scene_smoke()
+	await _test_scene_save_recovery()
 	if failures.is_empty():
 		print("RPG tests passed: %d assertions." % assertions)
 		quit(0)
@@ -456,6 +460,7 @@ func _test_versioned_save() -> void:
 	var future: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect_false(future["ok"], "未知未来版本不会被静默加载")
 	_expect_equal(future["reason"], "unsupported_version", "未知版本返回稳定原因")
+	SaveGameScript.remove(TEST_SAVE_PATH + ".bak")
 	var unknown_map_exploration := exploration.snapshot().duplicate(true)
 	unknown_map_exploration["map_id"] = "unreleased_secret_realm"
 	_write_test_file(TEST_SAVE_PATH, JSON.stringify({
@@ -488,6 +493,214 @@ func _test_versioned_save() -> void:
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_json", "损坏 JSON 被安全拒绝")
 	SaveGameScript.remove(TEST_SAVE_PATH)
 	_expect_false(FileAccess.file_exists(TEST_SAVE_PATH), "测试存档和临时文件可清理")
+
+
+func _test_crash_consistent_save_recovery() -> void:
+	SaveGameScript.remove(TEST_SAVE_PATH)
+	var exploration = ExplorationStateScript.new()
+	var first_journey = JourneyStateScript.new()
+	_expect_true(SaveGameScript.write(first_journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "首次保存建立主文件")
+	var first_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
+	_expect_true(first_journey.complete_companion_briefing("careful")["ok"], "准备可区分的第二代存档")
+	_expect_true(SaveGameScript.write(first_journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "第二次保存原子提升新主文件")
+	_expect_true(FileAccess.file_exists(TEST_SAVE_PATH + ".bak"), "第二次成功保存长期保留上一代备份")
+	var retained_backup := SaveGameScript.read(TEST_SAVE_PATH + ".bak")
+	_expect_true(retained_backup["ok"], "writer 自然产生的备份可独立校验")
+	_expect_false(retained_backup["data"]["journey"]["talked_to_companion"], "长期备份保留上一代而非复制当前主文件")
+	_expect_true(SaveGameScript.read(TEST_SAVE_PATH)["data"]["journey"]["talked_to_companion"], "有效主文件仍是最新一代")
+
+	_write_test_file(TEST_SAVE_PATH + ".tmp", first_save_text)
+	var primary_preferred := SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_equal(primary_preferred["source"], "primary", "有效主文件优先于残留临时文件和旧备份")
+	_expect_true(primary_preferred["data"]["journey"]["talked_to_companion"], "主文件优先不会回退进度")
+
+	_write_test_file(TEST_SAVE_PATH, "{broken")
+	var temporary_recovery := SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(temporary_recovery["ok"], "主文件损坏时可恢复完整中断写入")
+	_expect_true(temporary_recovery["recovered_from_temporary"], "临时文件恢复来源被明确标记")
+	_expect_equal(temporary_recovery["source"], "temporary", "中断写入优先于更旧备份")
+	_expect_false(temporary_recovery["data"]["journey"]["talked_to_companion"], "临时文件恢复精确保留其状态")
+	var recovery_source_bytes := FileAccess.get_file_as_string(TEST_SAVE_PATH + ".tmp")
+	var invalid_repair_snapshot := first_journey.snapshot()
+	invalid_repair_snapshot["player_hp"] = 99
+	var failed_repair := SaveGameScript.write(invalid_repair_snapshot, exploration.snapshot(), TEST_SAVE_PATH, DialogueStateScript.default_snapshot(), true)
+	_expect_false(failed_repair["ok"], "恢复重写的独立暂存未通过校验时安全失败")
+	_expect_equal(failed_repair["reason"], "verification_failed", "恢复重写校验失败返回稳定原因")
+	_expect_equal(FileAccess.get_file_as_string(TEST_SAVE_PATH + ".tmp"), recovery_source_bytes, "恢复重写失败保持唯一有效临时源字节")
+	_expect_false(FileAccess.file_exists(TEST_SAVE_PATH + ".repair"), "失败的恢复暂存被清理且不影响原临时源")
+
+	_write_test_file(TEST_SAVE_PATH + ".tmp", "{broken")
+	var backup_recovery := SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(backup_recovery["ok"], "主文件与临时文件都损坏时恢复安全备份")
+	_expect_true(backup_recovery["recovered_from_backup"], "三文件恢复明确标记备份来源")
+
+	SaveGameScript.remove(TEST_SAVE_PATH + ".tmp")
+	var invalid_domain_payload: Dictionary = JSON.parse_string(first_save_text)
+	invalid_domain_payload["journey"]["player_hp"] = 99
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify(invalid_domain_payload))
+	var semantic_recovery := SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(semantic_recovery["ok"] and semantic_recovery["recovered_from_backup"], "语法合法但 domain 非法的主文件回退到备份")
+
+	var future_payload: Dictionary = invalid_domain_payload.duplicate(true)
+	future_payload["save_version"] = 999
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify(future_payload))
+	var future_blocked := SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_false(future_blocked["ok"], "未来版本主文件阻止向旧备份降级")
+	_expect_equal(future_blocked["reason"], "unsupported_version", "防降级保留稳定的未来版本原因")
+	_expect_false(future_blocked["recovered_from_backup"], "未来版本不会静默选择旧备份")
+	var future_primary_bytes := FileAccess.get_file_as_string(TEST_SAVE_PATH)
+	var future_primary_write := SaveGameScript.write(first_journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)
+	_expect_false(future_primary_write["ok"], "旧运行时不会覆盖未来版本主文件")
+	_expect_equal(future_primary_write["reason"], "newer_primary_present", "未来主文件写入保护返回可诊断原因")
+	_expect_equal(FileAccess.get_file_as_string(TEST_SAVE_PATH), future_primary_bytes, "受阻写入保持未来主文件字节不变")
+
+	future_payload["save_version"] = SaveGameScript.SAVE_VERSION
+	future_payload["story_id"] = "another_story"
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify(future_payload))
+	var story_blocked := SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_false(story_blocked["ok"], "不同故事主文件阻止跨故事回退")
+	_expect_equal(story_blocked["reason"], "wrong_story", "跨故事防降级返回稳定原因")
+
+	SaveGameScript.remove(TEST_SAVE_PATH)
+	var invalid_legacy: Dictionary = JSON.parse_string(first_save_text)
+	invalid_legacy["save_version"] = 11
+	invalid_legacy["journey"].erase("basket_response")
+	invalid_legacy["journey"]["player_hp"] = 99
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify(invalid_legacy))
+	var rejected_migration := SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_false(rejected_migration["ok"], "迁移补字段后仍需通过当前 domain 校验")
+	_expect_equal(rejected_migration["reason"], "invalid_journey", "非法旧快照不会被迁移包装成成功")
+
+	_write_test_file(TEST_SAVE_PATH, "{primary-broken")
+	_write_test_file(TEST_SAVE_PATH + ".tmp", "{temporary-broken")
+	_write_test_file(TEST_SAVE_PATH + ".bak", "{backup-broken")
+	var broken_bytes := [
+		FileAccess.get_file_as_string(TEST_SAVE_PATH),
+		FileAccess.get_file_as_string(TEST_SAVE_PATH + ".tmp"),
+		FileAccess.get_file_as_string(TEST_SAVE_PATH + ".bak"),
+	]
+	_expect_false(SaveGameScript.read(TEST_SAVE_PATH)["ok"], "三份候选都损坏时拒绝恢复")
+	_expect_equal([
+		FileAccess.get_file_as_string(TEST_SAVE_PATH),
+		FileAccess.get_file_as_string(TEST_SAVE_PATH + ".tmp"),
+		FileAccess.get_file_as_string(TEST_SAVE_PATH + ".bak"),
+	], broken_bytes, "失败的只读恢复不修改任何候选字节")
+
+	SaveGameScript.remove(TEST_SAVE_PATH)
+	_expect_true(SaveGameScript.write(first_journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "为降级写入保护建立有效主文件")
+	var stable_primary_bytes := FileAccess.get_file_as_string(TEST_SAVE_PATH)
+	var future_temporary: Dictionary = JSON.parse_string(stable_primary_bytes)
+	future_temporary["save_version"] = 999
+	_write_test_file(TEST_SAVE_PATH + ".tmp", JSON.stringify(future_temporary))
+	var protected_write := SaveGameScript.write(first_journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)
+	_expect_false(protected_write["ok"], "旧运行时不会覆盖未来版本中断写入")
+	_expect_equal(protected_write["reason"], "newer_temporary_present", "写入保护返回可诊断原因")
+	_expect_equal(FileAccess.get_file_as_string(TEST_SAVE_PATH), stable_primary_bytes, "受阻写入保持主文件字节不变")
+	_expect_equal(JSON.parse_string(FileAccess.get_file_as_string(TEST_SAVE_PATH + ".tmp"))["save_version"], 999, "受阻写入保留未来临时文件")
+	_write_test_file(TEST_SAVE_PATH + ".bak", stable_primary_bytes)
+	var downgrade_barrier_candidates := SaveGameScript.read_candidates(TEST_SAVE_PATH)
+	_expect_equal(downgrade_barrier_candidates.size(), 0, "未来临时文件阻断旧运行时进入无法继续保存的主候选")
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "unsupported_version", "未来临时屏障不会越过到旧主文件或备份")
+	SaveGameScript.remove(TEST_SAVE_PATH)
+
+
+func _test_stale_temporary_branch_replacement() -> void:
+	SaveGameScript.remove(TEST_SAVE_PATH)
+	var exploration = ExplorationStateScript.new()
+	var committed = JourneyStateScript.new()
+	_expect_true(SaveGameScript.write(committed.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "分支替换测试建立已提交 P0")
+	var committed_p0 := FileAccess.get_file_as_string(TEST_SAVE_PATH)
+
+	var abandoned = JourneyStateScript.new()
+	_expect_true(abandoned.complete_companion_briefing("trusting")["ok"], "建立崩溃前已写完但未提交的 P1")
+	_write_test_file(TEST_SAVE_PATH + ".tmp", JSON.stringify({
+		"save_version": SaveGameScript.SAVE_VERSION,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": abandoned.snapshot(),
+		"exploration": exploration.snapshot(),
+		"dialogue": DialogueStateScript.default_snapshot(),
+	}))
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["source"], "primary", "已提交 P0 优先于崩溃前未提交的 P1")
+
+	committed.setbacks = 1
+	_expect_true(SaveGameScript.write(committed.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "从 P0 继续形成的 P1′ 可覆盖废弃暂存分支")
+	var divergent_p1 := FileAccess.get_file_as_string(TEST_SAVE_PATH)
+	var saved_divergent := SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_equal(saved_divergent["data"]["journey"]["setbacks"], 1.0, "普通保存提交玩家实际选择的 P1′")
+	_expect_false(saved_divergent["data"]["journey"]["talked_to_companion"], "普通保存不会复活废弃 P1 的剧情选择")
+	_expect_equal(FileAccess.get_file_as_string(TEST_SAVE_PATH + ".bak"), committed_p0, "普通保存先把最后已提交 P0 轮转为长期备份")
+	_expect_false(FileAccess.file_exists(TEST_SAVE_PATH + ".tmp"), "成功提升后不残留已废弃或新暂存文件")
+	_expect_false(FileAccess.file_exists(TEST_SAVE_PATH + ".repair"), "普通保存不使用恢复专用 repair 工作区")
+
+	# Simulate the only valid post-rotation crash point of the corrected protocol:
+	# tmp already contains P1′, bak still contains committed P0, and repair is junk.
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SAVE_PATH))
+	_write_test_file(TEST_SAVE_PATH + ".tmp", divergent_p1)
+	_write_test_file(TEST_SAVE_PATH + ".repair", "{partial-repair")
+	var crash_recovery := SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(crash_recovery["ok"], "主文件轮转后崩溃仍有完整的最新暂存可恢复")
+	_expect_equal(crash_recovery["source"], "temporary", "崩溃恢复选择已验证的 P1′ 而不是更旧备份")
+	_expect_equal(crash_recovery["data"]["journey"]["setbacks"], 1.0, "崩溃恢复保持 P1′ 的分支状态")
+
+	_write_test_file(TEST_SAVE_PATH + ".repair", divergent_p1)
+	var deliberate_candidates := SaveGameScript.read_candidates(TEST_SAVE_PATH)
+	_expect_equal(deliberate_candidates.size(), 2, "有效 repair 也不扩大三个正式槽位的恢复候选集")
+	_expect_equal(deliberate_candidates[0]["source"], "temporary", "repair 工作区不会抢占临时恢复源")
+	_expect_equal(deliberate_candidates[1]["source"], "backup", "repair 工作区不会遮蔽长期备份")
+	SaveGameScript.remove(TEST_SAVE_PATH)
+
+
+func _test_all_save_artifact_barriers() -> void:
+	var barrier_cases := [
+		{"suffix": ".repair", "kind": "future", "write_reason": "newer_repair_present"},
+		{"suffix": ".repair", "kind": "story", "write_reason": "newer_repair_present"},
+		{"suffix": ".bak", "kind": "future", "write_reason": "newer_backup_present"},
+		{"suffix": ".bak", "kind": "story", "write_reason": "newer_backup_present"},
+	]
+	for barrier_case in barrier_cases:
+		SaveGameScript.remove(TEST_SAVE_PATH)
+		var exploration = ExplorationStateScript.new()
+		var journey = JourneyStateScript.new()
+		_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)["ok"], "屏障案例先建立有效当前主存档")
+		var primary_bytes := FileAccess.get_file_as_string(TEST_SAVE_PATH)
+		var barrier_payload: Dictionary = JSON.parse_string(primary_bytes)
+		var expected_reason := "unsupported_version"
+		if barrier_case["kind"] == "future":
+			# A future format is allowed to rename every current schema field; version
+			# detection must still block downgrade before inspecting those fields.
+			barrier_payload = {
+				"save_version": 999,
+				"story_id": SaveGameScript.STORY_ID,
+				"renamed_journey_v999": {"opaque": true},
+			}
+		else:
+			barrier_payload["story_id"] = "another_story"
+			expected_reason = "wrong_story"
+		var barrier_path: String = TEST_SAVE_PATH + barrier_case["suffix"]
+		var barrier_bytes := JSON.stringify(barrier_payload)
+		_write_test_file(barrier_path, barrier_bytes)
+
+		var blocked_read := SaveGameScript.read(TEST_SAVE_PATH)
+		_expect_false(blocked_read["ok"], "%s 中的 %s 屏障会阻止加载旧主文件" % [barrier_case["suffix"], barrier_case["kind"]])
+		_expect_equal(blocked_read["reason"], expected_reason, "%s 屏障返回稳定读取原因" % barrier_case["suffix"])
+		_expect_equal(SaveGameScript.read_candidates(TEST_SAVE_PATH).size(), 0, "%s 屏障清空全部可继续候选" % barrier_case["suffix"])
+		var blocked_write := SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH)
+		_expect_false(blocked_write["ok"], "%s 屏障会阻止旧运行时写入" % barrier_case["suffix"])
+		_expect_equal(blocked_write["reason"], barrier_case["write_reason"], "%s 屏障返回稳定写入原因" % barrier_case["suffix"])
+		_expect_equal(FileAccess.get_file_as_string(TEST_SAVE_PATH), primary_bytes, "%s 屏障保持当前主文件字节" % barrier_case["suffix"])
+		_expect_equal(FileAccess.get_file_as_string(barrier_path), barrier_bytes, "%s 屏障保持自身字节" % barrier_case["suffix"])
+	SaveGameScript.remove(TEST_SAVE_PATH)
+	var huge_exploration = ExplorationStateScript.new()
+	var huge_journey = JourneyStateScript.new()
+	_expect_true(SaveGameScript.write(huge_journey.snapshot(), huge_exploration.snapshot(), TEST_SAVE_PATH)["ok"], "极大版本屏障测试建立有效主存档")
+	var huge_version_bytes := "{\"save_version\":1e300,\"story_id\":\"%s\",\"future_schema\":{}}" % SaveGameScript.STORY_ID
+	_write_test_file(TEST_SAVE_PATH + ".tmp", huge_version_bytes)
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "unsupported_version", "超出整数范围但有限的未来版本安全触发屏障")
+	var huge_version_write := SaveGameScript.write(huge_journey.snapshot(), huge_exploration.snapshot(), TEST_SAVE_PATH)
+	_expect_false(huge_version_write["ok"], "旧运行时不会覆盖极大未来版本暂存")
+	_expect_equal(huge_version_write["reason"], "newer_temporary_present", "极大未来版本返回稳定写入屏障原因")
+	_expect_equal(FileAccess.get_file_as_string(TEST_SAVE_PATH + ".tmp"), huge_version_bytes, "极大未来版本字节保持不变")
+	SaveGameScript.remove(TEST_SAVE_PATH)
 
 
 func _test_settings_store() -> void:
@@ -1507,6 +1720,93 @@ func _test_scene_smoke() -> void:
 	invalid_save_instance.get_node("%AudioManager").set_audio_enabled(false)
 	invalid_save_instance.queue_free()
 	await process_frame
+	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
+	SettingsStoreScript.remove(TEST_SCENE_SETTINGS_PATH)
+
+
+func _test_scene_save_recovery() -> void:
+	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
+	SettingsStoreScript.remove(TEST_SCENE_SETTINGS_PATH)
+	var journey = JourneyStateScript.new()
+	var exploration = ExplorationStateScript.new()
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SCENE_SAVE_PATH)["ok"], "场景恢复测试建立有效存档")
+	var valid_text := FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH)
+	_write_test_file(TEST_SCENE_SAVE_PATH + ".tmp", valid_text)
+	_write_test_file(TEST_SCENE_SAVE_PATH, "{interrupted-primary")
+
+	var scene: PackedScene = load("res://src/ui/main.tscn")
+	var temporary_instance := scene.instantiate()
+	temporary_instance.configure_save_path(TEST_SCENE_SAVE_PATH)
+	temporary_instance.configure_settings_path(TEST_SCENE_SETTINGS_PATH)
+	root.add_child(temporary_instance)
+	await process_frame
+	_expect_true(temporary_instance.continue_game(), "主文件损坏时场景可继续有效中断写入")
+	_expect_true(temporary_instance.get_node("%EventLabel").text.contains("中断写入"), "临时恢复提供准确中文反馈")
+	_expect_true(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["ok"], "临时恢复后自动修复主文件")
+	_expect_false(FileAccess.file_exists(TEST_SCENE_SAVE_PATH + ".tmp"), "临时恢复重新落盘后不残留中断文件")
+	temporary_instance.get_node("%AudioManager").set_audio_enabled(false)
+	temporary_instance.queue_free()
+	await process_frame
+
+	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SCENE_SAVE_PATH)["ok"], "内容级回退建立第一代主文件")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SCENE_SAVE_PATH)["ok"], "内容级回退自然建立安全备份")
+	var content_invalid: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH))
+	content_invalid["dialogue"] = {"active": true, "dialogue_id": "companion_briefing", "line_index": 63}
+	_write_test_file(TEST_SCENE_SAVE_PATH, JSON.stringify(content_invalid))
+	_expect_true(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["ok"], "存储层接受结构合法但超出当前内容的行号")
+
+	var backup_instance := scene.instantiate()
+	backup_instance.configure_save_path(TEST_SCENE_SAVE_PATH)
+	backup_instance.configure_settings_path(TEST_SCENE_SETTINGS_PATH)
+	root.add_child(backup_instance)
+	await process_frame
+	_expect_true(backup_instance.continue_game(), "主候选无法映射当前内容时继续尝试安全备份")
+	_expect_true(backup_instance.get_node("%EventLabel").text.contains("安全备份"), "内容级回退提供准确中文反馈")
+	var healed := SaveGameScript.read(TEST_SCENE_SAVE_PATH)
+	_expect_true(healed["ok"] and not healed["data"]["dialogue"]["active"], "内容级回退后把可解码状态重新写为主文件")
+	var preserved_backup := SaveGameScript.read(TEST_SCENE_SAVE_PATH + ".bak")
+	_expect_true(preserved_backup["ok"] and not preserved_backup["data"]["dialogue"]["active"], "内容级回退不会用被 UI 拒绝的主候选覆盖已知良好备份")
+	backup_instance.get_node("%AudioManager").set_audio_enabled(false)
+	backup_instance.queue_free()
+	await process_frame
+
+	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SCENE_SAVE_PATH)["ok"], "只读屏障测试建立有效旧主文件")
+	var barrier_primary_bytes := FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH)
+	var future_temporary: Dictionary = JSON.parse_string(barrier_primary_bytes)
+	future_temporary["save_version"] = 999
+	var future_temporary_text := JSON.stringify(future_temporary)
+	_write_test_file(TEST_SCENE_SAVE_PATH + ".tmp", future_temporary_text)
+	var barrier_instance := scene.instantiate()
+	barrier_instance.configure_save_path(TEST_SCENE_SAVE_PATH)
+	barrier_instance.configure_settings_path(TEST_SCENE_SETTINGS_PATH)
+	root.add_child(barrier_instance)
+	await process_frame
+	_expect_true(barrier_instance.get_node("%ContinueButton").disabled, "有效旧主文件旁存在未来临时文件时禁用普通继续")
+	_expect_false(barrier_instance.continue_game(), "未来临时屏障不进入看似可保存的旅程")
+	_expect_true(barrier_instance.get_node("%TitleOverlay").visible, "受阻继续仍停留在标题界面")
+	_expect_equal(FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH), barrier_primary_bytes, "受阻继续保持旧主文件字节")
+	_expect_equal(FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH + ".tmp"), future_temporary_text, "受阻继续保持未来临时文件字节")
+	barrier_instance.get_node("%AudioManager").set_audio_enabled(false)
+	barrier_instance.queue_free()
+	await process_frame
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SCENE_SAVE_PATH + ".tmp"))
+	for barrier_suffix in [".repair", ".bak"]:
+		_write_test_file(TEST_SCENE_SAVE_PATH + barrier_suffix, future_temporary_text)
+		var secondary_barrier_instance := scene.instantiate()
+		secondary_barrier_instance.configure_save_path(TEST_SCENE_SAVE_PATH)
+		secondary_barrier_instance.configure_settings_path(TEST_SCENE_SETTINGS_PATH)
+		root.add_child(secondary_barrier_instance)
+		await process_frame
+		_expect_true(secondary_barrier_instance.get_node("%ContinueButton").disabled, "未来 %s 屏障会在标题界面禁用继续" % barrier_suffix)
+		_expect_false(secondary_barrier_instance.continue_game(), "未来 %s 屏障不会进入旅程" % barrier_suffix)
+		_expect_equal(FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH), barrier_primary_bytes, "未来 %s 屏障保持旧主文件字节" % barrier_suffix)
+		_expect_equal(FileAccess.get_file_as_string(TEST_SCENE_SAVE_PATH + barrier_suffix), future_temporary_text, "未来 %s 屏障保持自身字节" % barrier_suffix)
+		secondary_barrier_instance.get_node("%AudioManager").set_audio_enabled(false)
+		secondary_barrier_instance.queue_free()
+		await process_frame
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(TEST_SCENE_SAVE_PATH + barrier_suffix))
 	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
 	SettingsStoreScript.remove(TEST_SCENE_SETTINGS_PATH)
 

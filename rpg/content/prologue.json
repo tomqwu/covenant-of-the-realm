@@ -320,6 +320,7 @@
     "chapter_replayed": "序章状态已经重置。你再次站在照禾渡口。",
     "nothing_nearby": "附近没有可以交互的事物。沿石路寻找金色圆环。",
     "save_loaded": "旅程已从本地存档恢复。",
+    "save_loaded_temporary": "主存档未能通过校验，旅程已从完整的中断写入恢复并重新落盘。",
     "save_loaded_backup": "主存档不可用，旅程已从安全备份恢复。",
     "save_migrated": "旧版存档已安全迁移，并按新版规则继续旅程。",
     "invalid_action": "此刻无法执行这个行动。"
