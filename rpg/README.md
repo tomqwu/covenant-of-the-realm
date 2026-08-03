@@ -27,8 +27,12 @@ nearest Git revision, clean/dirty source state, required runtime resources, and 
 resources. `make play-rpg-package` launches that pack with the pinned Godot entrypoint. The package
 gate exports the PCK and manifest twice, requires byte-identical results, verifies the manifest,
 probes the packed namespace for 22 runtime resources and nine excluded `tests/`/`tools/` files,
-then boots the pack headlessly. The current reproducible PCK is 697,160 bytes with SHA-256
-`2f1c122199227f9c9a02537a4b9311c44f8ed03285c8b87267c995b6e45cf5a5`.
+then boots the pack headlessly. Reproducibility is currently host-scoped: both exports on one pinned
+host must be byte-identical, but Godot's imported pack bytes are not claimed identical across build
+operating systems. The current 697,160-byte macOS pack has SHA-256
+`2f1c122199227f9c9a02537a4b9311c44f8ed03285c8b87267c995b6e45cf5a5`; Linux CI run
+`30859844869` independently exports the same size twice with SHA-256
+`1b8a4a14b9e72fb5352711bda70794203627b476221abdc789f31da38c605713`.
 A native `.app`/`.exe` is intentionally deferred until platform export templates,
 signing identity, product icon, and distribution target are confirmed.
 
