@@ -13,12 +13,14 @@ SCHEMA_VERSION = 1
 ARTIFACT_NAME = "covenant-of-the-realm.pck"
 REQUIRED_RESOURCES = [
     "res://assets/pixel/enemy_profiles.png",
+    "res://assets/pixel/ferry_tiles.png",
     "res://assets/pixel/huishen.png",
     "res://assets/pixel/liangshu.png",
     "res://content/prologue.json",
     "res://src/domain/journey_state.gd",
     "res://src/ui/dialogue_portrait.gd",
     "res://src/ui/main.tscn",
+    "res://src/ui/map_detail_layer.gd",
 ]
 EXCLUDED_RESOURCES = [
     "res://tests/e2e_runner.gd",

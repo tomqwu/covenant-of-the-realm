@@ -29,10 +29,14 @@ only by that deterministic project-local generator; no external character or ima
 蕙婶's head wrap, low bun, leaf pin, woven apron, and carrying basket use the same deterministic
 rectangles-and-palette pipeline without an external character, costume, or image reference.
 
-The same generator creates `ferry_tiles.png`, an original 256×32 RGBA strip containing eight
-32 px ground tiles for grass, water, bank, road, moonleaf field, stone, deep grass, and water
-glints. `ferry_tile_layer.gd` composes these into a deterministic 36×20 `TileMapLayer`; no external
-map, texture, pattern, or tile-design input is used.
+The same generator creates `ferry_tiles.png`, an original 256×64 RGBA atlas. Row zero preserves
+eight opaque 32 px ground tiles for grass, water, bank, road, moonleaf field, stone, deep grass,
+and water glints. Row one contains eight transparent project-authored overlays for reeds, bank
+grass, path pebbles, wildflowers, stone cracks, moss, fallen leaves, and water foam.
+`ferry_tile_layer.gd` composes the ground into deterministic 36×20 layers, while
+`map_detail_layer.gd` places a bounded sparse overlay for the ferry and mountain path without any
+physics or navigation layer. No model, external map, texture, pattern, photograph, or third-party
+tile-design input is used.
 
 The generator also creates `enemy_profiles.png`, an original 128×256 RGBA atlas with two 64×64
 idle frames for each of the four project-authored enemy profiles: 岩甲兽幼体、泉苔寄壳、

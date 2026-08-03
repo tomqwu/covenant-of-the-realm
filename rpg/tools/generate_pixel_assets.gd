@@ -38,7 +38,7 @@ func _generate_actor(file_name: String, robe: Color, accent: Color, role: String
 
 
 func _generate_ferry_tiles() -> void:
-	var image := Image.create(256, 32, false, Image.FORMAT_RGBA8)
+	var image := Image.create(256, 64, false, Image.FORMAT_RGBA8)
 	image.fill(TRANSPARENT)
 	_draw_tile_base(image, 0, Color("b7cf9f"), Color("9fbd89"), "grass")
 	_draw_tile_base(image, 1, Color("4e9da4"), Color("a7d7cc"), "water")
@@ -48,6 +48,14 @@ func _generate_ferry_tiles() -> void:
 	_draw_tile_base(image, 5, Color("829a8f"), Color("355e63"), "stone")
 	_draw_tile_base(image, 6, Color("8ebb83"), Color("739b70"), "grass")
 	_draw_tile_base(image, 7, Color("4e9da4"), Color("f2e6cb"), "water")
+	_draw_detail_tile(image, 0, "reeds")
+	_draw_detail_tile(image, 1, "bank_grass")
+	_draw_detail_tile(image, 2, "path_pebbles")
+	_draw_detail_tile(image, 3, "wildflowers")
+	_draw_detail_tile(image, 4, "stone_cracks")
+	_draw_detail_tile(image, 5, "moss")
+	_draw_detail_tile(image, 6, "fallen_leaves")
+	_draw_detail_tile(image, 7, "water_foam")
 	var output_path := "%s/ferry_tiles.png" % OUTPUT_DIR
 	var error := image.save_png(ProjectSettings.globalize_path(output_path))
 	if error != OK:
@@ -188,6 +196,53 @@ func _draw_tile_base(image: Image, column: int, base: Color, detail: Color, patt
 		_:
 			_fill(image, Rect2i(origin_x + 6, 8, 2, 5), detail)
 			_fill(image, Rect2i(origin_x + 22, 20, 2, 6), detail)
+
+
+func _draw_detail_tile(image: Image, column: int, pattern: String) -> void:
+	var origin := Vector2i(column * 32, 32)
+	match pattern:
+		"reeds":
+			for offset_x in [7, 15, 24]:
+				_fill(image, Rect2i(origin.x + offset_x, origin.y + 10, 2, 18), Color("526963"))
+				_fill(image, Rect2i(origin.x + offset_x - 1, origin.y + 8, 4, 5), Color("a9784f"))
+			_fill(image, Rect2i(origin.x + 4, origin.y + 17, 5, 2), Color("8ebb83"))
+			_fill(image, Rect2i(origin.x + 16, origin.y + 20, 6, 2), Color("8ebb83"))
+		"bank_grass":
+			for offset_x in [5, 13, 22, 28]:
+				_fill(image, Rect2i(origin.x + offset_x, origin.y + 17, 2, 11), Color("739b70"))
+				_fill(image, Rect2i(origin.x + offset_x - 3, origin.y + 20, 4, 2), Color("9fbd89"))
+				_fill(image, Rect2i(origin.x + offset_x + 1, origin.y + 14, 3, 2), Color("8ebb83"))
+		"path_pebbles":
+			_fill(image, Rect2i(origin.x + 4, origin.y + 10, 7, 4), Color("9a835d"))
+			_fill(image, Rect2i(origin.x + 18, origin.y + 7, 5, 3), Color("829a8f"))
+			_fill(image, Rect2i(origin.x + 23, origin.y + 21, 6, 4), Color("b6aa84"))
+			_fill(image, Rect2i(origin.x + 9, origin.y + 25, 4, 3), Color("829a8f"))
+		"wildflowers":
+			for offset_x in [7, 17, 26]:
+				_fill(image, Rect2i(origin.x + offset_x, origin.y + 13, 2, 15), Color("739b70"))
+				_fill(image, Rect2i(origin.x + offset_x - 2, origin.y + 10, 6, 5), Color("f2e6cb"))
+				_fill(image, Rect2i(origin.x + offset_x, origin.y + 11, 2, 2), Color("e4c36e"))
+		"stone_cracks":
+			_fill(image, Rect2i(origin.x + 15, origin.y + 5, 3, 9), Color("355e63"))
+			_fill(image, Rect2i(origin.x + 17, origin.y + 12, 7, 3), Color("355e63"))
+			_fill(image, Rect2i(origin.x + 22, origin.y + 14, 3, 7), Color("355e63"))
+			_fill(image, Rect2i(origin.x + 8, origin.y + 21, 9, 3), Color("526963"))
+			_fill(image, Rect2i(origin.x + 7, origin.y + 23, 3, 5), Color("526963"))
+		"moss":
+			_fill(image, Rect2i(origin.x + 3, origin.y + 19, 11, 7), Color("739b70"))
+			_fill(image, Rect2i(origin.x + 8, origin.y + 14, 12, 10), Color("8ebb83"))
+			_fill(image, Rect2i(origin.x + 18, origin.y + 18, 10, 8), Color("9fbd89"))
+			_fill(image, Rect2i(origin.x + 12, origin.y + 11, 4, 4), Color("b7cf9f"))
+		"fallen_leaves":
+			_fill(image, Rect2i(origin.x + 5, origin.y + 8, 7, 4), Color("c6764f"))
+			_fill(image, Rect2i(origin.x + 18, origin.y + 14, 5, 7), Color("a9784f"))
+			_fill(image, Rect2i(origin.x + 8, origin.y + 24, 6, 4), Color("e7a76f"))
+			_fill(image, Rect2i(origin.x + 25, origin.y + 6, 4, 6), Color("c6764f"))
+		"water_foam":
+			_fill(image, Rect2i(origin.x + 2, origin.y + 8, 13, 3), Color("f2e6cb"))
+			_fill(image, Rect2i(origin.x + 10, origin.y + 11, 10, 2), Color("a7d7cc"))
+			_fill(image, Rect2i(origin.x + 17, origin.y + 21, 13, 3), Color("f2e6cb"))
+			_fill(image, Rect2i(origin.x + 5, origin.y + 25, 10, 2), Color("a7d7cc"))
 
 
 func _draw_frame(image: Image, origin: Vector2i, direction: int, column: int, robe: Color, accent: Color, role: String) -> void:

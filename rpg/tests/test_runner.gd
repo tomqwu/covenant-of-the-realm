@@ -1466,6 +1466,40 @@ func _test_scene_smoke() -> void:
 	_expect_equal(map_contract["tile_counts"]["stone"], 9, "山门石地区域被地图数据标记")
 	_expect_true(map_contract["tile_counts"]["path"] > 40, "地图包含可读的主路与药田支路")
 	_expect_equal(map_contract["filter"], CanvasItem.TEXTURE_FILTER_NEAREST, "地图纹理使用最近邻过滤")
+	_expect_true(instance.get_node("%MapCanvas").uses_map_detail_layer(), "渡口与山道共享独立细节 TileMapLayer")
+	var map_detail: TileMapLayer = instance.get_node("%MapDetailLayer")
+	var ferry_detail_contract: Dictionary = map_detail.map_contract()
+	_expect_equal(ferry_detail_contract["schema_version"], 1, "地图细节合同使用稳定版本")
+	_expect_equal(ferry_detail_contract["context_id"], "riverbank", "地图细节合同记录渡口表现上下文")
+	_expect_equal(ferry_detail_contract["map_kind"], "ferry", "地图细节构建渡口固定单元图")
+	_expect_equal(ferry_detail_contract["map_size"], Vector2i(36, 20), "地图细节与地表共享 36×20 边界")
+	_expect_equal(ferry_detail_contract["tile_size"], Vector2i(32, 32), "地图细节使用同一 32 px 网格")
+	_expect_equal(ferry_detail_contract["used_rect"], Rect2i(1, 1, 34, 18), "渡口细节占用范围保持在生产地图内")
+	_expect_equal(ferry_detail_contract["used_cell_count"], 46, "渡口细节使用固定稀疏单元数")
+	_expect_equal(ferry_detail_contract["tile_counts"], {
+		"reeds": 6,
+		"bank_grass": 5,
+		"path_pebbles": 11,
+		"wildflowers": 7,
+		"stone_cracks": 3,
+		"moss": 4,
+		"fallen_leaves": 5,
+		"water_foam": 5,
+	}, "渡口八类透明细节数量固定")
+	_expect_equal(ferry_detail_contract["tile_cells"]["stone_cracks"], [Vector2i(30, 2), Vector2i(32, 3), Vector2i(31, 4)], "渡口石裂只落在山门石地")
+	_expect_equal(ferry_detail_contract["tile_cells"]["water_foam"], [Vector2i(2, 3), Vector2i(6, 7), Vector2i(4, 12), Vector2i(9, 15), Vector2i(1, 18)], "渡口水沫使用固定河面单元")
+	_expect_true(ferry_detail_contract["visible"], "渡口细节在探索与标题底图可见")
+	_expect_false(ferry_detail_contract["collision_authority"], "地图细节明确不拥有碰撞权威")
+	_expect_equal(ferry_detail_contract["physics_layer_count"], 0, "细节 TileSet 不建立物理层")
+	_expect_equal(ferry_detail_contract["navigation_layer_count"], 0, "细节 TileSet 不建立导航层")
+	_expect_equal(ferry_detail_contract["filter"], CanvasItem.TEXTURE_FILTER_NEAREST, "透明细节使用最近邻过滤")
+	_expect_equal(ferry_detail_contract["rebuild_count"], 1, "渡口细节首次只构建一次")
+	_expect_equal(ferry_detail_contract["layout_signature"].length(), 64, "渡口细节暴露完整布局签名")
+	_expect_detail_cells_bounded_and_unique(ferry_detail_contract, "渡口")
+	var before_detail_resync: Dictionary = instance.journey.snapshot()
+	instance._render([])
+	_expect_equal(map_detail.map_contract()["rebuild_count"], 1, "同一渡口上下文重复渲染不重建细节")
+	_expect_equal(instance.journey.snapshot(), before_detail_resync, "纯表现细节同步不修改确定性旅程")
 	var ferry_occlusion: Dictionary = instance.get_node("%MapCanvas").occlusion_contract()
 	_expect_equal(ferry_occlusion["count"], 7, "渡口以三处屋檐和四处树冠组成独立前景节点")
 	_expect_true(ferry_occlusion["ids"].has("ferry_roof_0"), "前景合同包含可识别屋檐")
@@ -1690,6 +1724,29 @@ func _test_scene_smoke() -> void:
 	_expect_equal(path_contract["tile_counts"]["water"], 100, "山道溪流宽度由固定地图数据约束")
 	_expect_true(path_contract["tile_counts"]["path"] > 40, "山道存在连续可读石路")
 	_expect_true(path_contract["tile_counts"]["stone"] > 3, "山道敌区与调查点使用石地标记")
+	var path_detail_contract: Dictionary = map_detail.map_contract()
+	_expect_equal(path_detail_contract["context_id"], "mountain_path", "山道切换共享细节层上下文")
+	_expect_equal(path_detail_contract["map_kind"], "mountain_path", "山道切换独立固定细节单元图")
+	_expect_equal(path_detail_contract["used_rect"], Rect2i(1, 1, 33, 18), "山道细节占用范围保持在生产地图内")
+	_expect_equal(path_detail_contract["used_cell_count"], 43, "山道细节使用固定稀疏单元数")
+	_expect_equal(path_detail_contract["tile_counts"], {
+		"reeds": 4,
+		"bank_grass": 5,
+		"path_pebbles": 9,
+		"wildflowers": 6,
+		"stone_cracks": 4,
+		"moss": 5,
+		"fallen_leaves": 6,
+		"water_foam": 4,
+	}, "山道八类透明细节数量固定")
+	_expect_equal(path_detail_contract["tile_cells"]["stone_cracks"], [Vector2i(25, 6), Vector2i(27, 7), Vector2i(15, 11), Vector2i(16, 12)], "山道石裂只落在两处石地区")
+	_expect_equal(path_detail_contract["tile_cells"]["path_pebbles"], [Vector2i(4, 14), Vector2i(7, 15), Vector2i(10, 14), Vector2i(13, 13), Vector2i(16, 11), Vector2i(20, 9), Vector2i(24, 7), Vector2i(28, 5), Vector2i(31, 3)], "山道碎石沿固定可读路线排列")
+	_expect_true(path_detail_contract["visible"], "山道细节在自由探索阶段可见")
+	_expect_equal(path_detail_contract["rebuild_count"], 2, "首次换图只追加一次细节重建")
+	_expect_true(path_detail_contract["layout_signature"] != ferry_detail_contract["layout_signature"], "渡口与山道细节布局签名不同")
+	_expect_detail_cells_bounded_and_unique(path_detail_contract, "山道")
+	instance._render([])
+	_expect_equal(map_detail.map_contract()["rebuild_count"], 2, "同一山道上下文重复渲染不重建细节")
 	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.40, "player_y": 0.30}), "场景测试移动到石缝泉纹")
 	instance._render([])
 	await _press_action(instance, "观察石缝泉纹")
@@ -1707,6 +1764,10 @@ func _test_scene_smoke() -> void:
 	await _press_action(instance, "沿石阶返回渡口")
 	transition.finish()
 	_expect_equal(instance.journey.phase_id(), "riverbank", "药篓发现后可返回渡口完成支线")
+	var returned_ferry_detail: Dictionary = map_detail.map_contract()
+	_expect_true(returned_ferry_detail["visible"], "返回渡口后共享细节层重新可见")
+	_expect_equal(returned_ferry_detail["map_kind"], "ferry", "返回渡口后恢复渡口细节单元图")
+	_expect_equal(returned_ferry_detail["rebuild_count"], 3, "实际地图类型变化才重建渡口细节")
 	var awaiting_basket_visual: Dictionary = instance.get_node("%MapCanvas").basket_visual_contract()
 	_expect_true(awaiting_basket_visual["herbkeeper_visible"], "返回渡口后蕙婶地图角色可见")
 	_expect_equal(awaiting_basket_visual["response"], "unanswered", "交谈前地图不替玩家决定药篓去向")
@@ -1746,6 +1807,7 @@ func _test_scene_smoke() -> void:
 	await _press_action(instance, "进入藏泉山道")
 	transition.finish()
 	_expect_equal(instance.journey.phase_id(), "mountain_path", "药篓支线不会锁死主线或山道重返")
+	_expect_equal(map_detail.map_contract()["rebuild_count"], 4, "再次进入不同地图只追加一次细节重建")
 	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.43, "player_y": 0.57}), "场景测试移动到旧石标")
 	var resets_before_restore := int(instance.get_node("%MapCanvas").companion_follow_contract()["reset_count"])
 	instance._render([])
@@ -1761,6 +1823,10 @@ func _test_scene_smoke() -> void:
 	_expect_false(ferry_ground.visible, "离开渡口后隐藏渡口 TileMapLayer")
 	_expect_equal(_action_button_count(instance), 6, "战斗显示术式、符箓、守势、援护、石灯与撤退")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "battle", "战斗切换山道画面")
+	var battle_detail_contract: Dictionary = map_detail.map_contract()
+	_expect_false(battle_detail_contract["visible"], "战斗阶段隐藏探索细节层")
+	_expect_equal(battle_detail_contract["context_id"], "battle", "隐藏细节仍记录当前表现上下文")
+	_expect_equal(battle_detail_contract["rebuild_count"], 4, "进入非地图场景不重复构建缓存的山道细节")
 	_expect_true(enemy_sprite.visible, "战斗阶段显示独立敌人图集节点")
 	_expect_equal(enemy_sprite.enemy_id, "rock_armor_young", "岩甲遭遇选择对应图集行")
 	_expect_equal(enemy_sprite.animation, &"idle_rock_armor_young", "战斗节点播放岩甲双帧待机动画")
@@ -1770,6 +1836,8 @@ func _test_scene_smoke() -> void:
 	_expect_false(instance.get_node("%ObjectiveLabel").text.contains("破绽窗口"), "未调查岩甲擦痕时战斗目标不泄露反制窗口")
 	await _press_action(instance, "撤到旧石标")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉山道", "场景撤退返回山道")
+	_expect_true(map_detail.map_contract()["visible"], "撤退回山道后复用并显示缓存细节")
+	_expect_equal(map_detail.map_contract()["rebuild_count"], 4, "战斗返回同一山道不重建细节")
 	_expect_true(instance.get_node("%EventLabel").text.contains("旧石标"), "场景说明撤退路线与敌人重置")
 	_expect_equal(instance.exploration.player_position, ExplorationStateScript.PATH_RETREAT_POSITION, "撤退落在山道安全位置")
 	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.73, "player_y": 0.34}), "撤退后回到敌人预警区")
@@ -1816,6 +1884,7 @@ func _test_scene_smoke() -> void:
 	await _press_action(instance, "引气术")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉石室", "胜利进入泉室")
 	_expect_equal(instance.get_node("%MapCanvas").occlusion_contract()["count"], 0, "泉室不残留上一地图的树冠节点")
+	_expect_false(map_detail.map_contract()["visible"], "泉室不残留山道细节画面")
 
 	await _press_action(instance, "静心引息")
 	_expect_equal(instance.get_node("%LocationLabel").text, "第一息", "场景完成章节")
@@ -2074,6 +2143,20 @@ func _action_has_joypad_event(action_name: StringName) -> bool:
 		if event is InputEventJoypadMotion or event is InputEventJoypadButton:
 			return true
 	return false
+
+
+func _expect_detail_cells_bounded_and_unique(contract: Dictionary, map_label: String) -> void:
+	var cells: Array = contract["used_cells"]
+	var unique_cells := {}
+	for cell_value in cells:
+		var cell := Vector2i(cell_value)
+		unique_cells[cell] = true
+		_expect_true(Rect2i(Vector2i.ZERO, Vector2i(36, 20)).has_point(cell), "%s细节单元位于 36×20 边界内" % map_label)
+	_expect_equal(unique_cells.size(), cells.size(), "%s细节单元没有互相覆盖" % map_label)
+	var counted_cells := 0
+	for tile_count in contract["tile_counts"].values():
+		counted_cells += int(tile_count)
+	_expect_equal(counted_cells, cells.size(), "%s细节分类计数覆盖全部单元" % map_label)
 
 
 func _write_test_file(path: String, contents: String) -> void:

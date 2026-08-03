@@ -27,8 +27,28 @@ def test_manifest_round_trip_and_exact_contract(tmp_path: Path) -> None:
     assert written["sha256"] == hashlib.sha256(b"deterministic-pack").hexdigest()
     assert written["source_revision"] == REVISION
     assert written["source_tree_state"] == "clean"
-    assert written["required_resources"] == rpg_package_manifest.REQUIRED_RESOURCES
-    assert written["excluded_resources"] == rpg_package_manifest.EXCLUDED_RESOURCES
+    assert written["required_resources"] == [
+        "res://assets/pixel/enemy_profiles.png",
+        "res://assets/pixel/ferry_tiles.png",
+        "res://assets/pixel/huishen.png",
+        "res://assets/pixel/liangshu.png",
+        "res://content/prologue.json",
+        "res://src/domain/journey_state.gd",
+        "res://src/ui/dialogue_portrait.gd",
+        "res://src/ui/main.tscn",
+        "res://src/ui/map_detail_layer.gd",
+    ]
+    assert written["excluded_resources"] == [
+        "res://tests/e2e_runner.gd",
+        "res://tests/input_runner.gd",
+        "res://tests/performance_budget.json",
+        "res://tests/performance_runner.gd",
+        "res://tests/test_runner.gd",
+        "res://tools/capture_ui.gd",
+        "res://tools/generate_pixel_assets.gd",
+        "res://tools/scale_test.tscn",
+        "res://tools/scale_test_canvas.gd",
+    ]
     assert json.loads(output.read_text(encoding="utf-8")) == written
     assert rpg_package_manifest.verify_manifest(pack, output) == []
 

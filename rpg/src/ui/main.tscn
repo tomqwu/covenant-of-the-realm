@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://src/ui/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://src/ui/map_canvas.gd" id="2_map"]
@@ -14,6 +14,7 @@
 [ext_resource type="Texture2D" path="res://assets/pixel/enemy_profiles.png" id="10_enemy_profiles"]
 [ext_resource type="Script" path="res://src/ui/scene_transition.gd" id="11_transition"]
 [ext_resource type="Script" path="res://src/ui/dialogue_portrait.gd" id="12_portrait"]
+[ext_resource type="Script" path="res://src/ui/map_detail_layer.gd" id="15_map_detail"]
 
 [sub_resource type="StyleBoxFlat" id="StyleMap"]
 bg_color = Color(0.286, 0.424, 0.38, 1)
@@ -76,15 +77,6 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
 
-[node name="Background" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.153, 0.192, 0.18, 1)
-
 [node name="MapFrame" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -112,6 +104,12 @@ texture_filter = 1
 script = ExtResource("7_ferry_layer")
 atlas_texture = ExtResource("8_ferry_tiles")
 map_kind = "mountain_path"
+
+[node name="MapDetailLayer" type="TileMapLayer" parent="MapFrame"]
+unique_name_in_owner = true
+texture_filter = 1
+script = ExtResource("15_map_detail")
+atlas_texture = ExtResource("8_ferry_tiles")
 
 [node name="MapCanvas" type="Control" parent="MapFrame"]
 unique_name_in_owner = true

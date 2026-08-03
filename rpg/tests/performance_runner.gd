@@ -8,6 +8,7 @@ const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const BUDGET_PATH := "res://tests/performance_budget.json"
 const PERFORMANCE_SAVE_PATH := "user://performance-save.json"
 const PERFORMANCE_SETTINGS_PATH := "user://performance-settings.json"
+const EXPECTED_STATIC_MAIN_SCENE_NODES := 110
 const DIRECTIONS := [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]
 const COMPLETE_BATTLE_ACTIONS := [
 	"talk_to_companion",
@@ -152,6 +153,8 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 	var cycles := int(budget["scene_cycles"])
 	var baseline_children := root.get_child_count()
 	var maximum_nodes := 0
+	var static_scene_nodes := 0
+	var maximum_detail_rebuilds := 0
 	var state_peaks := {
 		"title": 0,
 		"path": 0,
@@ -166,12 +169,21 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		SaveGameScript.remove(PERFORMANCE_SAVE_PATH)
 		SettingsStoreScript.remove(PERFORMANCE_SETTINGS_PATH)
 		var instance := packed_scene.instantiate()
+		var cycle_static_nodes := _count_nodes(instance)
+		static_scene_nodes = maxi(static_scene_nodes, cycle_static_nodes)
+		if cycle_static_nodes != EXPECTED_STATIC_MAIN_SCENE_NODES and _cycle == 0:
+			failures.append("主场景静态节点数改变：%d != %d" % [cycle_static_nodes, EXPECTED_STATIC_MAIN_SCENE_NODES])
 		instance.configure_save_path(PERFORMANCE_SAVE_PATH)
 		instance.configure_settings_path(PERFORMANCE_SETTINGS_PATH)
 		root.add_child(instance)
 		await process_frame
 		await process_frame
 		state_peaks["title"] = maxi(int(state_peaks["title"]), _count_nodes(instance))
+		var detail_layer: TileMapLayer = instance.get_node("%MapDetailLayer")
+		var title_detail_contract: Dictionary = detail_layer.map_contract()
+		maximum_detail_rebuilds = maxi(maximum_detail_rebuilds, int(title_detail_contract["rebuild_count"]))
+		if int(title_detail_contract["rebuild_count"]) != 1 or not bool(title_detail_contract["visible"]):
+			failures.append("标题底图细节必须恰好构建一次并保持可见")
 
 		instance.start_new_game()
 		await process_frame
@@ -181,6 +193,8 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		await process_frame
 		await process_frame
 		state_peaks["dialogue"] = maxi(int(state_peaks["dialogue"]), _count_nodes(instance))
+		if int(detail_layer.map_contract()["rebuild_count"]) != 1:
+			failures.append("同一渡口上下文的对话流程意外重建地图细节")
 
 		instance._choose_dialogue_response("careful")
 		instance._on_action("gather_moonleaf")
@@ -189,12 +203,20 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		await process_frame
 		await process_frame
 		state_peaks["path"] = maxi(int(state_peaks["path"]), _count_nodes(instance))
+		var path_detail_contract: Dictionary = detail_layer.map_contract()
+		maximum_detail_rebuilds = maxi(maximum_detail_rebuilds, int(path_detail_contract["rebuild_count"]))
+		if int(path_detail_contract["rebuild_count"]) != 2 or not bool(path_detail_contract["visible"]):
+			failures.append("首次山道切换必须只追加一次可见细节重建")
 
 		instance._on_action("approach_enemy")
 		instance.get_node("%SceneTransition").finish()
 		await process_frame
 		await process_frame
 		state_peaks["battle"] = maxi(int(state_peaks["battle"]), _count_nodes(instance))
+		var battle_detail_contract: Dictionary = detail_layer.map_contract()
+		maximum_detail_rebuilds = maxi(maximum_detail_rebuilds, int(battle_detail_contract["rebuild_count"]))
+		if int(battle_detail_contract["rebuild_count"]) != 2 or bool(battle_detail_contract["visible"]):
+			failures.append("战斗必须隐藏细节且不得重复构建缓存的山道布局")
 		instance._on_action("guard")
 		state_peaks["battle_action_immediate"] = maxi(int(state_peaks["battle_action_immediate"]), _count_nodes(instance))
 		await process_frame
@@ -223,6 +245,8 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		"cycles": cycles,
 		"elapsed_ms": snappedf(elapsed_ms, 0.01),
 		"maximum_nodes": maximum_nodes,
+		"static_scene_nodes": static_scene_nodes,
+		"maximum_detail_rebuilds": maximum_detail_rebuilds,
 		"state_peaks": state_peaks,
 		"root_children_after": root.get_child_count(),
 	}

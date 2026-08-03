@@ -49,7 +49,7 @@
     "file": "ferry_tiles.png",
     "tile_size_px": [32, 32],
     "columns": 8,
-    "rows": 1,
+    "rows": 2,
     "map_size_tiles": [36, 20],
     "tiles": [
       "grass",
@@ -59,7 +59,15 @@
       "moonleaf_field",
       "stone",
       "deep_grass",
-      "water_glint"
+      "water_glint",
+      "reeds",
+      "bank_grass",
+      "path_pebbles",
+      "wildflowers",
+      "stone_cracks",
+      "moss",
+      "fallen_leaves",
+      "water_foam"
     ]
   }
 }

@@ -21,7 +21,7 @@ make play-rpg-package
 nearest Git revision, clean/dirty source state, required runtime resources, and excluded development
 resources. `make play-rpg-package` launches that pack with the pinned Godot entrypoint. The package
 gate exports the PCK and manifest twice, requires byte-identical results, verifies the manifest,
-probes the packed namespace for seven runtime resources and nine excluded `tests/`/`tools/` files,
+probes the packed namespace for nine runtime resources and nine excluded `tests/`/`tools/` files,
 then boots the pack headlessly. A native `.app`/`.exe` is intentionally deferred until platform export templates,
 signing identity, product icon, and distribution target are confirmed.
 
@@ -72,9 +72,11 @@ settings v3 增加“标准/大字”文字大小和“关闭/开启”高对比
 亲自走到月芽田采集，再沿路抵达藏泉山门。战斗阶段使用鼠标点击，或用方向键
 切换焦点并按 `Enter`/手柄 A 确认；可请求一次砚青援护，也可沿预留路线撤退。
 战术部署槽可布置一盏引泉石灯，在部署回合与下一回合各削弱一点冲击；气血耗尽
-会由同伴救回渡口，不会形成无法继续的死档。渡口地表已由 36×20 个原创 32 px
-图块组成真正的 `TileMapLayer`；建筑、树木、码头和交互标记暂时保留运行时绘制，
-作为后续正式前景图块制作时的可复现对照。三处屋檐和四处树冠已拆为按脚底 Y
+会由同伴救回渡口，不会形成无法继续的死档。渡口与山道地表已由 36×20 个原创
+32 px 图块组成真正的 `TileMapLayer`；同一张 256×64 图集的第二行还提供芦苇、
+岸草、碎石、野花、石裂、苔痕、落叶与水沫，并由一个无物理/导航权威的稀疏
+细节层按地图确定性铺设。建筑、树木、码头和交互标记暂时保留运行时绘制，作为
+后续正式前景图块制作时的可复现对照。三处屋檐和四处树冠已拆为按脚底 Y
 排序的独立前景节点；山道与战斗镜头分别使用五处和四处树冠。角色走到物体后方
 会被遮挡，走到前方则覆盖前景，地图深度不会穿过对话或菜单模态层。
 

@@ -22,6 +22,7 @@ const PUPPET_SPOOR_POSITION := Vector2(0.91, 0.34)
 @onready var herbkeeper_sprite = %HerbkeeperSprite
 @onready var ferry_ground: TileMapLayer = %FerryGround
 @onready var path_ground: TileMapLayer = %PathGround
+@onready var map_detail_layer: TileMapLayer = %MapDetailLayer
 @onready var battle_enemy_sprite: AnimatedSprite2D = %BattleEnemySprite
 @onready var path_rock_enemy_sprite: AnimatedSprite2D = %PathRockEnemySprite
 @onready var path_moss_enemy_sprite: AnimatedSprite2D = %PathMossEnemySprite
@@ -170,6 +171,10 @@ func uses_mountain_path_tile_layers() -> bool:
 	return path_ground is TileMapLayer and path_ground.tile_set != null
 
 
+func uses_map_detail_layer() -> bool:
+	return map_detail_layer is TileMapLayer and map_detail_layer.tile_set != null
+
+
 func uses_animated_enemy_sprites() -> bool:
 	return (
 		battle_enemy_sprite is AnimatedSprite2D
@@ -302,12 +307,14 @@ func _sync_actor_visuals() -> void:
 		or not is_instance_valid(companion_sprite)
 		or not is_instance_valid(ferryman_sprite)
 		or not is_instance_valid(herbkeeper_sprite)
+		or not is_instance_valid(map_detail_layer)
 	):
 		return
 	var size := get_rect().size
 	_sync_occluders(size)
 	ferry_ground.visible = phase_id == "riverbank"
 	path_ground.visible = phase_id == "mountain_path"
+	map_detail_layer.set_context(phase_id)
 	battle_enemy_sprite.visible = phase_id == "battle"
 	path_rock_enemy_sprite.visible = phase_id == "mountain_path"
 	path_moss_enemy_sprite.visible = phase_id == "mountain_path"

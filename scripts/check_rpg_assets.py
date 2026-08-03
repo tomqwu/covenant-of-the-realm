@@ -11,6 +11,29 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSET_DIR = ROOT / "rpg" / "assets" / "pixel"
 CONTRACT_PATH = ASSET_DIR / "asset_contract.json"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+MAP_ATLAS_COLUMNS = 8
+MAP_ATLAS_ROWS = 2
+MAP_ATLAS_SIZE_PX = (256, 64)
+MAP_BASE_TILE_NAMES = [
+    "grass",
+    "water",
+    "bank",
+    "path",
+    "moonleaf_field",
+    "stone",
+    "deep_grass",
+    "water_glint",
+]
+MAP_DETAIL_TILE_NAMES = [
+    "reeds",
+    "bank_grass",
+    "path_pebbles",
+    "wildflowers",
+    "stone_cracks",
+    "moss",
+    "fallen_leaves",
+    "water_foam",
+]
 
 
 def _png_size(path: Path) -> tuple[int, int]:
@@ -129,14 +152,24 @@ def validate_contract(data: Any) -> list[str]:
     tile_names = map_atlas.get("tiles")
     columns = map_atlas.get("columns")
     rows = map_atlas.get("rows")
-    if not isinstance(columns, int) or columns <= 0:
-        failures.append("map_atlas.columns must be a positive integer")
-        columns = 0
-    if not isinstance(rows, int) or rows <= 0:
-        failures.append("map_atlas.rows must be a positive integer")
-        rows = 0
-    if not isinstance(tile_names, list) or len(tile_names) != columns * rows:
-        failures.append("map_atlas.tiles must name every atlas cell")
+    if columns != MAP_ATLAS_COLUMNS:
+        failures.append(f"map_atlas.columns must be {MAP_ATLAS_COLUMNS}")
+    if rows != MAP_ATLAS_ROWS:
+        failures.append(f"map_atlas.rows must be {MAP_ATLAS_ROWS}")
+    if not isinstance(tile_names, list) or any(
+        not isinstance(tile_name, str) for tile_name in tile_names
+    ):
+        failures.append("map_atlas.tiles must be a flat row-major list of tile names")
+    else:
+        expected_tile_count = MAP_ATLAS_COLUMNS * MAP_ATLAS_ROWS
+        if len(tile_names) != expected_tile_count:
+            failures.append(f"map_atlas.tiles must name all {expected_tile_count} atlas cells")
+        if tile_names[:MAP_ATLAS_COLUMNS] != MAP_BASE_TILE_NAMES:
+            failures.append(
+                f"map_atlas.tiles row 0 must preserve {MAP_BASE_TILE_NAMES!r}"
+            )
+        if tile_names[MAP_ATLAS_COLUMNS:] != MAP_DETAIL_TILE_NAMES:
+            failures.append(f"map_atlas.tiles row 1 must be {MAP_DETAIL_TILE_NAMES!r}")
     map_file = map_atlas.get("file")
     if not isinstance(map_file, str) or Path(map_file).name != map_file:
         failures.append("map_atlas.file must be a local file name")
@@ -147,15 +180,10 @@ def validate_contract(data: Any) -> list[str]:
         else:
             try:
                 actual = _png_size(path)
-                if map_atlas.get("tile_size_px") == [32, 32] and columns and rows:
-                    expected_map_size = (
-                        map_atlas["tile_size_px"][0] * columns,
-                        map_atlas["tile_size_px"][1] * rows,
+                if actual != MAP_ATLAS_SIZE_PX:
+                    failures.append(
+                        f"{map_file}: expected {MAP_ATLAS_SIZE_PX}, got {actual}"
                     )
-                    if actual != expected_map_size:
-                        failures.append(
-                            f"{map_file}: expected {expected_map_size}, got {actual}"
-                        )
             except ValueError as error:
                 failures.append(f"{map_file}: {error}")
     return failures

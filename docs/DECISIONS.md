@@ -4,6 +4,21 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — Sparse map details remain deterministic presentation
+
+The existing 256×32 ferry atlas now keeps its original eight ground tiles unchanged in row zero
+and adds a second transparent row for reeds, bank grass, path pebbles, wildflowers, stone cracks,
+moss, fallen leaves, and water foam. One shared `TileMapLayer` places finite, explicit integer
+cells for the ferry and mountain path. It rebuilds only when the rendered map kind changes and is
+hidden, without rebuilding, during battle, spring, and completion scenes.
+
+The detail TileSet deliberately owns zero physics and navigation layers and exposes
+`collision_authority: false`; normalized ExplorationState obstacles, interaction radii, saves, and
+story rules remain authoritative. The redundant full-screen background node was replaced rather
+than increasing the scene tree, preserving 110 static nodes and the existing 120-node immediate
+and stable peak. The generator, atlas row order, exact cell layouts, package resources, double PCK
+export, and two consecutive 32-image capture sets are all deterministic quality gates.
+
 ### 2026-08-02 — Three studied spoors reveal timing without changing combat truth
 
 The mountain path contains three optional, one-time investigations: a rock-armor scrape, a
