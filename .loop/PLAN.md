@@ -1,25 +1,21 @@
 # Loop Plan
 
-## Current loop — accessible dialogue reveal speed
+## Current loop — stable hosted-runner lifecycle evidence
 
-- [x] Upgrade only the independent settings store to v4 with `dialogue_speed` set to `standard`,
-  `fast`, or `instant`. Preserve every valid v1–v3 preference while migrating to `standard`; reject
-  missing, wrong-type, unknown, malformed, and future values atomically without changing save v16.
-- [x] Add paired, focusable title and pause controls labelled `对话显字：标准/快速/整句`. Keep them
-  independent from battle speed and reduced motion, synchronized after a successful settings write,
-  disabled during destructive-new-game confirmation, and persistent across new, continue, and replay.
-- [x] Make reveal behavior deterministic at 42 or 84 Unicode characters per second, with `instant`
-  showing each new line in full but never auto-advancing or choosing a response. Invalid deltas are
-  no-ops; switching speed never hides read text, while switching to `instant` completes the current
-  line without changing Dialogue, Journey, Patrol, or game-save authority.
-- [x] Cover settings migration and failed writes, fixed-step and oversized-delta reveal, manual full
-  line/history/skip semantics, mouse/keyboard/controller input, active-dialogue resume, new/replay,
-  lifecycle budgets, readable deterministic captures, reproducible package contents, and boot behavior.
-- [x] Run the repository-wide `make check`, review the complete diff, update durable decisions and
-  exact metrics, commit, push, and monitor Draft PR #7 without merging it.
+- [x] Prove the docs-only closeout failure is hosted-runner wall-clock variance by comparing exact
+  blobs, logs, tools, and recent samples; preserve the 20-cycle, 7-second, 114-static, 124-peak, and
+  zero-leak contracts.
+- [x] Confirm only an otherwise-clean time overage with one second complete 20-cycle sample in the
+  same process. Never retry correctness, structure, node, map/camera, or leak failures; fail when
+  both complete samples exceed the unchanged ceiling and report all timings plus merged maxima.
+- [x] Exercise the normal one-sample path, six synthetic policy branches, and a deliberate 1 ms
+  negative budget proving two sustained slow samples still fail; restore the checked-in budget.
+- [ ] Review the complete verified diff, commit, push, and monitor Draft PR #7 without merging it.
 
 ## Recently completed
 
+- [x] Add independent standard/fast/instant dialogue reveal settings, paired title/pause controls,
+  migration and crash-consistent persistence while keeping Dialogue and save v16 authoritative.
 - [x] Add route-aware, repeatable ferry-runner worksite echoes at both exact patrol endpoints while
   keeping the complete Journey snapshot unchanged and migrating active dialogue safely to save v16.
 - [x] Add generated two-frame idle, attack, and reaction animation for all four stable enemy

@@ -46,6 +46,10 @@ each spring ritual stage uses 115, and the completed scene uses 117, with zero r
 lifecycle gate on a fixed 60 FPS clock, keeps required focus/deferred-tree settle frames, and
 disables automatic drawing because deterministic PNG captures own pixel verification. The runner
 reports measured times but does not treat one development machine as a release hardware promise.
+If the first complete lifecycle sample has no structural failure but exceeds 7 seconds, the same
+process runs exactly one more complete 20-cycle sample; both must exceed the unchanged ceiling to
+fail. Node, state, map/camera, or leak failures never retry, and the report retains every timing plus
+the maximum structural observations across both samples.
 
 启动后可选择新游戏或继续本机的版本化存档。当前 save v16 同时记录稳定地图标识、
 归一化坐标、首次引息阶段、对话行号、敌人标识、战斗状态、月芽采集方式、环境见闻、
