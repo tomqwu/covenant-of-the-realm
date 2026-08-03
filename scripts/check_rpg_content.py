@@ -23,12 +23,40 @@ REQUIRED_JOURNAL_SIDE_IDS = {
     "ferryman_record",
     "ferryman_repair",
 }
+ENEMY_NOTE_REFERENCE_CONTRACT = {
+    "rock_armor_young": {
+        "trace_action": "inspect_rock_spoor",
+        "counter_action": "use_talisman",
+        "counter_intent": "rock_rending_charge",
+    },
+    "spring_moss_shell": {
+        "trace_action": "inspect_moss_spoor",
+        "counter_action": "use_art",
+        "counter_intent": "moss_absorb_tide",
+    },
+    "unbalanced_stone_puppet": {
+        "trace_action": "inspect_puppet_spoor",
+        "counter_action": "guard",
+        "counter_intent": "puppet_unbalanced_swing",
+    },
+}
+REQUIRED_ENEMY_NOTE_IDS = set(ENEMY_NOTE_REFERENCE_CONTRACT)
+REQUIRED_ENEMY_NOTE_FIELDS = {
+    "title",
+    "trace",
+    "cycle",
+    "counter",
+    "trace_action",
+    "counter_action",
+    "counter_intent",
+}
 ALLOWED_DIALOGUE_TOKENS = {
     "basket_reflection",
     "companion_reflection",
     "discovery_reflection",
     "ferryman_reflection",
     "harvest_reflection",
+    "intel_reflection",
     "setback_reflection",
 }
 TOKEN_PATTERN = re.compile(r"\{([^{}]+)\}")
@@ -83,6 +111,7 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
         f"{source}.journal_side_entries",
         failures,
     )
+    enemy_notes = _mapping(story.get("enemy_notes"), f"{source}.enemy_notes", failures)
     raw_transitions = story.get("transitions", {})
     transitions = _mapping(raw_transitions, f"{source}.transitions", failures)
     start_node = _text(story.get("start_node"), f"{source}.start_node", failures)
@@ -236,6 +265,53 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
         entry = _mapping(raw_entry, label, failures)
         _text(entry.get("title"), f"{label}.title", failures)
         _text(entry.get("summary"), f"{label}.summary", failures)
+
+    enemy_note_ids = set(enemy_notes)
+    if enemy_note_ids != REQUIRED_ENEMY_NOTE_IDS:
+        missing = sorted(REQUIRED_ENEMY_NOTE_IDS - enemy_note_ids)
+        unknown = sorted(enemy_note_ids - REQUIRED_ENEMY_NOTE_IDS)
+        if missing:
+            failures.append(f"{source}.enemy_notes is missing: {', '.join(missing)}")
+        if unknown:
+            failures.append(
+                f"{source}.enemy_notes has unknown enemy ids: {', '.join(unknown)}"
+            )
+    for enemy_id, raw_note in enemy_notes.items():
+        label = f"{source}.enemy_notes.{enemy_id}"
+        _text(enemy_id, f"{source}.enemy_notes.id", failures)
+        note = _mapping(raw_note, label, failures)
+        fields = set(note)
+        missing_fields = sorted(REQUIRED_ENEMY_NOTE_FIELDS - fields)
+        unknown_fields = sorted(fields - REQUIRED_ENEMY_NOTE_FIELDS)
+        if missing_fields:
+            failures.append(f"{label} is missing fields: {', '.join(missing_fields)}")
+        if unknown_fields:
+            failures.append(f"{label} has unknown fields: {', '.join(unknown_fields)}")
+        _text(note.get("title"), f"{label}.title", failures)
+        _text(note.get("trace"), f"{label}.trace", failures)
+        _text(note.get("counter"), f"{label}.counter", failures)
+
+        cycle = note.get("cycle")
+        if not isinstance(cycle, list) or not cycle:
+            failures.append(f"{label}.cycle must be a non-empty list")
+            cycle = []
+        for index, step in enumerate(cycle):
+            _text(step, f"{label}.cycle[{index}]", failures)
+
+        references = ENEMY_NOTE_REFERENCE_CONTRACT.get(enemy_id)
+        for field in ("trace_action", "counter_action", "counter_intent"):
+            reference = _text(note.get(field), f"{label}.{field}", failures)
+            if not references or not reference:
+                continue
+            expected = references[field]
+            if reference != expected:
+                failures.append(
+                    f"{label}.{field} must be '{expected}' for '{enemy_id}'"
+                )
+            if field != "counter_intent" and reference not in action_ids:
+                failures.append(
+                    f"{label}.{field} points to missing action '{reference}'"
+                )
 
     if start_node in nodes:
         reachable: set[str] = set()

@@ -9,7 +9,7 @@
     "battle": "碎甲声近 · 临势应战",
     "spring": "藏泉石室 · 灵泉初醒",
     "complete": "第一息 · 山河有应",
-    "boss_arrived": "守巢者现 · 先守后破"
+    "boss_arrived": "守巢者现 · 临势应战"
   },
   "nodes": {
     "riverbank": {
@@ -72,6 +72,21 @@
         {
           "id": "inspect_abandoned_basket",
           "label": "翻看弃置药篓",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "inspect_rock_spoor",
+          "label": "查看崩石爪痕",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "inspect_moss_spoor",
+          "label": "辨认泉苔孢痕",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "inspect_puppet_spoor",
+          "label": "追看石屑拖痕",
           "possible_targets": ["mountain_path"]
         },
         {
@@ -192,7 +207,7 @@
     },
     "chapter_epilogue": {
       "lines": [
-        {"speaker": "砚青", "text": "泉声安静下来了。你这一趟{harvest_reflection}，也把{discovery_reflection}写进了札记。"},
+        {"speaker": "砚青", "text": "泉声安静下来了。你这一趟{harvest_reflection}，也把{discovery_reflection}与{intel_reflection}一同写进了札记。"},
         {"speaker": "你", "text": "第一次引息不像登上高处，倒像终于听见脚下的水往哪里去。"},
         {"speaker": "砚青", "text": "{setback_reflection}。能走到这里，说明路线与退路都没有白看。"},
         {"speaker": "你", "text": "下一次出门，我得先知道自己能失去什么，也得知道什么值得留下。"},
@@ -263,6 +278,44 @@
       "summary": "你与蕙婶补紧提绳，再把药篓放回山道，供后来行旅收拢散落药材。"
     }
   },
+  "enemy_notes": {
+    "rock_armor_young": {
+      "title": "岩甲幼兽 · 两短一深",
+      "trace": "向阳碎石上留着两道短爪印与一道沉肩压痕；幼兽再次伏低时，未合拢的甲缝会一同张开。",
+      "cycle": [
+        "试探冲撞：肩甲偏高，只逼迫来者挪动退路。",
+        "裂石冲撞：伏身压低，把全副重量送进尚未闭合的肩甲。"
+      ],
+      "counter": "等幼兽伏身蓄力再贴上镇岩符，灵纹才能沿张开的甲缝压住护甲；成熟守巢者则只在崩石重击落空时腹甲错位，需以守势承力。",
+      "trace_action": "inspect_rock_spoor",
+      "counter_action": "use_talisman",
+      "counter_intent": "rock_rending_charge"
+    },
+    "spring_moss_shell": {
+      "title": "泉苔寄壳 · 吸潮吐雾",
+      "trace": "浅泉边的孢尘一团明、一团暗；空壳贴地吸潮时，湿苔会把壳缘全部摊开。",
+      "cycle": [
+        "吸潮蓄壳：壳缘贴地，青苔贪吸泉气。",
+        "喷苔孢雾：空壳昂起，将积下的孢雾推向前方。"
+      ],
+      "counter": "只在吸潮时以引气术吹散湿苔，干涸的壳缝才会显露。",
+      "trace_action": "inspect_moss_spoor",
+      "counter_action": "use_art",
+      "counter_intent": "moss_absorb_tide"
+    },
+    "unbalanced_stone_puppet": {
+      "title": "失衡石傀 · 锤落身倾",
+      "trace": "石阶上的拖痕一深一浅；沉锤扫过向阳处时，石傀负责回正的那只石足会短暂离地。",
+      "cycle": [
+        "失衡摆锤：沉锤横扫，偏斜重心越过足底。",
+        "踏地回正：石足重压，重新收回倾势。"
+      ],
+      "counter": "在摆锤将至时守稳架势，借冲力使它越过重心，才有破甲机会。",
+      "trace_action": "inspect_puppet_spoor",
+      "counter_action": "guard",
+      "counter_intent": "puppet_unbalanced_swing"
+    }
+  },
   "messages": {
     "gathered": "你与砚青只取一株月芽草，将余下幼株重新覆好薄土。",
     "gathered_cutting": "你剪下成熟月芽叶，把根须与新芽留在湿土中；药性足以护住第一次引息。",
@@ -288,6 +341,9 @@
     "need_moonleaf": "山道灵雾刺骨。砚青建议先去月芽田准备一株护脉灵草。",
     "path_entered": "你与砚青越过山门。溪声掩住了林间的碎甲声，退路仍在身后。",
     "path_marker_inspected": "石标背面刻着旧猎户的箭记：逆溪三步可避开第一轮冲撞。",
+    "rock_spoor_inspected": "你蹲在晴光照亮的碎石边。两短一深的爪痕指向低处；砚青看出幼兽第二次冲撞前会先伏低肩甲，正好让镇岩符贴进甲缝。",
+    "moss_spoor_inspected": "泉边孢尘被日光照成细亮的青点。潮湿空壳先贴地吸水，再昂起吐雾；趁它吸潮时引气，最容易吹散湿苔。",
+    "puppet_spoor_inspected": "石屑拖痕一深一浅，穿过松影又回到亮处。沉锤扫落时，石傀的回正足会离地片刻，守稳便能借它自己的力气破势。",
     "ferry_watermark_discovered": "石堤内侧留着三层旧水痕。最高一层被人刻成短横：照禾人曾在涨水前整夜转移药苗。",
     "spring_seam_discovered": "青白泉纹在石缝里向低处分叉。砚青辨出其中一支通往旧药圃，说明藏泉并非无人照料。",
     "abandoned_basket_discovered": "破药篓里只剩干苔与一段换过两次的提绳。弃篓者带走药材，却把还能用的绳结留给后来人。",
@@ -312,7 +368,7 @@
     "retreated": "你与砚青退到旧石标旁。{enemy}没有追远，并恢复到交战前的状态。",
     "companion_rescue": "你气血耗尽前，砚青将你拖离山道。休整后仍可再次进山。",
     "regular_enemy_won": "眼前灵物退开，石门后的泉息却让更沉重的甲片开始摩擦。",
-    "boss_arrived": "岩甲兽守巢者撞开石门。砚青替你重新包扎，并提醒你守住重击，令腹甲错位。",
+    "boss_arrived": "岩甲兽守巢者撞开石门。砚青替你重新包扎，提醒你先看清它的动作再出手。",
     "battle_won": "{enemy}退出山道，通往泉室的道路已经打开。",
     "breakthrough": "月芽草化开寒意，你完成第一次引息，踏入引息境一层。",
     "review": "渡口、月芽田与藏泉连成了你的第一段修行记忆。",

@@ -93,6 +93,8 @@ func _capture_flow() -> void:
 	await _settle()
 	await _save_frame("01-journey-journal.png")
 	instance.close_journal()
+	await _settle()
+	assert(not instance.get_node("%JournalOverlay").visible, "札记参考态关闭后必须先完成画面同步")
 	for _step in range(6):
 		instance.move_player(Vector2.RIGHT, 0.08)
 	for _step in range(4):
@@ -143,6 +145,25 @@ func _capture_flow() -> void:
 	instance._render([])
 	instance._on_action("enter_spring")
 	instance.get_node("%SceneTransition").finish()
+	instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.65, "player_y": 0.22})
+	instance._render([])
+	await _settle()
+	await _save_frame("02-enemy-spoors.png")
+	for spoor_case in [
+		{"position": Vector2(0.65, 0.22), "action": "inspect_rock_spoor"},
+		{"position": Vector2(0.36, 0.43), "action": "inspect_moss_spoor"},
+		{"position": Vector2(0.91, 0.34), "action": "inspect_puppet_spoor"},
+	]:
+		instance.exploration.restore({"map_id": "cangquan_path", "player_x": spoor_case["position"].x, "player_y": spoor_case["position"].y})
+		instance._render([])
+		instance._on_action(spoor_case["action"])
+	instance.open_journal()
+	instance.select_journal_page(1)
+	await _settle()
+	await _save_frame("02-enemy-intel-journal.png")
+	instance.close_journal()
+	await _settle()
+	assert(not instance.get_node("%JournalOverlay").visible, "灵物志参考态关闭后必须先完成画面同步")
 	instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.73, "player_y": 0.34})
 	instance._render([])
 
@@ -162,12 +183,13 @@ func _capture_flow() -> void:
 	await _settle()
 	await _save_frame("02-cangquan-puppet-battle.png")
 
+	instance._on_action("guard")
 	instance._on_action("use_talisman")
-	instance._on_action("use_art")
 	instance._on_action("use_art")
 	instance.get_node("%SceneTransition").finish()
 	await _settle()
 	await _save_frame("02-cangquan-boss.png")
+	instance._on_action("guard")
 	instance._on_action("guard")
 	instance._on_action("use_art")
 	instance._on_action("companion_support")

@@ -6,7 +6,7 @@ const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 
-const SAVE_VERSION := 12
+const SAVE_VERSION := 13
 const STORY_ID := "zhaohe_first_breath"
 const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 
@@ -222,6 +222,11 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["save_version"] = SAVE_VERSION
 		_migrate_basket_snapshot(migrated["journey"])
 		return _validated_migration(migrated, 11)
+	if version_number == 12:
+		var migrated := payload.duplicate(true)
+		migrated["save_version"] = SAVE_VERSION
+		_migrate_enemy_intel_snapshot(migrated["journey"])
+		return _validated_migration(migrated, 12)
 	return _validate_current(payload)
 
 
@@ -357,6 +362,14 @@ static func _migrate_ferryman_snapshot(journey_snapshot: Dictionary) -> void:
 
 static func _migrate_basket_snapshot(journey_snapshot: Dictionary) -> void:
 	journey_snapshot["basket_response"] = "unanswered"
+	_migrate_enemy_intel_snapshot(journey_snapshot)
+
+
+static func _migrate_enemy_intel_snapshot(journey_snapshot: Dictionary) -> void:
+	# Older builds never recorded whether a player studied a spoor. Do not infer
+	# knowledge from an encounter or combat round: migration must not invent a
+	# choice the player did not make.
+	journey_snapshot["enemy_intel"] = []
 
 
 static func _result(ok: bool, data: Dictionary, reason: String) -> Dictionary:

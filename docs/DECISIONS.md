@@ -4,6 +4,28 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-02 — Three studied spoors reveal timing without changing combat truth
+
+The mountain path contains three optional, one-time investigations: a rock-armor scrape, a
+wind-scattered moss spray, and an off-centre puppet drag mark. They record exactly three stable
+enemy-intelligence IDs, leave shape-readable studied residues on the map, and populate a separate
+`灵物志` journal page. Unknown entries expose no enemy name, technique, location, or counter.
+The rock-armor entry also explains the related warden; the boss does not create a fictitious fourth
+mountain trace.
+
+Every enemy intent now has a stable ID, and each material counter applies only during its authored
+intent window: talisman against the juvenile's rending charge, art against the moss shell while it
+absorbs moisture, guard against the puppet's unbalanced swing, and guard against the warden's
+stone-breaking blow. The current intent and damage remain visible to every player. Studied
+intelligence additionally previews the following intent and names the counter, but never changes
+health, damage, resources, turn order, routes, or rewards. Accidentally choosing the right counter
+without studying a trace resolves identically and does not silently unlock the journal.
+
+Save v13 stores only the ordered unique `enemy_intel` IDs. v1–v12 migrate to an empty list rather
+than inferring knowledge from a past encounter. Retreat, rescue, and chapter completion preserve
+the list; explicit chapter replay clears it. Intent previews are always derived from enemy ID,
+round, and current content, so no redundant future-turn state enters the save schema.
+
 ### 2026-08-02 — Journey saves keep a validated recovery generation
 
 The journey transaction keeps three deliberate candidates without changing save v12: the committed

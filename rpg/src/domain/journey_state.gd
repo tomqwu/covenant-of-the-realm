@@ -15,6 +15,9 @@ const INSPECT_PATH_MARKER := "inspect_path_marker"
 const INSPECT_FERRY_WATERMARK := "inspect_ferry_watermark"
 const INSPECT_SPRING_SEAM := "inspect_spring_seam"
 const INSPECT_ABANDONED_BASKET := "inspect_abandoned_basket"
+const INSPECT_ROCK_SPOOR := "inspect_rock_spoor"
+const INSPECT_MOSS_SPOOR := "inspect_moss_spoor"
+const INSPECT_PUPPET_SPOOR := "inspect_puppet_spoor"
 const APPROACH_ENEMY := "approach_enemy"
 const APPROACH_MOSS_SHELL := "approach_moss_shell"
 const APPROACH_STONE_PUPPET := "approach_stone_puppet"
@@ -74,6 +77,7 @@ var focus_turns := 0
 var discoveries: Array[String] = []
 var ferryman_response := FERRYMAN_UNANSWERED
 var basket_response := BASKET_UNANSWERED
+var enemy_intel: Array[String] = []
 
 
 func phase_id() -> String:
@@ -113,6 +117,12 @@ func available_actions() -> PackedStringArray:
 				path_actions.append(INSPECT_SPRING_SEAM)
 			if not discoveries.has(DISCOVERY_ABANDONED_BASKET):
 				path_actions.append(INSPECT_ABANDONED_BASKET)
+			if not enemy_intel.has(EnemyCatalogScript.ROCK_ARMOR_YOUNG):
+				path_actions.append(INSPECT_ROCK_SPOOR)
+			if not enemy_intel.has(EnemyCatalogScript.SPRING_MOSS_SHELL):
+				path_actions.append(INSPECT_MOSS_SPOOR)
+			if not enemy_intel.has(EnemyCatalogScript.UNBALANCED_STONE_PUPPET):
+				path_actions.append(INSPECT_PUPPET_SPOOR)
 			path_actions.append_array(PackedStringArray([
 				APPROACH_ENEMY,
 				APPROACH_MOSS_SHELL,
@@ -149,6 +159,12 @@ func choose(action_id: String) -> Dictionary:
 				return _record_discovery(DISCOVERY_SPRING_SEAM, "spring_seam_discovered")
 			if action_id == INSPECT_ABANDONED_BASKET:
 				return _record_discovery(DISCOVERY_ABANDONED_BASKET, "abandoned_basket_discovered")
+			if action_id == INSPECT_ROCK_SPOOR:
+				return _record_enemy_intel(EnemyCatalogScript.ROCK_ARMOR_YOUNG, "rock_spoor_inspected")
+			if action_id == INSPECT_MOSS_SPOOR:
+				return _record_enemy_intel(EnemyCatalogScript.SPRING_MOSS_SHELL, "moss_spoor_inspected")
+			if action_id == INSPECT_PUPPET_SPOOR:
+				return _record_enemy_intel(EnemyCatalogScript.UNBALANCED_STONE_PUPPET, "puppet_spoor_inspected")
 			var encounter_id := _enemy_for_approach_action(action_id)
 			if not encounter_id.is_empty():
 				enemy_id = encounter_id
@@ -206,6 +222,7 @@ func snapshot() -> Dictionary:
 		"discoveries": discoveries.duplicate(),
 		"ferryman_response": ferryman_response,
 		"basket_response": basket_response,
+		"enemy_intel": enemy_intel.duplicate(),
 	}
 
 
@@ -231,6 +248,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		"discoveries",
 		"ferryman_response",
 		"basket_response",
+		"enemy_intel",
 	]
 	for key in required_keys:
 		if not snapshot_data.has(key):
@@ -252,6 +270,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if typeof(snapshot_data["ferryman_response"]) != TYPE_STRING:
 		return false
 	if typeof(snapshot_data["basket_response"]) != TYPE_STRING:
+		return false
+	if not _valid_enemy_intel(snapshot_data["enemy_intel"]):
 		return false
 	if not EnemyCatalogScript.supports(snapshot_data["enemy_id"]):
 		return false
@@ -312,6 +332,9 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_discoveries.append(discovery_id)
 	var next_ferryman_response: String = snapshot_data["ferryman_response"]
 	var next_basket_response: String = snapshot_data["basket_response"]
+	var next_enemy_intel: Array[String] = []
+	for intel_id in snapshot_data["enemy_intel"]:
+		next_enemy_intel.append(intel_id)
 	if not _valid_phase_invariants(
 		next_phase,
 		next_gathered,
@@ -332,7 +355,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_focus_turns,
 		next_discoveries,
 		next_ferryman_response,
-		next_basket_response
+		next_basket_response,
+		next_enemy_intel
 	):
 		return false
 
@@ -356,6 +380,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	discoveries = next_discoveries
 	ferryman_response = next_ferryman_response
 	basket_response = next_basket_response
+	enemy_intel = next_enemy_intel
 	return true
 
 
@@ -429,7 +454,7 @@ func _choose_battle(action_id: String) -> Dictionary:
 			return _result(true, ["retreated"])
 		_:
 			return _result(false, ["invalid_action"])
-	if action_id in [USE_ART, USE_TALISMAN, GUARD] and EnemyCatalogScript.exposes_weakness(enemy_id, action_id):
+	if action_id in [USE_ART, USE_TALISMAN, GUARD] and EnemyCatalogScript.exposes_weakness(enemy_id, action_id, round_number):
 		armor_break_turns = 2
 		events.append("weakness_exposed")
 
@@ -478,6 +503,15 @@ func _record_discovery(discovery_id: String, event_id: String) -> Dictionary:
 	if discoveries.has(discovery_id):
 		return _result(false, ["already_discovered"])
 	discoveries.append(discovery_id)
+	return _result(true, [event_id])
+
+
+func _record_enemy_intel(intel_id: String, event_id: String) -> Dictionary:
+	if not EnemyCatalogScript.supports_intel(intel_id):
+		return _result(false, ["invalid_enemy_intel"])
+	if enemy_intel.has(intel_id):
+		return _result(false, ["spoor_already_inspected"])
+	enemy_intel.append(intel_id)
 	return _result(true, [event_id])
 
 
@@ -530,8 +564,26 @@ func current_enemy_intent() -> Dictionary:
 	return EnemyCatalogScript.intent(enemy_id, round_number)
 
 
+func knows_enemy_intel(target_enemy_id: String) -> bool:
+	var target_intel_id := EnemyCatalogScript.intel_id(target_enemy_id)
+	return not target_intel_id.is_empty() and enemy_intel.has(target_intel_id)
+
+
+func visible_enemy_intents() -> Array[Dictionary]:
+	if phase != Phase.BATTLE:
+		return []
+	var current_intent := current_enemy_intent()
+	if current_intent.is_empty():
+		return []
+	if not knows_enemy_intel(enemy_id):
+		var sanitized := current_intent.duplicate(true)
+		sanitized.erase("counter_action")
+		return [sanitized]
+	return [current_intent, EnemyCatalogScript.intent(enemy_id, round_number + 1)]
+
+
 func _resolved_player_damage(action_id: String) -> int:
-	var damage := EnemyCatalogScript.player_damage(enemy_id, action_id)
+	var damage := EnemyCatalogScript.player_damage(enemy_id, action_id, round_number)
 	if action_id in [USE_ART, USE_TALISMAN]:
 		if armor_break_turns > 0:
 			damage += 1
@@ -575,6 +627,7 @@ func _reset_chapter() -> void:
 	discoveries.clear()
 	ferryman_response = FERRYMAN_UNANSWERED
 	basket_response = BASKET_UNANSWERED
+	enemy_intel.clear()
 
 
 func _integer_in_range(value: Variant, minimum: int, maximum: int) -> bool:
@@ -604,7 +657,8 @@ func _valid_phase_invariants(
 	next_focus_turns: int,
 	next_discoveries: Array[String],
 	next_ferryman_response: String,
-	next_basket_response: String
+	next_basket_response: String,
+	next_enemy_intel: Array[String]
 ) -> bool:
 	if next_ferryman_response not in FERRYMAN_RESPONSES:
 		return false
@@ -612,12 +666,16 @@ func _valid_phase_invariants(
 		return false
 	if not _valid_discoveries(next_discoveries):
 		return false
+	if not _valid_enemy_intel(next_enemy_intel):
+		return false
 	if next_basket_response != BASKET_UNANSWERED and not next_discoveries.has(DISCOVERY_ABANDONED_BASKET):
 		return false
 	if (
 		(next_discoveries.has(DISCOVERY_SPRING_SEAM) or next_discoveries.has(DISCOVERY_ABANDONED_BASKET))
 		and (not next_talked or next_moonleaf_method == MOONLEAF_UNSELECTED)
 	):
+		return false
+	if not next_enemy_intel.is_empty() and (not next_talked or next_moonleaf_method == MOONLEAF_UNSELECTED):
 		return false
 	if next_briefing_response not in [RESPONSE_UNANSWERED, RESPONSE_CAREFUL, RESPONSE_TRUSTING]:
 		return false
@@ -636,10 +694,10 @@ func _valid_phase_invariants(
 	if next_phase == Phase.MOUNTAIN_PATH:
 		return next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp == next_enemy_max and next_round == 1 and next_lamp_turns == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
 	if next_phase == Phase.BATTLE:
-		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp > 0 and (next_lamp_turns == 0 or next_spring_lamps == 0)
+		return next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp > 0 and (next_lamp_turns == 0 or next_spring_lamps == 0)
 	if next_phase == Phase.SPRING:
-		return next_realm == "凡身" and next_gathered and next_talked and next_enemy_hp == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
-	return next_realm == "引息境一层" and not next_gathered and next_enemy_hp == 0 and next_setbacks >= 0 and next_armor_break_turns == 0 and next_focus_turns == 0
+		return next_realm == "凡身" and next_gathered and next_talked and next_player_hp > 0 and next_enemy_hp == 0 and next_armor_break_turns == 0 and next_focus_turns == 0
+	return next_realm == "引息境一层" and not next_gathered and next_player_hp > 0 and next_enemy_hp == 0 and next_setbacks >= 0 and next_armor_break_turns == 0 and next_focus_turns == 0
 
 
 func _valid_discoveries(candidate: Variant) -> bool:
@@ -650,6 +708,17 @@ func _valid_discoveries(candidate: Variant) -> bool:
 		if typeof(discovery_id) != TYPE_STRING or discovery_id not in DISCOVERY_IDS or seen.has(discovery_id):
 			return false
 		seen.append(discovery_id)
+	return true
+
+
+func _valid_enemy_intel(candidate: Variant) -> bool:
+	if typeof(candidate) != TYPE_ARRAY:
+		return false
+	var seen: Array[String] = []
+	for intel_id in candidate:
+		if not EnemyCatalogScript.supports_intel(intel_id) or seen.has(intel_id):
+			return false
+		seen.append(intel_id)
 	return true
 
 

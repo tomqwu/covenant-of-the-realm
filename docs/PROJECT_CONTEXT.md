@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-08-01
+Last updated: 2026-08-02
 
 ## Current direction
 
@@ -128,10 +128,10 @@ Expand the executable RPG graybox into a complete 90-minute original chapter:
 2. resumable seven-line companion briefing, two attitude responses, dynamic quest-state presentation, and a resumable five-line chapter epilogue reflecting the played route (implemented);
 3. 月芽田两种不会锁死主线的采集方式、可见余留与结算回声（implemented）;
 4. 藏泉山道 free exploration, warning, optional stone-marker investigation, return/retreat, no-combat bypass, mid-map save, and companion rescue path (implemented);
-5. three regular enemy profiles plus a shared-resolver boss, telegraphed intents, material weaknesses, armor-break and focus states (implemented);
+5. three regular enemy profiles plus a shared-resolver boss, stable intent-local counter windows, three optional spatial spoor investigations, a no-spoiler `灵物志`, material weaknesses, armor-break and focus states (implemented; intelligence changes disclosure only, never combat results);
 6. an active chapter companion and a visible two-turn tactical deployable (implemented);
-7. side-story-, discovery-, harvest-, battle-status-, enemy-, dialogue-, and map-aware save v12, title/continue, two-step new-game protection, crash-consistent temporary/backup recovery with anti-downgrade validation, chapter replay, and an input-safe no-spoiler journey journal (implemented; v1–v11 migrate explicitly and pass current-domain validation);
-8. mouse, keyboard, and controller parity with physical-event/focus acceptance coverage (implemented);
+7. side-story-, discovery-, harvest-, battle-status-, enemy-intelligence-, dialogue-, and map-aware save v13, title/continue, two-step new-game protection, crash-consistent temporary/backup recovery with anti-downgrade validation, chapter replay, and an input-safe no-spoiler journey journal (implemented; v1–v12 migrate explicitly and pass current-domain validation);
+8. mouse, keyboard, and controller parity with physical-event/focus acceptance coverage, including selectable journal pages and proximity investigations (implemented);
 9. original visual direction and opt-in procedural ambience with recorded provenance (reproducible protagonist/companion/ferryman/herbkeeper and enemy atlases, animated map actors, and bright painted-paper dialogue portraits implemented; map/final asset refinement remains);
 10. new-game-to-ending-to-save-resume-to-replay automated Godot acceptance path (implemented).
 

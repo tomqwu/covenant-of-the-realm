@@ -14,11 +14,12 @@ const COMPLETE_BATTLE_ACTIONS := [
 	"gather_moonleaf",
 	"enter_spring",
 	"approach_enemy",
+	"guard",
 	"use_talisman",
 	"use_art",
 	"use_art",
-	"guard",
 	"use_art",
+	"guard",
 	"companion_support",
 	"use_art",
 	"use_art",
@@ -147,20 +148,65 @@ func _benchmark_companion_trail(budget: Dictionary) -> Dictionary:
 
 
 func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
-	SaveGameScript.remove(PERFORMANCE_SAVE_PATH)
-	SettingsStoreScript.remove(PERFORMANCE_SETTINGS_PATH)
 	var packed_scene: PackedScene = load("res://src/ui/main.tscn")
 	var cycles := int(budget["scene_cycles"])
 	var baseline_children := root.get_child_count()
 	var maximum_nodes := 0
+	var state_peaks := {
+		"title": 0,
+		"path": 0,
+		"dialogue": 0,
+		"battle": 0,
+		"battle_action_immediate": 0,
+		"battle_action_stable": 0,
+		"journal": 0,
+	}
 	var started := Time.get_ticks_usec()
 	for _cycle in range(cycles):
+		SaveGameScript.remove(PERFORMANCE_SAVE_PATH)
+		SettingsStoreScript.remove(PERFORMANCE_SETTINGS_PATH)
 		var instance := packed_scene.instantiate()
 		instance.configure_save_path(PERFORMANCE_SAVE_PATH)
 		instance.configure_settings_path(PERFORMANCE_SETTINGS_PATH)
 		root.add_child(instance)
 		await process_frame
-		maximum_nodes = maxi(maximum_nodes, _count_nodes(instance))
+		await process_frame
+		state_peaks["title"] = maxi(int(state_peaks["title"]), _count_nodes(instance))
+
+		instance.start_new_game()
+		await process_frame
+		await process_frame
+		instance._start_companion_dialogue()
+		instance.skip_dialogue_to_response()
+		await process_frame
+		await process_frame
+		state_peaks["dialogue"] = maxi(int(state_peaks["dialogue"]), _count_nodes(instance))
+
+		instance._choose_dialogue_response("careful")
+		instance._on_action("gather_moonleaf")
+		instance._on_action("enter_spring")
+		instance.get_node("%SceneTransition").finish()
+		await process_frame
+		await process_frame
+		state_peaks["path"] = maxi(int(state_peaks["path"]), _count_nodes(instance))
+
+		instance._on_action("approach_enemy")
+		instance.get_node("%SceneTransition").finish()
+		await process_frame
+		await process_frame
+		state_peaks["battle"] = maxi(int(state_peaks["battle"]), _count_nodes(instance))
+		instance._on_action("guard")
+		state_peaks["battle_action_immediate"] = maxi(int(state_peaks["battle_action_immediate"]), _count_nodes(instance))
+		await process_frame
+		await process_frame
+		state_peaks["battle_action_stable"] = maxi(int(state_peaks["battle_action_stable"]), _count_nodes(instance))
+
+		instance.open_journal()
+		await process_frame
+		await process_frame
+		state_peaks["journal"] = maxi(int(state_peaks["journal"]), _count_nodes(instance))
+		for state_peak in state_peaks.values():
+			maximum_nodes = maxi(maximum_nodes, int(state_peak))
 		instance.queue_free()
 		await process_frame
 		if root.get_child_count() != baseline_children:
@@ -170,13 +216,14 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 	if elapsed_ms > float(budget["scene_budget_ms"]):
 		failures.append("场景生命周期预算超时：%.2f ms > %d ms" % [elapsed_ms, int(budget["scene_budget_ms"])])
 	if maximum_nodes > int(budget["max_main_scene_nodes"]):
-		failures.append("主场景节点数超预算：%d > %d" % [maximum_nodes, int(budget["max_main_scene_nodes"])])
+		failures.append("主场景节点数超预算：%d > %d（%s）" % [maximum_nodes, int(budget["max_main_scene_nodes"]), JSON.stringify(state_peaks)])
 	SaveGameScript.remove(PERFORMANCE_SAVE_PATH)
 	SettingsStoreScript.remove(PERFORMANCE_SETTINGS_PATH)
 	return {
 		"cycles": cycles,
 		"elapsed_ms": snappedf(elapsed_ms, 0.01),
 		"maximum_nodes": maximum_nodes,
+		"state_peaks": state_peaks,
 		"root_children_after": root.get_child_count(),
 	}
 

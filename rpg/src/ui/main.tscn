@@ -256,24 +256,6 @@ offset_bottom = 156.0
 focus_mode = 2
 text = "行旅札记　J / Y"
 
-[node name="ScaleNote" type="Label" parent="."]
-layout_mode = 1
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -264.0
-offset_top = -218.0
-offset_right = -36.0
-offset_bottom = -194.0
-grow_horizontal = 0
-grow_vertical = 0
-theme_override_colors/font_color = Color(0.949, 0.902, 0.796, 0.82)
-theme_override_font_sizes/font_size = 12
-text = "56 px 角色基准 · 功能性美术灰盒"
-horizontal_alignment = 2
-
 [node name="StoryPanel" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 12
@@ -326,9 +308,6 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.475, 0.286, 0.184, 1)
 theme_override_font_sizes/font_size = 14
 autowrap_mode = 2
-
-[node name="Rule" type="VSeparator" parent="StoryPanel/StoryMargin/StoryRow"]
-layout_mode = 2
 
 [node name="ActionColumn" type="VBoxContainer" parent="StoryPanel/StoryMargin/StoryRow"]
 custom_minimum_size = Vector2(270, 0)
@@ -623,8 +602,13 @@ theme_override_font_sizes/font_size = 18
 text = "与渡碑旁的砚青交谈"
 autowrap_mode = 2
 
-[node name="DiscoveryRule" type="HSeparator" parent="JournalOverlay/Center/Paper/Margin/Column"]
+[node name="JournalTabs" type="TabBar" parent="JournalOverlay/Center/Paper/Margin/Column"]
+unique_name_in_owner = true
 layout_mode = 2
+focus_mode = 2
+tab_count = 2
+tab_0/title = "见闻"
+tab_1/title = "灵物志"
 
 [node name="JournalCountLabel" type="Label" parent="JournalOverlay/Center/Paper/Margin/Column"]
 unique_name_in_owner = true
@@ -633,15 +617,17 @@ theme_override_colors/font_color = Color(0.475, 0.286, 0.184, 1)
 theme_override_font_sizes/font_size = 16
 text = "照禾见闻 · 0/3"
 
-[node name="JournalEntriesLabel" type="Label" parent="JournalOverlay/Center/Paper/Margin/Column"]
+[node name="JournalEntriesLabel" type="RichTextLabel" parent="JournalOverlay/Center/Paper/Margin/Column"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 230)
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.216, 0.286, 0.275, 1)
-theme_override_font_sizes/font_size = 16
+focus_mode = 2
+theme_override_colors/default_color = Color(0.216, 0.286, 0.275, 1)
+theme_override_font_sizes/normal_font_size = 16
 text = "◇ 未记之事 1\n靠近可疑的生活痕迹，亲自辨认后才会写入。"
-autowrap_mode = 2
+fit_content = false
+scroll_active = true
 
 [node name="JournalCloseButton" type="Button" parent="JournalOverlay/Center/Paper/Margin/Column"]
 unique_name_in_owner = true

@@ -12,6 +12,9 @@ const WARM_RUST := Color("c6764f")
 const WARM_PAPER := Color("f2e6cb")
 const SPIRIT_GOLD := Color("e4c36e")
 const DAWN_PEACH := Color("e7a76f")
+const ROCK_SPOOR_POSITION := Vector2(0.65, 0.22)
+const MOSS_SPOOR_POSITION := Vector2(0.36, 0.43)
+const PUPPET_SPOOR_POSITION := Vector2(0.91, 0.34)
 
 @onready var player_sprite = %PlayerSprite
 @onready var companion_sprite = %CompanionSprite
@@ -45,6 +48,7 @@ var companion_position := Vector2(0.53, 0.51)
 var companion_motion := Vector2.ZERO
 var companion_trail_needs_reset := true
 var discoveries: Array[String] = []
+var enemy_intel: Array[String] = []
 var ferryman_response := "unanswered"
 var basket_response := "unanswered"
 
@@ -58,7 +62,8 @@ func set_story_state(
 	next_moonleaf_method: String,
 	next_discoveries: Array,
 	next_ferryman_response: String,
-	next_basket_response: String
+	next_basket_response: String,
+	next_enemy_intel: Array = []
 ) -> void:
 	if next_phase != phase_id or talked != talked_to_companion:
 		companion_trail_needs_reset = true
@@ -71,6 +76,9 @@ func set_story_state(
 	discoveries.clear()
 	for discovery_id in next_discoveries:
 		discoveries.append(str(discovery_id))
+	enemy_intel.clear()
+	for intel_id in next_enemy_intel:
+		enemy_intel.append(str(intel_id))
 	ferryman_response = next_ferryman_response
 	basket_response = next_basket_response
 	_sync_actor_visuals()
@@ -197,6 +205,24 @@ func discovery_visual_contract() -> Dictionary:
 			"ferry_watermark": Vector2(0.43, 0.42),
 			"spring_seam": Vector2(0.40, 0.30),
 			"abandoned_basket": Vector2(0.68, 0.60),
+		},
+	}
+
+
+func enemy_intel_visual_contract() -> Dictionary:
+	return {
+		"studied": enemy_intel.duplicate(),
+		"read_count": enemy_intel.size(),
+		"total": 3,
+		"positions": {
+			"rock_armor_young": ROCK_SPOOR_POSITION,
+			"spring_moss_shell": MOSS_SPOOR_POSITION,
+			"unbalanced_stone_puppet": PUPPET_SPOOR_POSITION,
+		},
+		"trace_actions": {
+			"rock_armor_young": "inspect_rock_spoor",
+			"spring_moss_shell": "inspect_moss_spoor",
+			"unbalanced_stone_puppet": "inspect_puppet_spoor",
 		},
 	}
 
@@ -509,12 +535,21 @@ func _draw_mountain_path() -> void:
 	_draw_spring_seam(Vector2(size.x * 0.40, size.y * 0.30), discoveries.has("spring_seam"))
 	if basket_response != "return":
 		_draw_abandoned_basket(Vector2(size.x * 0.68, size.y * 0.60), discoveries.has("abandoned_basket"), basket_response == "trail")
+	_draw_enemy_trace(ROCK_SPOOR_POSITION * size, "rock", enemy_intel.has("rock_armor_young"))
+	_draw_enemy_trace(MOSS_SPOOR_POSITION * size, "moss", enemy_intel.has("spring_moss_shell"))
+	_draw_enemy_trace(PUPPET_SPOOR_POSITION * size, "puppet", enemy_intel.has("unbalanced_stone_puppet"))
 	_draw_interaction_marker(Vector2(size.x * 0.10, size.y * 0.68), nearby_action == "return_to_ferry")
 	_draw_interaction_marker(Vector2(size.x * 0.43, size.y * 0.57), nearby_action == "inspect_path_marker")
 	if not discoveries.has("spring_seam"):
 		_draw_interaction_marker(Vector2(size.x * 0.40, size.y * 0.30), nearby_action == "inspect_spring_seam")
 	if not discoveries.has("abandoned_basket"):
 		_draw_interaction_marker(Vector2(size.x * 0.68, size.y * 0.60), nearby_action == "inspect_abandoned_basket")
+	if not enemy_intel.has("rock_armor_young") and nearby_action == "inspect_rock_spoor":
+		_draw_interaction_marker(ROCK_SPOOR_POSITION * size, true)
+	if not enemy_intel.has("spring_moss_shell") and nearby_action == "inspect_moss_spoor":
+		_draw_interaction_marker(MOSS_SPOOR_POSITION * size, true)
+	if not enemy_intel.has("unbalanced_stone_puppet") and nearby_action == "inspect_puppet_spoor":
+		_draw_interaction_marker(PUPPET_SPOOR_POSITION * size, true)
 	_draw_interaction_marker(Vector2(size.x * 0.56, size.y * 0.48), nearby_action == "approach_moss_shell")
 	_draw_interaction_marker(Vector2(size.x * 0.73, size.y * 0.34), nearby_action == "approach_enemy")
 	_draw_interaction_marker(Vector2(size.x * 0.80, size.y * 0.25), nearby_action == "approach_stone_puppet")
@@ -702,6 +737,23 @@ func _draw_abandoned_basket(center: Vector2, discovered: bool, repaired: bool = 
 	if repaired:
 		draw_line(center + Vector2(-16, -5), center + Vector2(16, 7), SPIRIT_GOLD.darkened(0.18), 2.0)
 		draw_circle(center + Vector2(0, -27), 4.0, FRESH_CELADON)
+
+
+func _draw_enemy_trace(center: Vector2, trace_kind: String, studied: bool) -> void:
+	var trace_color := COOL_SHADOW.lightened(0.18) if studied else WARM_RUST.darkened(0.14)
+	match trace_kind:
+		"rock":
+			for offset in [-10.0, 0.0, 10.0]:
+				draw_line(center + Vector2(offset - 7.0, 10.0), center + Vector2(offset + 5.0, -10.0), trace_color, 3.0)
+		"moss":
+			draw_arc(center, 13.0, 0.25, PI + 0.45, 16, trace_color, 3.0)
+			draw_circle(center + Vector2(-13.0, 9.0), 3.0, trace_color)
+			draw_circle(center + Vector2(14.0, -7.0), 2.5, trace_color)
+		"puppet":
+			draw_rect(Rect2(center + Vector2(-17.0, -8.0), Vector2(14.0, 16.0)), trace_color, false, 3.0)
+			draw_rect(Rect2(center + Vector2(4.0, -8.0), Vector2(14.0, 16.0)), trace_color, false, 3.0)
+	if studied:
+		draw_circle(center + Vector2(0.0, -19.0), 4.0, SPIRIT_GOLD)
 
 
 func _draw_interaction_marker(center: Vector2, active: bool) -> void:

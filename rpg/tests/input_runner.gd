@@ -32,6 +32,18 @@ func _run() -> void:
 	await _trigger_key(KEY_J)
 	_expect(game.get_node("%JournalOverlay").visible, "键盘 J 打开行旅札记")
 	_expect(root.gui_get_focus_owner() == game.get_node("%JournalCloseButton"), "键盘打开札记后焦点落在关闭按钮")
+	_expect(game.get_node("%JournalTabs").tab_count == 2 and game.get_node("%JournalTabs").focus_mode == Control.FOCUS_ALL, "见闻与灵物志为可聚焦的可选页")
+	var journal_tabs: TabBar = game.get_node("%JournalTabs")
+	var second_tab_center: Vector2 = journal_tabs.get_screen_transform() * journal_tabs.get_tab_rect(1).get_center()
+	await _trigger_mouse_click(second_tab_center)
+	_expect(game.journal_contract()["page_title"] == "灵物志", "真实鼠标点击切换到灵物志")
+	_expect(game.journal_contract()["locked_enemy_count"] == 3 and not game.journal_contract()["entries_text"].contains("岩甲幼兽"), "未调查灵物页只显示不剧透占位")
+	await _trigger_key(KEY_E)
+	_expect(not game.dialogue.active, "札记模态会阻断背后地图交互")
+	await _trigger_key(KEY_Q)
+	_expect(game.journal_contract()["page_title"] == "见闻", "键盘 Q 循环切回见闻页")
+	await _trigger_joy_button(JOY_BUTTON_RIGHT_SHOULDER)
+	_expect(game.journal_contract()["page_title"] == "灵物志", "手柄 RB 循环切到灵物志")
 	await _hold_key(KEY_D, 0.12)
 	_expect(game.exploration.player_position == journal_position, "札记打开时真实移动输入不会作用于背后地图")
 	await _trigger_joy_button(JOY_BUTTON_Y)
@@ -104,6 +116,41 @@ func _run() -> void:
 	game._render([])
 	await _trigger_action("interact")
 	_expect(game.journey.phase_id() == "mountain_path", "交互动作从山门进入可探索山道")
+	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": 0.36, "player_y": 0.43}), "输入验收移动到泉苔痕迹")
+	game._render([])
+	await _trigger_key(KEY_E)
+	_expect(game.journey.enemy_intel == ["spring_moss_shell"], "键盘 E 调查泉苔痕迹")
+	_expect(game.get_node("%MapCanvas").enemy_intel_visual_contract()["studied"] == ["spring_moss_shell"], "已读泉苔痕迹在地图保留识读残痕")
+	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": 0.65, "player_y": 0.22}), "输入验收移动到岩甲爪痕")
+	game._render([])
+	await _trigger_joy_button(JOY_BUTTON_A)
+	_expect(game.journey.enemy_intel.has("rock_armor_young"), "手柄 A 调查岩甲爪痕并进入同一敌情状态")
+	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": 0.91, "player_y": 0.34}), "输入验收移动到石傀拖痕")
+	game._render([])
+	await _trigger_action("interact")
+	_expect(game.journey.enemy_intel.size() == 3, "输入验收集齐三种灵物情报")
+	game.toggle_text_scale()
+	await _trigger_key(KEY_J)
+	game.select_journal_page(1)
+	await _settle()
+	var journal_entries: RichTextLabel = game.get_node("%JournalEntriesLabel")
+	var journal_scroll := journal_entries.get_v_scroll_bar()
+	_expect(journal_entries.focus_mode == Control.FOCUS_ALL and journal_scroll.max_value > journal_scroll.page, "大字三条灵物志可聚焦且产生可滚动内容")
+	journal_entries.grab_focus()
+	await _settle()
+	var before_keyboard_scroll: float = journal_scroll.value
+	await _trigger_key(KEY_PAGEDOWN)
+	_expect(journal_scroll.value > before_keyboard_scroll, "键盘 PageDown 可阅读大字灵物志下方内容")
+	journal_scroll.value = 0.0
+	journal_entries.grab_focus()
+	await _trigger_joy_button(JOY_BUTTON_DPAD_DOWN)
+	_expect(journal_scroll.value > 0.0, "手柄方向键下可滚动灵物志")
+	journal_scroll.value = maxf(0.0, journal_scroll.max_value - journal_scroll.page)
+	journal_entries.grab_focus()
+	await _trigger_joy_button(JOY_BUTTON_DPAD_DOWN)
+	_expect(root.gui_get_focus_owner() == game.get_node("%JournalCloseButton"), "手柄在末页继续向下可移到关闭按钮")
+	await _trigger_joy_button(JOY_BUTTON_Y)
+	game.toggle_text_scale()
 	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": 0.68, "player_y": 0.60}), "输入验收移动到山道弃置药篓")
 	game._render([])
 	await _trigger_key(KEY_E)
@@ -233,6 +280,28 @@ func _trigger_joy_button(button_index: JoyButton) -> void:
 	released.button_index = button_index
 	released.pressed = false
 	Input.parse_input_event(released)
+	await _settle()
+
+
+func _trigger_mouse_click(position: Vector2) -> void:
+	var motion := InputEventMouseMotion.new()
+	motion.position = position
+	motion.global_position = position
+	root.push_input(motion, true)
+	await process_frame
+	var pressed := InputEventMouseButton.new()
+	pressed.position = position
+	pressed.global_position = position
+	pressed.button_index = MOUSE_BUTTON_LEFT
+	pressed.pressed = true
+	root.push_input(pressed, true)
+	await process_frame
+	var released := InputEventMouseButton.new()
+	released.position = position
+	released.global_position = position
+	released.button_index = MOUSE_BUTTON_LEFT
+	released.pressed = false
+	root.push_input(released, true)
 	await _settle()
 
 

@@ -29,6 +29,8 @@ def test_rejects_non_object_and_missing_contract() -> None:
     assert any("journal_entries is missing" in failure for failure in failures)
     assert "story.journal_side_entries must be an object" in failures
     assert any("journal_side_entries is missing" in failure for failure in failures)
+    assert "story.enemy_notes must be an object" in failures
+    assert any("enemy_notes is missing" in failure for failure in failures)
     assert "story.start_node must be non-empty text" in failures
 
 
@@ -64,6 +66,36 @@ def test_reachability_handles_converging_paths() -> None:
                 "actions": [
                     {"id": "left", "label": "左", "possible_targets": ["left"]},
                     {"id": "right", "label": "右", "possible_targets": ["right"]},
+                    {
+                        "id": "inspect_rock_spoor",
+                        "label": "看爪痕",
+                        "possible_targets": ["start"],
+                    },
+                    {
+                        "id": "inspect_moss_spoor",
+                        "label": "看孢痕",
+                        "possible_targets": ["start"],
+                    },
+                    {
+                        "id": "inspect_puppet_spoor",
+                        "label": "看拖痕",
+                        "possible_targets": ["start"],
+                    },
+                    {
+                        "id": "use_talisman",
+                        "label": "用符",
+                        "possible_targets": ["start"],
+                    },
+                    {
+                        "id": "use_art",
+                        "label": "引气",
+                        "possible_targets": ["start"],
+                    },
+                    {
+                        "id": "guard",
+                        "label": "守势",
+                        "possible_targets": ["start"],
+                    },
                 ],
             },
             "left": {
@@ -110,6 +142,35 @@ def test_reachability_handles_converging_paths() -> None:
             "ferryman_record": {"title": "记时", "summary": "涨时入簿。"},
             "basket_return": {"title": "归圃", "summary": "药篓回到药圃。"},
             "basket_trail": {"title": "留山", "summary": "药篓留给行旅。"},
+        },
+        "enemy_notes": {
+            "rock_armor_young": {
+                "title": "岩甲幼兽",
+                "trace": "爪痕两短一深。",
+                "cycle": ["先试探。", "再冲撞。"],
+                "counter": "冲撞时用符。",
+                "trace_action": "inspect_rock_spoor",
+                "counter_action": "use_talisman",
+                "counter_intent": "rock_rending_charge",
+            },
+            "spring_moss_shell": {
+                "title": "泉苔寄壳",
+                "trace": "孢痕一明一暗。",
+                "cycle": ["先吸潮。", "再吐雾。"],
+                "counter": "吸潮时引气。",
+                "trace_action": "inspect_moss_spoor",
+                "counter_action": "use_art",
+                "counter_intent": "moss_absorb_tide",
+            },
+            "unbalanced_stone_puppet": {
+                "title": "失衡石傀",
+                "trace": "拖痕一深一浅。",
+                "cycle": ["先摆锤。", "再回正。"],
+                "counter": "摆锤时守势。",
+                "trace_action": "inspect_puppet_spoor",
+                "counter_action": "guard",
+                "counter_intent": "puppet_unbalanced_swing",
+            },
         },
     }
     assert validate_story(data) == []
@@ -251,6 +312,102 @@ def test_validates_finite_journal_side_entries() -> None:
     assert (
         "story.journal_side_entries.ferryman_record.summary must be non-empty text"
         in failures
+    )
+
+
+def test_validates_exact_enemy_note_ids() -> None:
+    data = story()
+    data["enemy_notes"].pop("spring_moss_shell")
+    data["enemy_notes"]["rock_armor_warden"] = deepcopy(
+        data["enemy_notes"]["rock_armor_young"]
+    )
+    failures = validate_story(data)
+    assert "story.enemy_notes is missing: spring_moss_shell" in failures
+    assert "story.enemy_notes has unknown enemy ids: rock_armor_warden" in failures
+
+    data = story()
+    data["enemy_notes"]["unlicensed_enemy"] = deepcopy(
+        data["enemy_notes"]["rock_armor_young"]
+    )
+    failures = validate_story(data)
+    assert not any("enemy_notes is missing" in failure for failure in failures)
+    assert "story.enemy_notes has unknown enemy ids: unlicensed_enemy" in failures
+
+
+def test_rejects_malformed_enemy_note_fields_and_cycle() -> None:
+    data = story()
+    data["enemy_notes"]["rock_armor_young"] = []
+    data["enemy_notes"]["spring_moss_shell"]["trace"] = ""
+    data["enemy_notes"]["spring_moss_shell"]["cycle"] = ["", 7]
+    data["enemy_notes"]["unbalanced_stone_puppet"].pop("counter")
+    data["enemy_notes"]["unbalanced_stone_puppet"]["spoiler"] = "不应出现"
+    failures = validate_story(data)
+    assert "story.enemy_notes.rock_armor_young must be an object" in failures
+    assert any(
+        "story.enemy_notes.rock_armor_young is missing fields" in failure
+        for failure in failures
+    )
+    assert (
+        "story.enemy_notes.spring_moss_shell.trace must be non-empty text" in failures
+    )
+    assert (
+        "story.enemy_notes.spring_moss_shell.cycle[0] must be non-empty text"
+        in failures
+    )
+    assert (
+        "story.enemy_notes.spring_moss_shell.cycle[1] must be non-empty text"
+        in failures
+    )
+    assert (
+        "story.enemy_notes.unbalanced_stone_puppet is missing fields: counter"
+        in failures
+    )
+    assert (
+        "story.enemy_notes.unbalanced_stone_puppet has unknown fields: spoiler"
+        in failures
+    )
+
+    data = story()
+    data["enemy_notes"]["rock_armor_young"]["cycle"] = {}
+    assert (
+        "story.enemy_notes.rock_armor_young.cycle must be a non-empty list"
+        in validate_story(data)
+    )
+
+
+def test_validates_enemy_note_action_and_intent_references() -> None:
+    data = story()
+    data["enemy_notes"]["rock_armor_young"]["trace_action"] = "missing_spoor"
+    data["enemy_notes"]["spring_moss_shell"]["counter_action"] = "guard"
+    data["enemy_notes"]["unbalanced_stone_puppet"]["counter_intent"] = (
+        "moss_absorb_tide"
+    )
+    failures = validate_story(data)
+    assert (
+        "story.enemy_notes.rock_armor_young.trace_action must be "
+        "'inspect_rock_spoor' for 'rock_armor_young'" in failures
+    )
+    assert (
+        "story.enemy_notes.rock_armor_young.trace_action points to missing action "
+        "'missing_spoor'" in failures
+    )
+    assert (
+        "story.enemy_notes.spring_moss_shell.counter_action must be "
+        "'use_art' for 'spring_moss_shell'" in failures
+    )
+    assert (
+        "story.enemy_notes.unbalanced_stone_puppet.counter_intent must be "
+        "'puppet_unbalanced_swing' for 'unbalanced_stone_puppet'" in failures
+    )
+
+    data = story()
+    mountain_actions = data["nodes"]["mountain_path"]["actions"]
+    data["nodes"]["mountain_path"]["actions"] = [
+        action for action in mountain_actions if action["id"] != "inspect_rock_spoor"
+    ]
+    assert (
+        "story.enemy_notes.rock_armor_young.trace_action points to missing action "
+        "'inspect_rock_spoor'" in validate_story(data)
     )
 
 

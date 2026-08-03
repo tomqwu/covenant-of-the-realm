@@ -4,6 +4,11 @@ const CONTENT_PATH := "res://content/prologue.json"
 const LARGE_TEXT_SCALE := 1.25
 const HIGH_CONTRAST_INK := Color("131a17")
 const HIGH_CONTRAST_PAPER := Color("fdfaf1")
+const ENEMY_NOTE_IDS := [
+	"rock_armor_young",
+	"spring_moss_shell",
+	"unbalanced_stone_puppet",
+]
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
@@ -53,8 +58,9 @@ const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 @onready var journal_overlay: Control = %JournalOverlay
 @onready var journal_location_label: Label = %JournalLocationLabel
 @onready var journal_objective_label: Label = %JournalObjectiveLabel
+@onready var journal_tabs: TabBar = %JournalTabs
 @onready var journal_count_label: Label = %JournalCountLabel
-@onready var journal_entries_label: Label = %JournalEntriesLabel
+@onready var journal_entries_label: RichTextLabel = %JournalEntriesLabel
 @onready var journal_close_button: Button = %JournalCloseButton
 
 var content: Dictionary = {}
@@ -71,8 +77,9 @@ var save_recovery_pending := false
 var dialogue_history_visible := false
 var dialogue_reveal_elapsed := 0.0
 var journal_previous_focus: Control = null
+var journal_page := 0
 var new_game_confirmation_visible := false
-var reading_labels: Array[Label] = []
+var reading_labels: Array[Control] = []
 var base_reading_font_sizes := {}
 var base_reading_font_colors := {}
 
@@ -124,7 +131,12 @@ func _ready() -> void:
 	dialogue_skip_button.pressed.connect(skip_dialogue_to_response)
 	dialogue_next_button.pressed.connect(advance_dialogue)
 	journal_button.pressed.connect(toggle_journal)
+	journal_tabs.tab_changed.connect(_on_journal_tab_changed)
 	journal_close_button.pressed.connect(close_journal)
+	journal_tabs.focus_neighbor_bottom = journal_tabs.get_path_to(journal_entries_label)
+	journal_entries_label.focus_neighbor_top = journal_entries_label.get_path_to(journal_tabs)
+	journal_entries_label.focus_neighbor_bottom = journal_entries_label.get_path_to(journal_close_button)
+	journal_close_button.focus_neighbor_top = journal_close_button.get_path_to(journal_entries_label)
 	scene_transition.transition_finished.connect(_restore_action_focus)
 	_capture_reading_baseline()
 	_apply_audio_settings()
@@ -161,6 +173,24 @@ func _process(delta: float) -> void:
 				autosave_elapsed = 0.0
 	else:
 		map_canvas.set_player_motion(Vector2.ZERO)
+
+
+func _input(event: InputEvent) -> void:
+	# Page shortcuts are modal controls. Reading them before focused Controls
+	# prevents a TabBar or button from swallowing keyboard/controller variants.
+	if not is_node_ready() or not journal_overlay.visible:
+		return
+	if event.is_action_pressed("cycle_journal_page"):
+		select_journal_page((journal_page + 1) % 2)
+		get_viewport().set_input_as_handled()
+		return
+	if get_viewport().gui_get_focus_owner() == journal_entries_label:
+		if event.is_action_pressed("journal_scroll_down"):
+			_scroll_journal(1)
+			get_viewport().set_input_as_handled()
+		elif event.is_action_pressed("journal_scroll_up"):
+			_scroll_journal(-1)
+			get_viewport().set_input_as_handled()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -236,9 +266,10 @@ func _render(event_ids: Array) -> void:
 		snapshot["moonleaf_method"],
 		snapshot["discoveries"],
 		snapshot["ferryman_response"],
-		snapshot["basket_response"]
+		snapshot["basket_response"],
+		snapshot.get("enemy_intel", [])
 	)
-	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"], snapshot["discoveries"], snapshot["ferryman_response"], snapshot["basket_response"])
+	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"], snapshot["discoveries"], snapshot["ferryman_response"], snapshot["basket_response"], snapshot.get("enemy_intel", []))
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	map_canvas.show_battle_feedback(
 		event_ids,
@@ -314,19 +345,50 @@ func _objective_text(snapshot: Dictionary) -> String:
 				return "当前目标　前往月芽田准备护脉灵草"
 			return "当前目标　沿石路寻找藏泉山门"
 		"battle":
-			var profile := journey.current_enemy_profile()
-			var intent := journey.current_enemy_intent()
-			return "下一回合　%s（%d 伤害）　材质弱点　%s" % [
+			var visible_intents: Array = journey.visible_enemy_intents()
+			var intent: Dictionary = visible_intents[0] if not visible_intents.is_empty() else {}
+			var intent_text := "当前敌势　%s（%d 伤害）" % [
 				intent.get("name", "未知"),
 				intent.get("damage", 0),
-				profile.get("weakness", "尚未识别"),
 			]
+			if not journey.knows_enemy_intel(str(snapshot["enemy_id"])):
+				return intent_text
+			var next_intent := _next_visible_intent(visible_intents, intent)
+			if not next_intent.is_empty():
+				intent_text += "　后一势　%s（%d 伤害）" % [next_intent.get("name", "未知"), next_intent.get("damage", 0)]
+			var counter_action := str(intent.get("counter_action", ""))
+			var counter_text := "无"
+			if not counter_action.is_empty():
+				counter_text = _battle_action_display_name(counter_action)
+			return "%s　破绽窗口　%s" % [intent_text, counter_text]
 		"mountain_path":
 			return "当前目标　沿石标探查碎甲声，随时可以折返"
 		"spring":
 			return "当前目标　借月芽草完成第一次引息"
 		_:
 			return "本节完成　山河自此显出第一道灵息"
+
+
+func _next_visible_intent(visible_intents: Array, current_intent: Dictionary) -> Dictionary:
+	if visible_intents.size() < 2:
+		return {}
+	# The domain orders visible intelligence current-first. Keeping an id-based
+	# fallback makes the presentation resilient if the catalog later returns a
+	# canonical cycle instead.
+	if str(visible_intents[0].get("id", "")) == str(current_intent.get("id", "")):
+		return visible_intents[1]
+	for index in range(visible_intents.size()):
+		if str(visible_intents[index].get("id", "")) == str(current_intent.get("id", "")):
+			return visible_intents[(index + 1) % visible_intents.size()]
+	return {}
+
+
+func _battle_action_display_name(action_id: String) -> String:
+	return {
+		"use_art": "引气术",
+		"use_talisman": "镇岩符",
+		"guard": "守势调息",
+	}.get(action_id, "未知应对")
 
 
 func _event_text(event_ids: Array) -> String:
@@ -348,6 +410,7 @@ func _chapter_summary(snapshot: Dictionary) -> String:
 	var response_text := "你与砚青先认清了退路" if snapshot["briefing_response"] == "careful" else "你与砚青以信任同行"
 	var harvest_text := "月芽留根" if snapshot["moonleaf_method"] == "cutting" else "依旧规取药"
 	var discovery_text := "见闻 %d/3" % snapshot["discoveries"].size()
+	var intel_text := "敌情 %d/3" % snapshot.get("enemy_intel", []).size()
 	var ferryman_text: String = {
 		"repair": "水尺扶正",
 		"record": "涨时入簿",
@@ -356,11 +419,15 @@ func _chapter_summary(snapshot: Dictionary) -> String:
 		"return": "药篓归圃",
 		"trail": "药篓留山",
 	}.get(snapshot["basket_response"], "药篓未安置")
-	return "本节结算　%s · %s · %s · %s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, discovery_text, ferryman_text, basket_text, response_text]
+	return "本节结算　%s · %s · %s · %s · %s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, discovery_text, intel_text, ferryman_text, basket_text, response_text]
 
 
 func _build_actions(node: Dictionary) -> void:
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	if is_instance_valid(focus_owner) and actions.is_ancestor_of(focus_owner):
+		get_viewport().gui_release_focus()
 	for child in actions.get_children():
+		actions.remove_child(child)
 		child.queue_free()
 	var available := journey.available_actions()
 	var first_button: Button = null
@@ -468,7 +535,7 @@ func move_player(direction: Vector2, delta: float) -> Vector2:
 	var previous_position: Vector2 = exploration.player_position
 	exploration.move(direction, delta)
 	map_canvas.set_player_motion(direction if not exploration.player_position.is_equal_approx(previous_position) else Vector2.ZERO)
-	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion, journey.discoveries, journey.ferryman_response, journey.basket_response)
+	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion, journey.discoveries, journey.ferryman_response, journey.basket_response, journey.enemy_intel)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	if nearby_action_id != previous_action:
 		_build_actions(content["nodes"][journey.phase_id()])
@@ -613,9 +680,11 @@ func _capture_reading_baseline() -> void:
 		journal_count_label,
 		journal_entries_label,
 	]
-	for label in reading_labels:
-		base_reading_font_sizes[label] = label.get_theme_font_size("font_size")
-		base_reading_font_colors[label] = label.get_theme_color("font_color")
+	for reading_control in reading_labels:
+		var size_key := _reading_font_size_key(reading_control)
+		var color_key := _reading_font_color_key(reading_control)
+		base_reading_font_sizes[reading_control] = reading_control.get_theme_font_size(size_key)
+		base_reading_font_colors[reading_control] = reading_control.get_theme_color(color_key)
 
 
 func _apply_accessibility_settings() -> void:
@@ -625,13 +694,23 @@ func _apply_accessibility_settings() -> void:
 	pause_text_scale_button.text = scale_text
 	title_contrast_button.text = contrast_text
 	pause_contrast_button.text = contrast_text
-	for label in reading_labels:
-		var base_size := int(base_reading_font_sizes[label])
+	for reading_control in reading_labels:
+		var size_key := _reading_font_size_key(reading_control)
+		var color_key := _reading_font_color_key(reading_control)
+		var base_size := int(base_reading_font_sizes[reading_control])
 		var next_size := ceili(float(base_size) * LARGE_TEXT_SCALE) if settings["text_scale"] == "large" else base_size
-		label.add_theme_font_size_override("font_size", next_size)
-		var base_color: Color = base_reading_font_colors[label]
+		reading_control.add_theme_font_size_override(size_key, next_size)
+		var base_color: Color = base_reading_font_colors[reading_control]
 		var next_color := _high_contrast_color(base_color) if settings["high_contrast"] else base_color
-		label.add_theme_color_override("font_color", next_color)
+		reading_control.add_theme_color_override(color_key, next_color)
+
+
+func _reading_font_size_key(reading_control: Control) -> StringName:
+	return &"normal_font_size" if reading_control is RichTextLabel else &"font_size"
+
+
+func _reading_font_color_key(reading_control: Control) -> StringName:
+	return &"default_color" if reading_control is RichTextLabel else &"font_color"
 
 
 func _high_contrast_color(base_color: Color) -> Color:
@@ -665,6 +744,8 @@ func _begin_new_game() -> void:
 	exploration = ExplorationStateScript.new()
 	dialogue = DialogueStateScript.new()
 	dialogue_history_visible = false
+	journal_page = 0
+	journal_tabs.current_tab = 0
 	nearby_action_id = ""
 	autosave_elapsed = 0.0
 	save_recovery_pending = false
@@ -1011,6 +1092,13 @@ func _dialogue_at_choices() -> bool:
 
 
 func _render_dialogue_overlay() -> void:
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	if is_instance_valid(focus_owner) and dialogue_choices.is_ancestor_of(focus_owner):
+		get_viewport().gui_release_focus()
+	for child in dialogue_choices.get_children():
+		dialogue_choices.remove_child(child)
+		child.queue_free()
+	dialogue_choices.hide()
 	if not dialogue.active or title_overlay.visible or pause_overlay.visible:
 		dialogue_overlay.hide()
 		return
@@ -1020,9 +1108,6 @@ func _render_dialogue_overlay() -> void:
 		dialogue_overlay.hide()
 		return
 	dialogue_overlay.show()
-	for child in dialogue_choices.get_children():
-		child.queue_free()
-	dialogue_choices.hide()
 	dialogue_history_button.text = "返回对话" if dialogue_history_visible else "回顾"
 	if dialogue_history_visible:
 		_render_dialogue_history(lines)
@@ -1051,7 +1136,6 @@ func _render_dialogue_choices(choices: Array) -> void:
 	dialogue_skip_button.hide()
 	dialogue_next_button.hide()
 	dialogue_choices.show()
-	var first_button: Button = null
 	for raw_choice in choices:
 		var choice: Dictionary = raw_choice
 		var button := Button.new()
@@ -1062,10 +1146,17 @@ func _render_dialogue_choices(choices: Array) -> void:
 		_style_action_button(button)
 		button.pressed.connect(_choose_dialogue_response.bind(str(choice.get("id", ""))))
 		dialogue_choices.add_child(button)
-		if first_button == null:
-			first_button = button
-	if first_button != null:
-		first_button.grab_focus.call_deferred()
+	if not choices.is_empty():
+		_focus_first_dialogue_choice.call_deferred()
+
+
+func _focus_first_dialogue_choice() -> void:
+	if not dialogue.active or not dialogue_choices.visible or title_overlay.visible or pause_overlay.visible:
+		return
+	for child in dialogue_choices.get_children():
+		if child is Button and not child.disabled and not child.is_queued_for_deletion():
+			child.grab_focus()
+			return
 
 
 func _render_dialogue_history(lines: Array) -> void:
@@ -1117,12 +1208,19 @@ func _resolved_dialogue_text(source_text: String) -> String:
 		"return": "蕙婶已把公用药篓挂回圃门",
 		"trail": "补好提绳的药篓仍在山道等后来人",
 	}.get(snapshot["basket_response"], "那只山道药篓还没有找到下一处归宿")
+	var intel_count: int = snapshot.get("enemy_intel", []).size()
+	var intel_reflection := "尚未辨明的灵物痕迹"
+	if intel_count == ENEMY_NOTE_IDS.size():
+		intel_reflection = "三种灵物的行止"
+	elif intel_count > 0:
+		intel_reflection = "%d种灵物的行止" % intel_count
 	return source_text.replace("{harvest_reflection}", harvest_reflection) \
 		.replace("{discovery_reflection}", discovery_reflection) \
 		.replace("{setback_reflection}", setback_reflection) \
 		.replace("{companion_reflection}", companion_reflection) \
 		.replace("{ferryman_reflection}", ferryman_reflection) \
-		.replace("{basket_reflection}", basket_reflection)
+		.replace("{basket_reflection}", basket_reflection) \
+		.replace("{intel_reflection}", intel_reflection)
 
 
 func _can_open_journal() -> bool:
@@ -1164,11 +1262,48 @@ func close_journal() -> void:
 	journal_previous_focus = null
 
 
+func _on_journal_tab_changed(tab_index: int) -> void:
+	journal_page = clampi(tab_index, 0, 1)
+	_render_journal()
+
+
+func select_journal_page(tab_index: int) -> void:
+	journal_page = clampi(tab_index, 0, 1)
+	journal_tabs.current_tab = journal_page
+	_render_journal()
+
+
+func _scroll_journal(direction: int) -> void:
+	var scroll_bar := journal_entries_label.get_v_scroll_bar()
+	var maximum_value := maxf(0.0, scroll_bar.max_value - scroll_bar.page)
+	var page_step := maxf(48.0, scroll_bar.page * 0.75)
+	if direction > 0:
+		if scroll_bar.value >= maximum_value - 0.5:
+			journal_close_button.grab_focus()
+		else:
+			scroll_bar.value = minf(maximum_value, scroll_bar.value + page_step)
+	elif direction < 0:
+		if scroll_bar.value <= 0.5:
+			journal_tabs.grab_focus()
+		else:
+			scroll_bar.value = maxf(0.0, scroll_bar.value - page_step)
+
+
 func _render_journal() -> void:
 	var snapshot: Dictionary = journey.snapshot()
 	journal_location_label.text = "%s · 序章第一息" % _phase_display_name(snapshot["phase"])
 	journal_objective_label.text = _objective_text(snapshot)
-	journal_count_label.text = "照禾见闻 · %d/3" % snapshot["discoveries"].size()
+	if journal_tabs.current_tab != journal_page:
+		journal_tabs.current_tab = journal_page
+	if journal_page == 1:
+		_render_enemy_journal(snapshot)
+	else:
+		_render_discovery_journal(snapshot)
+	journal_entries_label.scroll_to_line(0)
+
+
+func _render_discovery_journal(snapshot: Dictionary) -> void:
+	journal_count_label.text = "照禾见闻 · %d/3　Q / RB 切页" % snapshot["discoveries"].size()
 	var entry_content: Dictionary = content.get("journal_entries", {})
 	var lines: Array[String] = []
 	var locked_index := 0
@@ -1190,6 +1325,29 @@ func _render_journal() -> void:
 	journal_entries_label.text = "\n\n".join(lines)
 
 
+func _render_enemy_journal(snapshot: Dictionary) -> void:
+	var known_intel: Array = snapshot.get("enemy_intel", [])
+	journal_count_label.text = "灵物志 · %d/%d　Q / RB 切页" % [known_intel.size(), ENEMY_NOTE_IDS.size()]
+	var enemy_notes: Dictionary = content.get("enemy_notes", {})
+	var lines: Array[String] = []
+	for enemy_index in range(ENEMY_NOTE_IDS.size()):
+		var enemy_id: String = ENEMY_NOTE_IDS[enemy_index]
+		if known_intel.has(enemy_id):
+			var note: Dictionary = enemy_notes.get(enemy_id, {})
+			var cycle_lines: Array[String] = []
+			for cycle_step in note.get("cycle", []):
+				cycle_lines.append(str(cycle_step))
+			lines.append("◆ %s\n痕迹　%s\n行止　%s\n应对　%s" % [
+				note.get("title", "未命名灵物"),
+				note.get("trace", "痕迹暂时无法辨认。"),
+				"　→　".join(cycle_lines),
+				note.get("counter", "应对方法暂时无法辨认。"),
+			])
+		else:
+			lines.append("◇ 未辨灵物 %d\n寻见山道痕迹并亲自查看后，才会记下名目与行止。" % (enemy_index + 1))
+	journal_entries_label.text = "\n\n".join(lines)
+
+
 func journal_contract() -> Dictionary:
 	var entries: Dictionary = content.get("journal_entries", {})
 	var unlocked_titles: Array[String] = []
@@ -1206,14 +1364,26 @@ func journal_contract() -> Dictionary:
 		var basket_side_entries: Dictionary = content.get("journal_side_entries", {})
 		if basket_side_entries.has(basket_side_id):
 			unlocked_titles.append(str(basket_side_entries[basket_side_id].get("title", "")))
+	var enemy_titles: Array[String] = []
+	var enemy_notes: Dictionary = content.get("enemy_notes", {})
+	for enemy_id in journey.enemy_intel:
+		if enemy_notes.has(enemy_id):
+			enemy_titles.append(str(enemy_notes[enemy_id].get("title", "")))
 	return {
 		"visible": journal_overlay.visible,
+		"page": journal_page,
+		"page_title": journal_tabs.get_tab_title(journal_page),
 		"discovered_count": journey.discoveries.size(),
 		"total": JourneyStateScript.DISCOVERY_IDS.size(),
 		"locked_count": JourneyStateScript.DISCOVERY_IDS.size() - journey.discoveries.size(),
 		"unlocked_titles": unlocked_titles,
+		"intel_count": journey.enemy_intel.size(),
+		"intel_total": ENEMY_NOTE_IDS.size(),
+		"locked_enemy_count": ENEMY_NOTE_IDS.size() - journey.enemy_intel.size(),
+		"enemy_titles": enemy_titles,
 		"objective": journal_objective_label.text,
 		"entries_text": journal_entries_label.text,
+		"scrollable": journal_entries_label.scroll_active,
 		"blocks_input": journal_overlay.mouse_filter == Control.MOUSE_FILTER_STOP,
 		"depth": journal_overlay.z_index,
 	}
@@ -1252,6 +1422,9 @@ func _ensure_input_actions() -> void:
 	_add_key_action("interact", [KEY_E, KEY_SPACE])
 	_add_key_action("pause_menu", [KEY_ESCAPE])
 	_add_key_action("open_journal", [KEY_J])
+	_add_key_action("cycle_journal_page", [KEY_Q])
+	_add_key_action("journal_scroll_up", [KEY_PAGEUP])
+	_add_key_action("journal_scroll_down", [KEY_PAGEDOWN])
 	_add_joy_axis("move_left", JOY_AXIS_LEFT_X, -1.0)
 	_add_joy_axis("move_right", JOY_AXIS_LEFT_X, 1.0)
 	_add_joy_axis("move_up", JOY_AXIS_LEFT_Y, -1.0)
@@ -1259,6 +1432,9 @@ func _ensure_input_actions() -> void:
 	_add_joy_button("interact", JOY_BUTTON_A)
 	_add_joy_button("pause_menu", JOY_BUTTON_START)
 	_add_joy_button("open_journal", JOY_BUTTON_Y)
+	_add_joy_button("cycle_journal_page", JOY_BUTTON_RIGHT_SHOULDER)
+	_add_joy_button("journal_scroll_up", JOY_BUTTON_DPAD_UP)
+	_add_joy_button("journal_scroll_down", JOY_BUTTON_DPAD_DOWN)
 	_add_joy_button("ui_accept", JOY_BUTTON_A)
 
 

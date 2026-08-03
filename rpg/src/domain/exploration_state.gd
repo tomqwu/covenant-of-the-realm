@@ -10,6 +10,9 @@ const INSPECT_PATH_MARKER := "inspect_path_marker"
 const INSPECT_FERRY_WATERMARK := "inspect_ferry_watermark"
 const INSPECT_SPRING_SEAM := "inspect_spring_seam"
 const INSPECT_ABANDONED_BASKET := "inspect_abandoned_basket"
+const INSPECT_ROCK_SPOOR := "inspect_rock_spoor"
+const INSPECT_MOSS_SPOOR := "inspect_moss_spoor"
+const INSPECT_PUPPET_SPOOR := "inspect_puppet_spoor"
 const APPROACH_ENEMY := "approach_enemy"
 const APPROACH_MOSS_SHELL := "approach_moss_shell"
 const APPROACH_STONE_PUPPET := "approach_stone_puppet"
@@ -32,6 +35,9 @@ const PATH_RETURN_POSITION := Vector2(0.10, 0.68)
 const PATH_MARKER_POSITION := Vector2(0.43, 0.57)
 const PATH_SPRING_SEAM_POSITION := Vector2(0.40, 0.30)
 const PATH_ABANDONED_BASKET_POSITION := Vector2(0.68, 0.60)
+const PATH_ROCK_SPOOR_POSITION := Vector2(0.65, 0.22)
+const PATH_MOSS_SPOOR_POSITION := Vector2(0.36, 0.43)
+const PATH_PUPPET_SPOOR_POSITION := Vector2(0.91, 0.34)
 const PATH_ENEMY_POSITION := Vector2(0.73, 0.34)
 const PATH_MOSS_POSITION := Vector2(0.56, 0.48)
 const PATH_PUPPET_POSITION := Vector2(0.80, 0.25)
@@ -79,7 +85,8 @@ func interaction_action(
 	talked_to_companion: bool = false,
 	discoveries: Array = [],
 	ferryman_response: String = "unanswered",
-	basket_response: String = "unanswered"
+	basket_response: String = "unanswered",
+	enemy_intel: Array = []
 ) -> String:
 	if map_id == MOUNTAIN_PATH_MAP_ID:
 		if player_position.distance_to(PATH_RETURN_POSITION) <= INTERACTION_RADIUS:
@@ -90,6 +97,12 @@ func interaction_action(
 			return INSPECT_SPRING_SEAM
 		if not discoveries.has("abandoned_basket") and player_position.distance_to(PATH_ABANDONED_BASKET_POSITION) <= INTERACTION_RADIUS:
 			return INSPECT_ABANDONED_BASKET
+		if not enemy_intel.has("rock_armor_young") and player_position.distance_to(PATH_ROCK_SPOOR_POSITION) <= INTERACTION_RADIUS:
+			return INSPECT_ROCK_SPOOR
+		if not enemy_intel.has("spring_moss_shell") and player_position.distance_to(PATH_MOSS_SPOOR_POSITION) <= INTERACTION_RADIUS:
+			return INSPECT_MOSS_SPOOR
+		if not enemy_intel.has("unbalanced_stone_puppet") and player_position.distance_to(PATH_PUPPET_SPOOR_POSITION) <= INTERACTION_RADIUS:
+			return INSPECT_PUPPET_SPOOR
 		if player_position.distance_to(PATH_MOSS_POSITION) <= INTERACTION_RADIUS:
 			return APPROACH_MOSS_SHELL
 		if player_position.distance_to(PATH_ENEMY_POSITION) <= INTERACTION_RADIUS:
