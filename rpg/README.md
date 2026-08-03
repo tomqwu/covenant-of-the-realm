@@ -33,14 +33,14 @@ Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, b
 and pause/resume are exercised as physical input events by `make test-rpg-input`.
 
 `make test-rpg-performance` executes 100,000 deterministic movement/collision steps, 50,000
-bounded companion-footprint updates, 2,000 complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. Lifecycle sampling covers title, path, dialogue choices, stable battle, the immediate post-action replacement frame, and the scrollable journal. The checked-in
-budget allows 2.5 seconds for each pure-domain workload and 5 seconds for the lifecycle workload,
+bounded companion-footprint updates, 2,000 complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. Lifecycle sampling covers title, path, dialogue choices, stable battle, the immediate post-action replacement frame, the scrollable journal, all three spring stages, and completion. The checked-in
+budget allows 2.5 seconds for each pure-domain workload and 7 seconds for the expanded 11-state lifecycle workload,
 caps the main scene at 120 nodes, and requires every cycle to return the root to its baseline child
 count. The static scene uses 110 nodes; the measured peak is 120, each of the three spring ritual
 stages uses 111, and the completed scene uses 113, with zero root-child leaks. Godot runs the
-lifecycle gate on a fixed 60 FPS clock so awaited settle frames remain covered
-without charging shared-runner scheduler sleep to the workload. The runner reports measured times
-but does not treat one development machine as a release hardware promise.
+lifecycle gate on a fixed 60 FPS clock, keeps required focus/deferred-tree settle frames, and
+disables automatic drawing because deterministic PNG captures own pixel verification. The runner
+reports measured times but does not treat one development machine as a release hardware promise.
 
 启动后可选择新游戏或继续本机的版本化存档。当前 save v14 同时记录稳定地图标识、
 归一化坐标、首次引息阶段、对话行号、敌人标识、战斗状态、月芽采集方式、环境见闻、

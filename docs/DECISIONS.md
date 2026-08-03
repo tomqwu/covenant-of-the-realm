@@ -235,15 +235,21 @@ unharvested old snapshot migrates to `unselected`. Invalid or phase-inconsistent
 ### 2026-08-02 — Performance evidence uses broad versioned workloads
 
 The CI performance gate measures deterministic work rather than presentation frame timing: 100,000
-normalized movement/collision steps, 2,000 complete regular-enemy-to-warden rule loops, and 20
-main-scene create/destroy cycles. The first two have independent 2.5-second ceilings; scene
-lifecycle has a 5-second ceiling, a 120-node cap, and must restore the root-child baseline after
-every cycle. Budgets live in excluded test data and are intentionally far above the current local
-measurements so shared CI detects order-of-magnitude regressions without pretending to certify a
-release device. The lifecycle runner uses Godot's fixed 60 FPS clock, which disables real-time
-synchronization while preserving every awaited settle frame; scheduler sleep therefore cannot turn
-shared-runner variance into a false regression. Animation speed and combat outcomes remain outside
-these wall-clock thresholds.
+normalized movement/collision steps, 50,000 bounded companion-trail updates, 2,000 complete
+regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. The three pure-domain
+workloads keep independent 2.5-second ceilings. The lifecycle workload originally sampled six UI
+states under 5 seconds; it now samples 11 states per cycle, including the three spring stages and
+completion, and executes the two added crash-consistent ritual autosaves. Its documented ceiling is
+therefore 7 seconds while the 20-cycle count, 120-node cap, map-detail rebuild assertions, and
+per-cycle root-child baseline remain unchanged. This is a tighter per-state allowance than the
+original workload, not a release-device claim.
+
+Budgets live in excluded test data and remain far above current local measurements so shared CI
+detects order-of-magnitude regressions. The lifecycle runner uses Godot's fixed 60 FPS clock and
+preserves every required focus/deferred-tree settle frame; transitions explicitly completed in the
+test need one frame before stable sampling. Automatic rendering is disabled because pixels are
+covered by the deterministic capture gate and software-renderer variance is not a scene-lifecycle
+signal. Animation speed and combat outcomes remain outside these wall-clock thresholds.
 
 ### 2026-08-02 — Stable enemy IDs select reproducible pixel-atlas rows
 
