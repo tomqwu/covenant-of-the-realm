@@ -40,7 +40,7 @@ The same generator creates `ferry_tiles.png`, an original 256×64 RGBA atlas. Ro
 eight opaque 32 px ground tiles for grass, water, bank, road, moonleaf field, stone, deep grass,
 and water glints. Row one contains eight transparent project-authored overlays for reeds, bank
 grass, path pebbles, wildflowers, stone cracks, moss, fallen leaves, and water foam.
-`ferry_tile_layer.gd` composes the ground into deterministic 36×20 layers, while
+`ferry_tile_layer.gd` composes the ground into deterministic 48×27 layers, while
 `map_detail_layer.gd` places a bounded sparse overlay for the ferry and mountain path without any
 physics or navigation layer. No model, external map, texture, pattern, photograph, or third-party
 tile-design input is used.
@@ -79,7 +79,7 @@ order, occluding subset, nearest filtering, integer snapping, and non-authoritat
 MapCanvas visual contract v2 additionally binds each life-landmark profile to one phase,
 interaction anchor, and action ID without creating a second gameplay authority.
 `scripts/check_rpg_asset_reproducibility` invokes the pinned Godot generator into two isolated
-temporary directories, compares all seven generated atlases byte for byte, and then compares each
+temporary directories, compares all eight generated atlases byte for byte, and then compares each
 with its tracked Git-index blob and working-tree PNG. In CI the index is the committed checkout.
 Scene tests additionally load the imported landmark image as RGBA8,
 require every region to contain visible pixels and a transparent boundary, and verify that unknown

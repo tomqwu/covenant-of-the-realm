@@ -31,6 +31,11 @@ func _run() -> void:
 	_expect(root.gui_get_focus_owner() == game.get_node("%NewGameButton"), "首次标题焦点落在新游戏")
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(not game.get_node("%TitleOverlay").visible, "手柄 A 启动新游戏")
+	var input_camera_initial: Dictionary = game.world_camera_contract()
+	_expect(input_camera_initial["world_size"] == Vector2(1536, 864), "真实输入场景使用 48×27 滚动世界")
+	_expect(input_camera_initial["pixel_snap"], "真实输入场景镜头保持整数像素")
+	_expect(input_camera_initial["safe_frame"]["rect"].has_point(input_camera_initial["world_focus"] - input_camera_initial["origin"]), "新游戏脚点位于 HUD 安全取景区")
+	var input_hud_position: Vector2 = game.get_node("%ChapterLabel").global_position
 	var journal_position: Vector2 = game.exploration.player_position
 	await _trigger_key(KEY_J)
 	_expect(game.get_node("%JournalOverlay").visible, "键盘 J 打开行旅札记")
@@ -51,6 +56,11 @@ func _run() -> void:
 	_expect(game.exploration.player_position == journal_position, "札记打开时真实移动输入不会作用于背后地图")
 	await _trigger_joy_button(JOY_BUTTON_Y)
 	_expect(not game.get_node("%JournalOverlay").visible, "手柄 Y 关闭行旅札记")
+	var camera_origin_before_input: Vector2 = game.world_camera_contract()["origin"]
+	await _hold_key(KEY_D, 0.12)
+	_expect(game.world_camera_contract()["origin"].x > camera_origin_before_input.x, "真实持续移动输入同步推动世界镜头")
+	_expect(game.get_node("%WorldRoot").position == game.world_camera_contract()["world_offset"], "世界根节点应用真实输入后的镜头偏移")
+	_expect(game.get_node("%ChapterLabel").global_position == input_hud_position, "真实镜头移动不挪动 HUD")
 	await _trigger_key(KEY_E)
 	_expect(game.dialogue.active and game.get_node("%DialogueOverlay").visible, "键盘 E 开启同伴简报")
 	_expect(game.get_node("%DialoguePortrait").mouse_filter == Control.MOUSE_FILTER_IGNORE, "纸绘头像不截获键盘或手柄对话焦点")

@@ -10,6 +10,7 @@ const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
 const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const DialoguePortraitScript := preload("res://src/ui/dialogue_portrait.gd")
 const MapOccluderScript := preload("res://src/ui/map_occluder.gd")
+const WorldCameraScript := preload("res://src/ui/world_camera.gd")
 const TEST_SAVE_PATH := "user://automated-test-save.json"
 const TEST_SCENE_SAVE_PATH := "user://automated-scene-save.json"
 const TEST_SETTINGS_PATH := "user://automated-test-settings.json"
@@ -36,6 +37,7 @@ func _run() -> void:
 	_test_stale_temporary_branch_replacement()
 	_test_all_save_artifact_barriers()
 	_test_settings_store()
+	_test_world_camera()
 	_test_companion_trail()
 	_test_dialogue_portraits()
 	_test_map_landmark_adapter()
@@ -82,6 +84,46 @@ func _test_initial_state() -> void:
 	_expect_equal(state.snapshot()["first_breath_stage"], "unstarted", "新旅程尚未开始第一次引息仪轨")
 	_expect_true(state.available_actions().has("enter_spring"), "初始可尝试进山")
 	_expect_false(state.choose("unknown")["ok"], "未知行动不改变状态")
+
+
+func _test_world_camera() -> void:
+	var camera = WorldCameraScript.new()
+	_expect_equal(camera.update_focus(Vector2(0.5, 0.5), Vector2(1128, 624)), Vector2(204, 139), "世界镜头把中央脚点锁到稳定取景锚点")
+	var centered: Dictionary = camera.camera_contract()
+	_expect_equal(centered["world_size"], Vector2(1536, 864), "滚动世界冻结为 48×27 个 32 px 图块")
+	_expect_equal(centered["world_offset"], -centered["origin"], "世界根节点使用镜头原点的反向偏移")
+	_expect_true(centered["pixel_snap"], "镜头原点与世界偏移始终落在整数像素")
+	_expect_equal(centered["safe_frame"]["rect"], Rect2(32, 96, 1064, 336), "安全取景区为顶部 HUD 与底部纸面保留空间")
+	var centered_screen_focus: Vector2 = centered["world_focus"] - centered["origin"]
+	_expect_true(centered["safe_frame"]["rect"].has_point(centered_screen_focus), "中央角色脚点位于 HUD 之外的安全取景区")
+	camera.update_focus(Vector2(0.5, 0.51), Vector2(1128, 624))
+	var first_follow_screen_position: Vector2 = camera.camera_contract()["world_focus"] - camera.camera_contract()["origin"]
+	camera.update_focus(Vector2(0.5, 0.515), Vector2(1128, 624))
+	_expect_equal(camera.camera_contract()["world_focus"] - camera.camera_contract()["origin"], first_follow_screen_position, "连续纵向移动使用同一像素取整规则而不让跟随脚点上下抖动")
+
+	_expect_equal(camera.update_focus(Vector2(0.13, 0.13), Vector2(1128, 624)), Vector2.ZERO, "左上地图边界夹紧且不露出世界外空白")
+	var top_left: Dictionary = camera.camera_contract()
+	_expect_true(top_left["clamped_sides"]["left"] and top_left["clamped_sides"]["top"], "镜头合同明确记录左上夹紧")
+	_expect_equal(camera.update_focus(Vector2(0.95, 0.72), Vector2(1128, 624)), Vector2(408, 240), "右下地图边界夹紧到最大合法原点")
+	var bottom_right: Dictionary = camera.camera_contract()
+	_expect_true(bottom_right["clamped_sides"]["right"] and bottom_right["clamped_sides"]["bottom"], "镜头合同明确记录右下夹紧")
+	var edge_screen_focus: Vector2 = bottom_right["world_focus"] - bottom_right["origin"]
+	_expect_true(bottom_right["safe_frame"]["rect"].has_point(edge_screen_focus), "可走区域右下脚点仍留在纸面上方")
+
+	var stable_contract := camera.camera_contract()
+	_expect_equal(camera.update_focus(Vector2(-0.01, 0.5), Vector2(1128, 624)), stable_contract["origin"], "越界归一化焦点被原子拒绝")
+	_expect_equal(camera.camera_contract()["normalized_focus"], stable_contract["normalized_focus"], "非法焦点不部分覆盖现有镜头状态")
+	_expect_equal(camera.update_focus(Vector2(1.01, 0.5), Vector2(1128, 624)), stable_contract["origin"], "超过右界的归一化焦点被拒绝")
+	_expect_equal(camera.update_focus(Vector2(0.5, -0.01), Vector2(1128, 624)), stable_contract["origin"], "超过上界的归一化焦点被拒绝")
+	_expect_equal(camera.update_focus(Vector2(0.5, 1.01), Vector2(1128, 624)), stable_contract["origin"], "超过下界的归一化焦点被拒绝")
+	_expect_equal(camera.update_focus(Vector2(NAN, 0.5), Vector2(1128, 624)), stable_contract["origin"], "非有限焦点被拒绝")
+	_expect_equal(camera.update_focus(Vector2(0.5, 0.5), Vector2.ZERO), stable_contract["origin"], "非正视口尺寸被原子拒绝")
+	_expect_equal(camera.update_focus(Vector2(0.5, 0.5), Vector2(INF, 624)), stable_contract["origin"], "非有限视口尺寸被原子拒绝")
+	_expect_equal(camera.position, -stable_contract["origin"], "全部非法更新都不移动世界根节点")
+	_expect_equal(camera.update_focus(Vector2(0.5, 0.5), Vector2(1800, 624)), Vector2(0, 139), "仅横向大于世界时只固定横向原点")
+	_expect_equal(camera.update_focus(Vector2(0.5, 0.5), Vector2(1128, 1000)), Vector2(204, 0), "仅纵向大于世界时只固定纵向原点")
+	_expect_equal(camera.update_focus(Vector2(0.5, 0.5), Vector2(1800, 1000)), Vector2.ZERO, "视口大于世界时固定原点而不制造负边界")
+	camera.free()
 
 
 func _test_map_landmark_adapter() -> void:
@@ -2211,6 +2253,35 @@ func _test_scene_smoke() -> void:
 	_expect_false(enemy_sprite.set_enemy_id("unknown_enemy"), "敌人表现节点拒绝未知配置而不伪造动画")
 	_expect_equal(enemy_sprite.enemy_id, "rock_armor_young", "非法表现标识不会覆盖当前敌人")
 	var map_canvas = instance.get_node("%MapCanvas")
+	var world_root: Node2D = instance.get_node("%WorldRoot")
+	var map_frame: Control = instance.get_node("%MapFrame")
+	var world_contract: Dictionary = map_canvas.world_visual_contract()
+	_expect_equal(world_contract["world_size"], Vector2(1536, 864), "地图表现展开为大于最小窗口的 48×27 世界")
+	_expect_equal(world_contract["expected_world_size"], Vector2(1536, 864), "世界像素尺寸与 32 px 地图合同一致")
+	_expect_true(world_contract["world_size"].x > map_frame.size.x and world_contract["world_size"].y > map_frame.size.y, "渡口需要镜头滚动而非一次显示全部目标")
+	_expect_true(world_contract["normalized_coordinates"], "扩大世界仍只消费 domain 归一化坐标")
+	_expect_false(world_contract["collision_authority"], "地图表现不会成为第二套碰撞权威")
+	_expect_equal(map_canvas.get_parent(), world_root, "地图画布与人物位于统一世界根节点")
+	_expect_equal(instance.get_node("%FerryGround").get_parent(), world_root, "地表与地图画布共享同一镜头变换")
+	_expect_equal(instance.get_node("%MapDetailLayer").get_parent(), world_root, "细节层与人物共享同一镜头变换")
+	_expect_false(world_root.is_ancestor_of(instance.get_node("%ChapterLabel")), "HUD 保持屏幕空间而不随世界镜头移动")
+	var world_depth_ceiling := int(map_canvas.occlusion_contract()["map_depth_ceiling"])
+	for hud_path in ["ChapterHud", "StatusHud", "StoryPanel"]:
+		_expect_true(instance.get_node(hud_path).z_index > world_depth_ceiling, "%s 绘制在全部世界角色与遮挡物之上" % hud_path)
+	var initial_camera: Dictionary = instance.world_camera_contract()
+	_expect_equal(initial_camera["world_size"], Vector2(1536, 864), "场景镜头读取固定世界边界")
+	_expect_equal(initial_camera["world_offset"], world_root.position, "场景世界根节点应用镜头偏移")
+	_expect_true(initial_camera["pixel_snap"], "场景镜头不产生半像素抖动")
+	var initial_screen_focus: Vector2 = initial_camera["world_focus"] - initial_camera["origin"]
+	_expect_true(initial_camera["safe_frame"]["rect"].has_point(initial_screen_focus), "出生点在顶部 HUD 与底部纸面之间取景")
+	var hud_position_before_camera: Vector2 = instance.get_node("%ChapterLabel").global_position
+	var initial_camera_origin: Vector2 = initial_camera["origin"]
+	_expect_true(instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.88, "player_y": 0.18}), "镜头测试可到达东侧山门")
+	instance._render([])
+	_expect_true(instance.world_camera_contract()["origin"].x > initial_camera_origin.x, "远端传送在同一渲染帧重新取景")
+	_expect_equal(instance.get_node("%ChapterLabel").global_position, hud_position_before_camera, "镜头移动不挪动屏幕空间 HUD")
+	_expect_true(instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51}), "镜头测试后恢复稳定出生点")
+	instance._render([])
 	var initial_patrol_visual: Dictionary = map_canvas.patrol_visual_contract()
 	_expect_false(initial_patrol_visual["active"], "简报前巡路表现合同保持未激活")
 	_expect_false(initial_patrol_visual["visible"], "未激活巡路表现不占用地图画面")
@@ -2241,14 +2312,14 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%MapCanvas").uses_ferry_tile_layers(), "照禾渡口地表由 TileMapLayer 组成")
 	var ferry_ground: TileMapLayer = instance.get_node("%FerryGround")
 	var map_contract: Dictionary = ferry_ground.map_contract()
-	_expect_equal(map_contract["map_size"], Vector2i(36, 20), "渡口生产地图覆盖 36×20 个网格")
+	_expect_equal(map_contract["map_size"], Vector2i(48, 27), "渡口生产地图覆盖 48×27 个网格")
 	_expect_equal(map_contract["tile_size"], Vector2i(32, 32), "地图使用 32 px TileSet 网格")
-	_expect_equal(map_contract["used_rect"], Rect2i(0, 0, 36, 20), "TileMapLayer 无断裂地覆盖整个镜头")
-	_expect_equal(map_contract["tile_counts"]["water"], 240, "地图水域单元数量固定")
-	_expect_equal(map_contract["tile_counts"]["bank"], 60, "地图岸线单元数量固定")
-	_expect_equal(map_contract["tile_counts"]["moonleaf"], 18, "月芽田在 TileSet 中有明确区域")
-	_expect_equal(map_contract["tile_counts"]["stone"], 9, "山门石地区域被地图数据标记")
-	_expect_true(map_contract["tile_counts"]["path"] > 40, "地图包含可读的主路与药田支路")
+	_expect_equal(map_contract["used_rect"], Rect2i(0, 0, 48, 27), "TileMapLayer 无断裂地覆盖完整滚动世界")
+	_expect_equal(map_contract["tile_counts"]["water"], 432, "扩展地图水域单元数量固定")
+	_expect_equal(map_contract["tile_counts"]["bank"], 108, "扩展地图岸线单元数量固定")
+	_expect_equal(map_contract["tile_counts"]["moonleaf"], 32, "扩展月芽田在 TileSet 中有明确区域")
+	_expect_equal(map_contract["tile_counts"]["stone"], 16, "扩展山门石地区域被地图数据标记")
+	_expect_true(map_contract["tile_counts"]["path"] > 70, "扩展地图包含可读的主路与药田支路")
 	_expect_equal(map_contract["filter"], CanvasItem.TEXTURE_FILTER_NEAREST, "地图纹理使用最近邻过滤")
 	_expect_true(instance.get_node("%MapCanvas").uses_map_detail_layer(), "渡口与山道共享独立细节 TileMapLayer")
 	var map_detail: TileMapLayer = instance.get_node("%MapDetailLayer")
@@ -2256,22 +2327,22 @@ func _test_scene_smoke() -> void:
 	_expect_equal(ferry_detail_contract["schema_version"], 1, "地图细节合同使用稳定版本")
 	_expect_equal(ferry_detail_contract["context_id"], "riverbank", "地图细节合同记录渡口表现上下文")
 	_expect_equal(ferry_detail_contract["map_kind"], "ferry", "地图细节构建渡口固定单元图")
-	_expect_equal(ferry_detail_contract["map_size"], Vector2i(36, 20), "地图细节与地表共享 36×20 边界")
+	_expect_equal(ferry_detail_contract["map_size"], Vector2i(48, 27), "地图细节与地表共享 48×27 边界")
 	_expect_equal(ferry_detail_contract["tile_size"], Vector2i(32, 32), "地图细节使用同一 32 px 网格")
-	_expect_equal(ferry_detail_contract["used_rect"], Rect2i(1, 1, 34, 18), "渡口细节占用范围保持在生产地图内")
-	_expect_equal(ferry_detail_contract["used_cell_count"], 46, "渡口细节使用固定稀疏单元数")
+	_expect_equal(ferry_detail_contract["used_rect"], Rect2i(1, 1, 46, 26), "渡口细节占用范围保持在扩展地图内")
+	_expect_equal(ferry_detail_contract["used_cell_count"], 77, "渡口细节随滚动世界保持稀疏密度")
 	_expect_equal(ferry_detail_contract["tile_counts"], {
-		"reeds": 6,
-		"bank_grass": 5,
-		"path_pebbles": 11,
-		"wildflowers": 7,
-		"stone_cracks": 3,
-		"moss": 4,
-		"fallen_leaves": 5,
-		"water_foam": 5,
+		"reeds": 9,
+		"bank_grass": 8,
+		"path_pebbles": 18,
+		"wildflowers": 12,
+		"stone_cracks": 5,
+		"moss": 7,
+		"fallen_leaves": 10,
+		"water_foam": 8,
 	}, "渡口八类透明细节数量固定")
-	_expect_equal(ferry_detail_contract["tile_cells"]["stone_cracks"], [Vector2i(30, 2), Vector2i(32, 3), Vector2i(31, 4)], "渡口石裂只落在山门石地")
-	_expect_equal(ferry_detail_contract["tile_cells"]["water_foam"], [Vector2i(2, 3), Vector2i(6, 7), Vector2i(4, 12), Vector2i(9, 15), Vector2i(1, 18)], "渡口水沫使用固定河面单元")
+	_expect_equal(ferry_detail_contract["tile_cells"]["stone_cracks"], [Vector2i(40, 3), Vector2i(43, 4), Vector2i(41, 5), Vector2i(42, 6), Vector2i(40, 6)], "渡口石裂只落在扩展山门石地")
+	_expect_equal(ferry_detail_contract["tile_cells"]["water_foam"], [Vector2i(3, 4), Vector2i(8, 9), Vector2i(5, 16), Vector2i(12, 20), Vector2i(1, 24), Vector2i(6, 2), Vector2i(14, 11), Vector2i(4, 26)], "渡口水沫使用固定扩展河面单元")
 	_expect_true(ferry_detail_contract["visible"], "渡口细节在探索与标题底图可见")
 	_expect_false(ferry_detail_contract["collision_authority"], "地图细节明确不拥有碰撞权威")
 	_expect_equal(ferry_detail_contract["physics_layer_count"], 0, "细节 TileSet 不建立物理层")
@@ -2641,10 +2712,10 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.get_node("%MapCanvas").occlusion_contract()["asset_backed_count"], 5, "山道五处树冠全部复用像素地标图集")
 	var path_contract: Dictionary = instance.get_node("%PathGround").map_contract()
 	_expect_equal(path_contract["map_kind"], "mountain_path", "山道图层声明独立地图类型")
-	_expect_equal(path_contract["tile_counts"]["water"], 85, "山道溪流为返程石桥保留十五个非水单元")
-	_expect_true(path_contract["tile_counts"]["path"] > 40, "山道存在连续可读石路")
+	_expect_equal(path_contract["tile_counts"]["water"], 161, "扩展山道溪流与七乘七返程石桥保持固定水陆布局")
+	_expect_true(path_contract["tile_counts"]["path"] > 70, "扩展山道存在连续可读石路")
 	_expect_true(path_contract["tile_counts"]["stone"] > 3, "山道敌区与调查点使用石地标记")
-	_expect_equal(path_contract["mountain_gate_bridge"], Rect2i(2, 12, 5, 5), "返程山门使用固定五乘五石桥区域")
+	_expect_equal(path_contract["mountain_gate_bridge"], Rect2i(3, 16, 7, 7), "返程山门使用固定七乘七石桥区域")
 	var path_ground: TileMapLayer = instance.get_node("%PathGround")
 	_expect_equal(path_ground.tile_kind_at_normalized(ExplorationStateScript.PATH_RETURN_POSITION), "stone", "山道返程交互点不再落在溪水图块")
 	for anchor in [
@@ -2666,20 +2737,20 @@ func _test_scene_smoke() -> void:
 	var path_detail_contract: Dictionary = map_detail.map_contract()
 	_expect_equal(path_detail_contract["context_id"], "mountain_path", "山道切换共享细节层上下文")
 	_expect_equal(path_detail_contract["map_kind"], "mountain_path", "山道切换独立固定细节单元图")
-	_expect_equal(path_detail_contract["used_rect"], Rect2i(1, 1, 33, 18), "山道细节占用范围保持在生产地图内")
-	_expect_equal(path_detail_contract["used_cell_count"], 43, "山道细节使用固定稀疏单元数")
+	_expect_equal(path_detail_contract["used_rect"], Rect2i(1, 1, 46, 26), "山道细节占用范围保持在扩展地图内")
+	_expect_equal(path_detail_contract["used_cell_count"], 74, "山道细节随滚动世界保持稀疏密度")
 	_expect_equal(path_detail_contract["tile_counts"], {
-		"reeds": 4,
-		"bank_grass": 5,
-		"path_pebbles": 9,
-		"wildflowers": 6,
-		"stone_cracks": 4,
-		"moss": 5,
-		"fallen_leaves": 6,
-		"water_foam": 4,
+		"reeds": 7,
+		"bank_grass": 7,
+		"path_pebbles": 15,
+		"wildflowers": 11,
+		"stone_cracks": 7,
+		"moss": 9,
+		"fallen_leaves": 11,
+		"water_foam": 7,
 	}, "山道八类透明细节数量固定")
-	_expect_equal(path_detail_contract["tile_cells"]["stone_cracks"], [Vector2i(25, 6), Vector2i(27, 7), Vector2i(15, 11), Vector2i(16, 12)], "山道石裂只落在两处石地区")
-	_expect_equal(path_detail_contract["tile_cells"]["path_pebbles"], [Vector2i(4, 14), Vector2i(7, 15), Vector2i(10, 14), Vector2i(13, 13), Vector2i(16, 11), Vector2i(20, 9), Vector2i(24, 7), Vector2i(28, 5), Vector2i(31, 3)], "山道碎石沿固定可读路线排列")
+	_expect_equal(path_detail_contract["tile_cells"]["stone_cracks"], [Vector2i(32, 7), Vector2i(38, 9), Vector2i(35, 10), Vector2i(33, 11), Vector2i(38, 11), Vector2i(22, 16), Vector2i(20, 17)], "山道石裂只落在两处扩展石地区")
+	_expect_equal(path_detail_contract["tile_cells"]["path_pebbles"], [Vector2i(8, 19), Vector2i(10, 20), Vector2i(13, 19), Vector2i(16, 18), Vector2i(19, 16), Vector2i(21, 15), Vector2i(24, 14), Vector2i(27, 12), Vector2i(30, 11), Vector2i(33, 9), Vector2i(36, 8), Vector2i(39, 6), Vector2i(41, 5), Vector2i(43, 4), Vector2i(17, 17)], "山道碎石沿固定扩展路线排列")
 	_expect_true(path_detail_contract["visible"], "山道细节在自由探索阶段可见")
 	_expect_equal(path_detail_contract["rebuild_count"], 2, "首次换图只追加一次细节重建")
 	_expect_true(path_detail_contract["layout_signature"] != ferry_detail_contract["layout_signature"], "渡口与山道细节布局签名不同")
@@ -2762,6 +2833,12 @@ func _test_scene_smoke() -> void:
 	_expect_false(ferry_ground.visible, "离开渡口后隐藏渡口 TileMapLayer")
 	_expect_equal(_action_button_count(instance), 6, "战斗显示术式、符箓、守势、援护、石灯与撤退")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "battle", "战斗切换山道画面")
+	var battle_camera: Dictionary = instance.world_camera_contract()
+	_expect_equal(battle_camera["normalized_focus"], instance.get_node("%MapCanvas").presentation_focus_normalized(instance.exploration.player_position), "战斗镜头改用三名可见演员的表现中心")
+	var battle_safe_frame: Rect2 = battle_camera["safe_frame"]["rect"]
+	for battle_actor_path in ["%PlayerSprite", "%CompanionSprite", "%BattleEnemySprite"]:
+		var battle_actor: Node2D = instance.get_node(battle_actor_path)
+		_expect_true(battle_safe_frame.has_point(battle_actor.position - battle_camera["origin"]), "%s 脚点避开顶部 HUD 与底部纸面" % battle_actor_path)
 	var battle_detail_contract: Dictionary = map_detail.map_contract()
 	_expect_false(battle_detail_contract["visible"], "战斗阶段隐藏探索细节层")
 	_expect_equal(battle_detail_contract["context_id"], "battle", "隐藏细节仍记录当前表现上下文")
@@ -2866,6 +2943,12 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.get_node("%LocationLabel").text, "第一息", "场景完成章节")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("引息境一层"), "场景显示突破境界")
 	_expect_equal(instance.get_node("%MapCanvas").current_visual_mode(), "complete", "结算切换明亮突破画面")
+	var complete_camera: Dictionary = instance.world_camera_contract()
+	_expect_equal(complete_camera["normalized_focus"], instance.get_node("%MapCanvas").presentation_focus_normalized(instance.exploration.player_position), "结算镜头改用双人表现中心而非旧探索坐标")
+	var complete_safe_frame: Rect2 = complete_camera["safe_frame"]["rect"]
+	for complete_actor_path in ["%PlayerSprite", "%CompanionSprite"]:
+		var complete_actor: Node2D = instance.get_node(complete_actor_path)
+		_expect_true(complete_safe_frame.has_point(complete_actor.position - complete_camera["origin"]), "%s 结算脚点避开底部章节面板" % complete_actor_path)
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("本节结算"), "完成画面显示战绩结算")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("水尺扶正"), "结算回显本轮守堤选择")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("药篓归圃"), "结算回显本轮药篓去向")
@@ -3127,7 +3210,7 @@ func _expect_detail_cells_bounded_and_unique(contract: Dictionary, map_label: St
 	for cell_value in cells:
 		var cell := Vector2i(cell_value)
 		unique_cells[cell] = true
-		_expect_true(Rect2i(Vector2i.ZERO, Vector2i(36, 20)).has_point(cell), "%s细节单元位于 36×20 边界内" % map_label)
+		_expect_true(Rect2i(Vector2i.ZERO, Vector2i(48, 27)).has_point(cell), "%s细节单元位于 48×27 边界内" % map_label)
 	_expect_equal(unique_cells.size(), cells.size(), "%s细节单元没有互相覆盖" % map_label)
 	var counted_cells := 0
 	for tile_count in contract["tile_counts"].values():

@@ -26,9 +26,9 @@ false-green imports, tests, captures, exports, content probes, or packaged boot 
 nearest Git revision, clean/dirty source state, required runtime resources, and excluded development
 resources. `make play-rpg-package` launches that pack with the pinned Godot entrypoint. The package
 gate exports the PCK and manifest twice, requires byte-identical results, verifies the manifest,
-probes the packed namespace for 17 runtime resources and nine excluded `tests/`/`tools/` files,
-then boots the pack headlessly. The current reproducible PCK is 611,028 bytes with SHA-256
-`fef624d49cf101337c516d0c026339102d9d92eed29cf5c889da2028c9534a0e`.
+probes the packed namespace for 18 runtime resources and nine excluded `tests/`/`tools/` files,
+then boots the pack headlessly. The current reproducible PCK is 630,040 bytes with SHA-256
+`c67c77cfd32219a48803b67326705c21bf0b1739118b766c71f8924db7202e50`.
 A native `.app`/`.exe` is intentionally deferred until platform export templates,
 signing identity, product icon, and distribution target are confirmed.
 
@@ -40,9 +40,9 @@ and pause/resume are exercised as physical input events by `make test-rpg-input`
 deterministic ferry-runner route steps, 50,000
 bounded companion-footprint updates, 2,000 complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. Lifecycle sampling covers title, path, dialogue choices, stable battle, the immediate post-action replacement frame, the scrollable journal, all three spring stages, and completion. The checked-in
 budget allows 2.5 seconds for each pure-domain workload and 7 seconds for the expanded 12-state lifecycle workload,
-caps the main scene at 121 nodes, and requires every cycle to return the root to its baseline child
-count. The static scene uses 111 nodes; the measured peak is 121, the patrol state uses 119,
-each spring ritual stage uses 112, and the completed scene uses 114, with zero root-child leaks. Godot runs the
+caps the main scene at 122 nodes, and requires every cycle to return the root to its baseline child
+count. The static scene uses 112 nodes; the measured peak is 122, the patrol state uses 120,
+each spring ritual stage uses 113, and the completed scene uses 115, with zero root-child leaks. Godot runs the
 lifecycle gate on a fixed 60 FPS clock, keeps required focus/deferred-tree settle frames, and
 disables automatic drawing because deterministic PNG captures own pixel verification. The runner
 reports measured times but does not treat one development machine as a release hardware promise.
@@ -75,7 +75,7 @@ settings v3 增加“标准/大字”文字大小和“关闭/开启”高对比
 深墨或纸白锚点，纸面浅色与深底浅字两种极性都只增强、不反转。两项无障碍设置
 同样只作用于表现层，v1/v2 设置保守迁移为标准字号与普通对比。
 
-当前功能性美术灰盒采用明亮的全屏 RPG 镜头。第一套原创、确定性生成的人物图集
+当前功能性美术灰盒采用明亮的有界滚动 RPG 镜头。第一套原创、确定性生成的人物图集
 已经锁定 32×56 px 帧、固定脚底锚点、16×20 px 碰撞基准、四方向待机/行走动画、
 最近邻过滤与整数像素对齐，并通过 `AnimatedSprite2D` 驱动主角、砚青、守堤人梁叔、药圃守蕙婶和渡口跑腿人陶小满。四类敌人
 共用另一张 128×256 RGBA 图集，每类占一行 64×64 双帧待机动画；稳定敌人标识
@@ -85,7 +85,7 @@ settings v3 增加“标准/大字”文字大小和“关闭/开启”高对比
 亲自走到月芽田采集，再沿路抵达藏泉山门。战斗阶段使用鼠标点击，或用方向键
 切换焦点并按 `Enter`/手柄 A 确认；可请求一次砚青援护，也可沿预留路线撤退。
 战术部署槽可布置一盏引泉石灯，在部署回合与下一回合各削弱一点冲击；气血耗尽
-会由同伴救回渡口，不会形成无法继续的死档。渡口与山道地表已由 36×20 个原创
+会由同伴救回渡口，不会形成无法继续的死档。渡口与山道地表已由 48×27 个原创
 32 px 图块组成真正的 `TileMapLayer`；同一张 256×64 图集的第二行还提供芦苇、
 岸草、碎石、野花、石裂、苔痕、落叶与水沫，并由一个无物理/导航权威的稀疏
 细节层按地图确定性铺设。房屋、树木、码头、巨石、洞口、山门与三处生活地标已迁入一张原创
@@ -93,7 +93,10 @@ settings v3 增加“标准/大字”文字大小和“关闭/开启”高对比
 提交源图每次由项目生成器在两个临时目录重建并逐字节核对 Git。三处房屋和四处
 树木继续复用按脚底 Y 排序的既有前景节点；山道与战斗镜头分别复用五处和四处，
 没有增加场景节点或碰撞权威。角色走到物体后方会被遮挡，走到前方则覆盖前景，
-地图深度不会穿过对话或菜单模态层。山道返程山门另有固定 5×5 石桥，保证出生点、
+地图深度不会穿过对话或菜单模态层。1536×864 世界层由整数像素滚动镜头裁入
+1152×648 窗口内四边 12 px 内缩的 1128×624 `MapFrame`；主角、同伴、巡路者、敌人、地标与细节共享同一相机变换，HUD、
+对话和菜单保持屏幕固定。镜头四边夹紧，并在出生、跨图、读档、撤退、救援和重游时
+立即重构安全取景，不把相机状态写入 save v15。山道返程山门另有固定 7×7 石桥，保证出生点、
 退路和所有交互锚点都落在非水地表，同时保持 save v15 坐标兼容。
 
 渡口的补船木架、晾晒竹架和山道的避雨石棚是三处可重复查看的空间叙事。每次靠近

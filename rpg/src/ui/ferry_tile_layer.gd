@@ -1,6 +1,6 @@
 extends TileMapLayer
 
-const MAP_SIZE := Vector2i(36, 20)
+const MAP_SIZE := Vector2i(48, 27)
 const TILE_SIZE := Vector2i(32, 32)
 const SOURCE_ID := 0
 const TILE_GRASS := Vector2i(0, 0)
@@ -11,7 +11,7 @@ const TILE_MOONLEAF := Vector2i(4, 0)
 const TILE_STONE := Vector2i(5, 0)
 const TILE_DEEP_GRASS := Vector2i(6, 0)
 const TILE_WATER_GLINT := Vector2i(7, 0)
-const MOUNTAIN_GATE_BRIDGE := Rect2i(2, 12, 5, 5)
+const MOUNTAIN_GATE_BRIDGE := Rect2i(3, 16, 7, 7)
 
 @export var atlas_texture: Texture2D
 @export_enum("ferry", "mountain_path") var map_kind := "ferry"
@@ -84,39 +84,39 @@ func _build_ground() -> void:
 func _tile_for_cell(cell: Vector2i) -> Vector2i:
 	if map_kind == "mountain_path":
 		return _mountain_tile_for_cell(cell)
-	if cell.x <= 11:
+	if cell.x <= 15:
 		return TILE_WATER_GLINT if (cell.x + cell.y) % 5 == 0 else TILE_WATER
-	if cell.x <= 14:
+	if cell.x <= 19:
 		return TILE_BANK
-	if Rect2i(22, 11, 6, 3).has_point(cell):
+	if Rect2i(29, 15, 8, 4).has_point(cell):
 		return TILE_MOONLEAF
-	if Rect2i(30, 2, 3, 3).has_point(cell):
+	if Rect2i(40, 3, 4, 4).has_point(cell):
 		return TILE_STONE
 	var point := Vector2(cell) + Vector2(0.5, 0.5)
-	var main_path := _distance_to_polyline(point, [Vector2(13, 18), Vector2(17, 12), Vector2(22, 9), Vector2(31, 3)])
-	var field_path := _distance_to_polyline(point, [Vector2(17, 12), Vector2(24, 14), Vector2(34, 13)])
-	if minf(main_path, field_path) <= 1.35:
+	var main_path := _distance_to_polyline(point, [Vector2(17, 24), Vector2(23, 16), Vector2(29, 12), Vector2(41, 4)])
+	var field_path := _distance_to_polyline(point, [Vector2(23, 16), Vector2(32, 19), Vector2(45, 18)])
+	if minf(main_path, field_path) <= 1.8:
 		return TILE_PATH
 	return TILE_DEEP_GRASS if (cell.x + cell.y) % 7 == 0 else TILE_GRASS
 
 
 func _mountain_tile_for_cell(cell: Vector2i) -> Vector2i:
 	if MOUNTAIN_GATE_BRIDGE.has_point(cell):
-		return TILE_STONE if cell.x <= 4 else TILE_PATH
-	if cell.x <= 4:
+		return TILE_STONE if cell.x <= 6 else TILE_PATH
+	if cell.x <= 6:
 		return TILE_WATER_GLINT if (cell.x + cell.y) % 4 == 0 else TILE_WATER
 	var point := Vector2(cell) + Vector2(0.5, 0.5)
 	var path_distance := _distance_to_polyline(point, [
-		Vector2(3, 14),
-		Vector2(9, 15),
-		Vector2(14, 12),
-		Vector2(20, 9),
-		Vector2(27, 6),
-		Vector2(32, 3),
+		Vector2(4, 19),
+		Vector2(12, 20),
+		Vector2(19, 16),
+		Vector2(27, 12),
+		Vector2(36, 8),
+		Vector2(43, 4),
 	])
-	if path_distance <= 1.25:
+	if path_distance <= 1.7:
 		return TILE_PATH
-	if Rect2i(24, 5, 5, 4).has_point(cell) or Rect2i(14, 10, 3, 3).has_point(cell):
+	if Rect2i(32, 7, 7, 5).has_point(cell) or Rect2i(19, 14, 4, 4).has_point(cell):
 		return TILE_STONE
 	return TILE_DEEP_GRASS if (cell.x * 3 + cell.y) % 5 == 0 else TILE_GRASS
 

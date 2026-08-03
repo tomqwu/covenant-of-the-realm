@@ -10,5 +10,5 @@
   "battle_budget_ms": 2500,
   "scene_cycles": 20,
   "scene_budget_ms": 7000,
-  "max_main_scene_nodes": 121
+  "max_main_scene_nodes": 122
 }

@@ -17,6 +17,8 @@ const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
 
 @onready var map_canvas: Control = %MapCanvas
+@onready var map_frame: Control = %MapFrame
+@onready var world_camera: Node2D = %WorldRoot
 @onready var chapter_label: Label = %ChapterLabel
 @onready var objective_label: Label = %ObjectiveLabel
 @onready var location_label: Label = %LocationLabel
@@ -90,6 +92,7 @@ func _ready() -> void:
 	_ensure_input_actions()
 	content = _load_content()
 	settings = SettingsStoreScript.read(settings_path)["data"]
+	map_frame.resized.connect(_sync_world_camera)
 	_render([])
 	_style_menu_button(new_game_button)
 	_style_menu_button(continue_button)
@@ -286,6 +289,7 @@ func _render(event_ids: Array) -> void:
 	map_canvas.set_patrol_state(patrol.position, patrol.motion_direction(), patrol.is_moving(), snapshot["talked_to_companion"])
 	nearby_action_id = _resolved_nearby_action(snapshot)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
+	_sync_world_camera()
 	map_canvas.show_battle_feedback(
 		event_ids,
 		settings["battle_speed"] == "fast",
@@ -572,9 +576,26 @@ func move_player(direction: Vector2, delta: float) -> Vector2:
 	nearby_action_id = _resolved_nearby_action(journey.snapshot())
 	map_canvas.set_patrol_state(patrol.position, patrol.motion_direction(), patrol.is_moving(), journey.talked_to_companion)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
+	_sync_world_camera()
 	if nearby_action_id != previous_action:
 		_build_actions(content["nodes"][journey.phase_id()])
 	return exploration.player_position
+
+
+func _sync_world_camera() -> void:
+	if (
+		not is_node_ready()
+		or not is_instance_valid(world_camera)
+		or not is_instance_valid(map_frame)
+		or not is_instance_valid(map_canvas)
+	):
+		return
+	var focus: Vector2 = map_canvas.presentation_focus_normalized(exploration.player_position)
+	world_camera.update_focus(focus, map_frame.size)
+
+
+func world_camera_contract() -> Dictionary:
+	return world_camera.camera_contract()
 
 
 func _refresh_nearby_action() -> void:

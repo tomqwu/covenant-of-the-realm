@@ -4,6 +4,32 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — Expanded maps use one deterministic bounded world camera
+
+照禾渡口 and 藏泉山道 now use 48×27 32 px ground grids, giving each explored world a
+1536×864 authored extent behind the validated 1152×648 presentation. Its 12 px inset leaves a
+1128×624 `MapFrame` as the actual camera viewport. Ground, sparse details,
+`MapCanvas`, actors, enemies, and landmarks live under one `WorldRoot`; HUD, dialogue, journal,
+pause, title, transition, and other modal layers stay outside that transform. This keeps every
+world-space element aligned while screen-space reading and input surfaces remain fixed.
+
+`WorldCamera` derives exploration focus from the existing normalized player coordinate; battle and
+completion use the instantaneous mean of their visible actor feet so the whole cast stays between
+the fixed HUD and story panel. Neither presentation focus is persisted or becomes authoritative
+game state. The camera rounds actor focus and viewport anchor through the same integer-pixel rule,
+clamps independently at all four world edges, and reports a stable safe
+frame with 32 px horizontal, 96 px top, and 192 px bottom margins around a 50%/47% anchor. Spawn,
+transition, load, retreat, rescue, replay, and physical movement reframe immediately. Invalid,
+non-finite, out-of-range focus or invalid viewport input rejects atomically; a viewport larger than
+either world axis safely pins that axis to zero. There is no smoothing, wall-clock time, randomness,
+collision, navigation, story, or save authority in the camera policy.
+
+Save v15 remains unchanged: maps still persist stable IDs plus normalized coordinates, so existing
+saves reframe without migration or serialized camera state. The scene cost is one structural node:
+the lifecycle contract moves from 111 static / 121 peak to 112 static / 122 peak with zero root
+leaks. Unit, physical-input, full-chapter E2E, deterministic capture, package-content, and boot gates
+all cover the expanded world boundary.
+
 ### 2026-08-03 — Automated Godot gates treat fatal script diagnostics as failures
 
 Godot 4.7.1 can return process status zero after a GDScript parse/load failure, which would make a

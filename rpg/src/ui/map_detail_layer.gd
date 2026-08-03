@@ -1,6 +1,6 @@
 extends TileMapLayer
 
-const MAP_SIZE := Vector2i(36, 20)
+const MAP_SIZE := Vector2i(48, 27)
 const TILE_SIZE := Vector2i(32, 32)
 const MAP_BOUNDS := Rect2i(Vector2i.ZERO, MAP_SIZE)
 const SOURCE_ID := 0
@@ -25,24 +25,24 @@ const DETAIL_TILES := {
 	"water_foam": Vector2i(7, 1),
 }
 const FERRY_DETAIL_CELLS := {
-	"reeds": [Vector2i(8, 2), Vector2i(10, 5), Vector2i(9, 9), Vector2i(11, 13), Vector2i(8, 17), Vector2i(12, 18)],
-	"bank_grass": [Vector2i(14, 1), Vector2i(14, 6), Vector2i(14, 10), Vector2i(14, 15), Vector2i(15, 18)],
-	"path_pebbles": [Vector2i(15, 17), Vector2i(17, 13), Vector2i(19, 11), Vector2i(21, 10), Vector2i(24, 8), Vector2i(27, 6), Vector2i(30, 4), Vector2i(21, 13), Vector2i(25, 14), Vector2i(29, 14), Vector2i(33, 13)],
-	"wildflowers": [Vector2i(18, 3), Vector2i(21, 5), Vector2i(27, 2), Vector2i(33, 7), Vector2i(17, 16), Vector2i(29, 18), Vector2i(34, 16)],
-	"stone_cracks": [Vector2i(30, 2), Vector2i(32, 3), Vector2i(31, 4)],
-	"moss": [Vector2i(16, 2), Vector2i(18, 7), Vector2i(33, 4), Vector2i(31, 17)],
-	"fallen_leaves": [Vector2i(14, 3), Vector2i(31, 5), Vector2i(33, 10), Vector2i(15, 14), Vector2i(29, 16)],
-	"water_foam": [Vector2i(2, 3), Vector2i(6, 7), Vector2i(4, 12), Vector2i(9, 15), Vector2i(1, 18)],
+	"reeds": [Vector2i(11, 3), Vector2i(13, 7), Vector2i(9, 8), Vector2i(12, 12), Vector2i(10, 15), Vector2i(15, 18), Vector2i(13, 21), Vector2i(11, 23), Vector2i(14, 25)],
+	"bank_grass": [Vector2i(19, 1), Vector2i(18, 5), Vector2i(19, 8), Vector2i(17, 12), Vector2i(19, 14), Vector2i(18, 18), Vector2i(19, 20), Vector2i(17, 25)],
+	"path_pebbles": [Vector2i(20, 21), Vector2i(21, 19), Vector2i(23, 17), Vector2i(25, 15), Vector2i(28, 13), Vector2i(30, 11), Vector2i(32, 10), Vector2i(34, 9), Vector2i(36, 7), Vector2i(38, 6), Vector2i(24, 17), Vector2i(27, 18), Vector2i(30, 19), Vector2i(33, 19), Vector2i(36, 19), Vector2i(39, 19), Vector2i(42, 18), Vector2i(45, 18)],
+	"wildflowers": [Vector2i(24, 4), Vector2i(28, 7), Vector2i(36, 3), Vector2i(44, 9), Vector2i(23, 22), Vector2i(39, 24), Vector2i(45, 22), Vector2i(22, 7), Vector2i(31, 24), Vector2i(46, 12), Vector2i(26, 25), Vector2i(35, 23)],
+	"stone_cracks": [Vector2i(40, 3), Vector2i(43, 4), Vector2i(41, 5), Vector2i(42, 6), Vector2i(40, 6)],
+	"moss": [Vector2i(21, 3), Vector2i(24, 9), Vector2i(44, 5), Vector2i(41, 23), Vector2i(27, 5), Vector2i(37, 13), Vector2i(46, 25)],
+	"fallen_leaves": [Vector2i(20, 4), Vector2i(41, 7), Vector2i(44, 14), Vector2i(25, 21), Vector2i(39, 22), Vector2i(22, 25), Vector2i(28, 24), Vector2i(34, 23), Vector2i(46, 7), Vector2i(37, 25)],
+	"water_foam": [Vector2i(3, 4), Vector2i(8, 9), Vector2i(5, 16), Vector2i(12, 20), Vector2i(1, 24), Vector2i(6, 2), Vector2i(14, 11), Vector2i(4, 26)],
 }
 const MOUNTAIN_DETAIL_CELLS := {
-	"reeds": [Vector2i(4, 2), Vector2i(3, 7), Vector2i(4, 12), Vector2i(3, 17)],
-	"bank_grass": [Vector2i(5, 1), Vector2i(5, 5), Vector2i(5, 10), Vector2i(5, 15), Vector2i(6, 18)],
-	"path_pebbles": [Vector2i(4, 14), Vector2i(7, 15), Vector2i(10, 14), Vector2i(13, 13), Vector2i(16, 11), Vector2i(20, 9), Vector2i(24, 7), Vector2i(28, 5), Vector2i(31, 3)],
-	"wildflowers": [Vector2i(8, 3), Vector2i(12, 6), Vector2i(18, 4), Vector2i(22, 14), Vector2i(30, 11), Vector2i(33, 16)],
-	"stone_cracks": [Vector2i(25, 6), Vector2i(27, 7), Vector2i(15, 11), Vector2i(16, 12)],
-	"moss": [Vector2i(6, 7), Vector2i(11, 9), Vector2i(18, 14), Vector2i(25, 15), Vector2i(32, 8)],
-	"fallen_leaves": [Vector2i(6, 4), Vector2i(12, 2), Vector2i(20, 3), Vector2i(29, 10), Vector2i(33, 13), Vector2i(15, 17)],
-	"water_foam": [Vector2i(1, 4), Vector2i(2, 9), Vector2i(1, 14), Vector2i(3, 18)],
+	"reeds": [Vector2i(5, 3), Vector2i(4, 9), Vector2i(5, 13), Vector2i(3, 15), Vector2i(4, 23), Vector2i(6, 6), Vector2i(2, 25)],
+	"bank_grass": [Vector2i(7, 1), Vector2i(7, 7), Vector2i(7, 14), Vector2i(7, 24), Vector2i(8, 5), Vector2i(8, 11), Vector2i(9, 25)],
+	"path_pebbles": [Vector2i(8, 19), Vector2i(10, 20), Vector2i(13, 19), Vector2i(16, 18), Vector2i(19, 16), Vector2i(21, 15), Vector2i(24, 14), Vector2i(27, 12), Vector2i(30, 11), Vector2i(33, 9), Vector2i(36, 8), Vector2i(39, 6), Vector2i(41, 5), Vector2i(43, 4), Vector2i(17, 17)],
+	"wildflowers": [Vector2i(11, 4), Vector2i(16, 8), Vector2i(24, 5), Vector2i(29, 19), Vector2i(40, 15), Vector2i(44, 22), Vector2i(12, 12), Vector2i(18, 24), Vector2i(28, 23), Vector2i(42, 18), Vector2i(46, 8)],
+	"stone_cracks": [Vector2i(32, 7), Vector2i(38, 9), Vector2i(35, 10), Vector2i(33, 11), Vector2i(38, 11), Vector2i(22, 16), Vector2i(20, 17)],
+	"moss": [Vector2i(8, 9), Vector2i(15, 12), Vector2i(24, 19), Vector2i(33, 20), Vector2i(43, 11), Vector2i(10, 25), Vector2i(26, 21), Vector2i(39, 13), Vector2i(45, 25)],
+	"fallen_leaves": [Vector2i(9, 5), Vector2i(16, 3), Vector2i(27, 4), Vector2i(39, 14), Vector2i(44, 18), Vector2i(20, 23), Vector2i(11, 10), Vector2i(18, 6), Vector2i(25, 25), Vector2i(34, 23), Vector2i(46, 16)],
+	"water_foam": [Vector2i(1, 5), Vector2i(3, 12), Vector2i(1, 19), Vector2i(4, 24), Vector2i(6, 2), Vector2i(2, 8), Vector2i(5, 26)],
 }
 
 @export var atlas_texture: Texture2D

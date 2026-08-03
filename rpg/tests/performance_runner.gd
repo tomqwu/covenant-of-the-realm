@@ -9,7 +9,7 @@ const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const BUDGET_PATH := "res://tests/performance_budget.json"
 const PERFORMANCE_SAVE_PATH := "user://performance-save.json"
 const PERFORMANCE_SETTINGS_PATH := "user://performance-settings.json"
-const EXPECTED_STATIC_MAIN_SCENE_NODES := 111
+const EXPECTED_STATIC_MAIN_SCENE_NODES := 112
 const DIRECTIONS := [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]
 const COMPLETE_BATTLE_ACTIONS := [
 	"talk_to_companion",
@@ -231,6 +231,11 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		maximum_landmark_nodes = maxi(maximum_landmark_nodes, int(title_landmarks["count"]))
 		if _cycle == 0 and (int(title_landmarks["count"]) != 7 or int(title_landmarks["asset_backed_count"]) != 7):
 			failures.append("渡口必须复用七个资产化房屋/树木前景节点")
+		var title_camera: Dictionary = instance.world_camera_contract()
+		if _cycle == 0 and (title_camera["world_size"] != Vector2(1536, 864) or not bool(title_camera["pixel_snap"])):
+			failures.append("标题底图必须使用固定整数像素滚动世界")
+		if instance.get_node("%WorldRoot").is_ancestor_of(instance.get_node("%ChapterLabel")):
+			failures.append("HUD 不得进入滚动世界节点树")
 
 		instance.start_new_game()
 		await process_frame
@@ -263,6 +268,9 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		maximum_landmark_nodes = maxi(maximum_landmark_nodes, int(path_landmarks["count"]))
 		if _cycle == 0 and (int(path_landmarks["count"]) != 5 or int(path_landmarks["asset_backed_count"]) != 5):
 			failures.append("山道必须复用五个资产化树木前景节点")
+		var path_camera: Dictionary = instance.world_camera_contract()
+		if path_camera["normalized_focus"] != instance.exploration.player_position or not bool(path_camera["pixel_snap"]):
+			failures.append("山道切换必须同步确定性坐标与整数像素镜头")
 
 		instance._on_action("approach_enemy")
 		instance.get_node("%SceneTransition").finish()

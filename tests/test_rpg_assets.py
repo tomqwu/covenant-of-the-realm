@@ -90,7 +90,7 @@ def valid_contract(
         "tile_size_px": [32, 32],
         "columns": 8,
         "rows": 2,
-        "map_size_tiles": [36, 20],
+        "map_size_tiles": [48, 27],
         "tiles": [*BASE_TILE_NAMES, *DETAIL_TILE_NAMES],
     }
     actor_files = data["atlases"]

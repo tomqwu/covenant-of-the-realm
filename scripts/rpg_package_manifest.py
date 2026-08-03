@@ -29,6 +29,7 @@ REQUIRED_RESOURCES = [
     "res://src/ui/main.tscn",
     "res://src/ui/map_detail_layer.gd",
     "res://src/ui/map_occluder.gd",
+    "res://src/ui/world_camera.gd",
 ]
 EXCLUDED_RESOURCES = [
     "res://tests/e2e_runner.gd",

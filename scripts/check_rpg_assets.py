@@ -15,6 +15,7 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MAP_ATLAS_COLUMNS = 8
 MAP_ATLAS_ROWS = 2
 MAP_ATLAS_SIZE_PX = (256, 64)
+MAP_SIZE_TILES = (48, 27)
 LANDMARK_ATLAS_COLUMNS = 11
 LANDMARK_ATLAS_ROWS = 1
 LANDMARK_FRAME_SIZE_PX = (192, 128)
@@ -240,8 +241,8 @@ def validate_contract(data: Any) -> list[str]:
         return failures
     if map_atlas.get("tile_size_px") != [32, 32]:
         failures.append("map_atlas.tile_size_px must be [32, 32]")
-    if map_atlas.get("map_size_tiles") != [36, 20]:
-        failures.append("map_atlas.map_size_tiles must be [36, 20]")
+    if map_atlas.get("map_size_tiles") != list(MAP_SIZE_TILES):
+        failures.append(f"map_atlas.map_size_tiles must be {list(MAP_SIZE_TILES)!r}")
     tile_names = map_atlas.get("tiles")
     columns = map_atlas.get("columns")
     rows = map_atlas.get("rows")
@@ -333,7 +334,8 @@ def main() -> None:
     print(
         "RPG pixel assets passed: "
         f"{len(data['atlases'])} actors, four animated enemies, "
-        "one 32 px map atlas, and eleven environment landmarks validated."
+        f"one 32 px map atlas for {MAP_SIZE_TILES[0]}x{MAP_SIZE_TILES[1]}-tile maps, "
+        "and eleven environment landmarks validated."
     )
 
 

@@ -5,6 +5,7 @@ const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const LANDMARK_ATLAS := preload("res://assets/pixel/zhaohe_landmarks.png")
 const ACTOR_HEIGHT := 56.0
+const WORLD_SIZE := Vector2(1536.0, 864.0)
 const LANDMARK_FRAME_SIZE := Vector2i(192, 128)
 const LANDMARK_PROFILE_COLUMNS := {
 	"tree_celadon": 0,
@@ -34,6 +35,38 @@ const PUPPET_SPOOR_POSITION := Vector2(0.91, 0.34)
 const BOAT_REPAIR_VISUAL_FEET := Vector2(0.38, 0.35)
 const DRYING_RACK_VISUAL_FEET := Vector2(0.915, 0.48)
 const RAIN_SHELTER_VISUAL_FEET := Vector2(0.575, 0.69)
+const FERRY_TREE_POSITIONS: Array[Vector2] = [
+	Vector2(0.395, 0.177),
+	Vector2(0.849, 0.201),
+	Vector2(0.894, 0.525),
+	Vector2(0.406, 0.648),
+]
+const PATH_TREE_POSITIONS: Array[Vector2] = [
+	Vector2(0.156, 0.247),
+	Vector2(0.347, 0.170),
+	Vector2(0.599, 0.224),
+	Vector2(0.868, 0.401),
+	Vector2(0.816, 0.648),
+]
+const BATTLE_TREE_POSITIONS: Array[Vector2] = [
+	Vector2(0.113, 0.255),
+	Vector2(0.293, 0.224),
+	Vector2(0.794, 0.177),
+	Vector2(0.877, 0.463),
+]
+const PATH_ROCK_POSITIONS: Array[Vector2] = [
+	Vector2(0.226, 0.198),
+	Vector2(0.476, 0.179),
+	Vector2(0.738, 0.494),
+	Vector2(0.313, 0.664),
+]
+const BATTLE_ROCK_POSITIONS: Array[Vector2] = [
+	Vector2(0.217, 0.193),
+	Vector2(0.365, 0.139),
+	Vector2(0.864, 0.255),
+	Vector2(0.898, 0.633),
+	Vector2(0.269, 0.664),
+]
 
 @onready var player_sprite = %PlayerSprite
 @onready var companion_sprite = %CompanionSprite
@@ -192,6 +225,45 @@ func feedback_contract() -> Dictionary:
 
 func actor_height_px() -> float:
 	return ACTOR_HEIGHT
+
+
+func world_visual_contract() -> Dictionary:
+	return {
+		"world_size": get_rect().size,
+		"expected_world_size": WORLD_SIZE,
+		"normalized_coordinates": true,
+		"pixel_snap": true,
+		"collision_authority": false,
+		"camera_authority": false,
+	}
+
+
+func presentation_focus_normalized(fallback: Vector2) -> Vector2:
+	if not is_node_ready():
+		return fallback
+	var size := get_rect().size
+	if size.x <= 0.0 or size.y <= 0.0:
+		return fallback
+	var actor_feet: Array[Vector2] = []
+	match phase_id:
+		"battle":
+			actor_feet.assign([
+				player_sprite.position,
+				companion_sprite.position,
+				battle_enemy_sprite.position,
+			])
+		"complete":
+			actor_feet.assign([
+				player_sprite.position,
+				companion_sprite.position,
+			])
+		_:
+			return fallback
+	var focus := Vector2.ZERO
+	for actor_position in actor_feet:
+		focus += actor_position
+	focus /= float(actor_feet.size())
+	return Vector2(focus.x / size.x, focus.y / size.y)
 
 
 func current_visual_mode() -> String:
@@ -521,14 +593,14 @@ func _sync_occluders(size: Vector2) -> void:
 			_add_roof_occluder("ferry_roof_0", Vector2(size.x * 0.51, size.y * 0.20), Vector2(148, 92), "ferry_house_rust")
 			_add_roof_occluder("ferry_roof_1", Vector2(size.x * 0.72, size.y * 0.35), Vector2(156, 96), "ferry_house_ochre")
 			_add_roof_occluder("ferry_roof_2", Vector2(size.x * 0.82, size.y * 0.58), Vector2(164, 92), "ferry_house_teal")
-			for index in range(4):
-				_add_tree_occluder("ferry_tree_%d" % index, [Vector2(455, 115), Vector2(978, 130), Vector2(1030, 340), Vector2(468, 420)][index])
+			for index in range(FERRY_TREE_POSITIONS.size()):
+				_add_tree_occluder("ferry_tree_%d" % index, FERRY_TREE_POSITIONS[index] * size)
 		"mountain_path":
-			for index in range(5):
-				_add_tree_occluder("path_tree_%d" % index, [Vector2(180, 160), Vector2(400, 110), Vector2(690, 145), Vector2(1000, 260), Vector2(940, 420)][index])
+			for index in range(PATH_TREE_POSITIONS.size()):
+				_add_tree_occluder("path_tree_%d" % index, PATH_TREE_POSITIONS[index] * size)
 		"battle":
-			for index in range(4):
-				_add_tree_occluder("battle_tree_%d" % index, [Vector2(130, 165), Vector2(338, 145), Vector2(915, 115), Vector2(1010, 300)][index])
+			for index in range(BATTLE_TREE_POSITIONS.size()):
+				_add_tree_occluder("battle_tree_%d" % index, BATTLE_TREE_POSITIONS[index] * size)
 
 
 func _add_tree_occluder(occluder_id: String, center: Vector2) -> void:
@@ -647,8 +719,8 @@ func _draw_battle_path() -> void:
 		Vector2(size.x * 0.40, size.y * 0.20),
 	]), 54.0)
 
-	for rock_position in [Vector2(250, 125), Vector2(420, 90), Vector2(995, 165), Vector2(1035, 410), Vector2(310, 430)]:
-		_draw_landmark("mountain_rock", rock_position + Vector2(0, 42))
+	for normalized_position in BATTLE_ROCK_POSITIONS:
+		_draw_landmark("mountain_rock", normalized_position * size + Vector2(0, 42))
 
 	_draw_landmark("spring_cave", Vector2(size.x * 0.86 + 63.0, size.y * 0.16 + 88.0))
 	if lamp_turns > 0:
@@ -659,8 +731,8 @@ func _draw_battle_path() -> void:
 
 func _draw_mountain_path() -> void:
 	var size := get_rect().size
-	for rock_position in [Vector2(260, 128), Vector2(548, 116), Vector2(850, 320), Vector2(360, 430)]:
-		_draw_landmark("mountain_rock", rock_position + Vector2(0, 34))
+	for normalized_position in PATH_ROCK_POSITIONS:
+		_draw_landmark("mountain_rock", normalized_position * size + Vector2(0, 34))
 	_draw_landmark("spring_cave", Vector2(size.x * 0.84 + 64.0, size.y * 0.12 + 90.0))
 	_draw_landmark("spring_gate", Vector2(size.x * 0.10, size.y * 0.68 + 25.0))
 	_draw_landmark("path_rain_shelter", RAIN_SHELTER_VISUAL_FEET * size)

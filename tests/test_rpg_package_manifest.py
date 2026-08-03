@@ -45,6 +45,7 @@ def test_manifest_round_trip_and_exact_contract(tmp_path: Path) -> None:
         "res://src/ui/main.tscn",
         "res://src/ui/map_detail_layer.gd",
         "res://src/ui/map_occluder.gd",
+        "res://src/ui/world_camera.gd",
     ]
     assert written["excluded_resources"] == [
         "res://tests/e2e_runner.gd",
