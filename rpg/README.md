@@ -33,8 +33,9 @@ and pause/resume are exercised as physical input events by `make test-rpg-input`
 bounded companion-footprint updates, 2,000 complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. Lifecycle sampling covers title, path, dialogue choices, stable battle, the immediate post-action replacement frame, and the scrollable journal. The checked-in
 budget allows 2.5 seconds for each pure-domain workload and 5 seconds for the lifecycle workload,
 caps the main scene at 120 nodes, and requires every cycle to return the root to its baseline child
-count. The runner reports measured times but does not treat one development machine as a release
-hardware promise.
+count. Godot runs the lifecycle gate on a fixed 60 FPS clock so awaited settle frames remain covered
+without charging shared-runner scheduler sleep to the workload. The runner reports measured times
+but does not treat one development machine as a release hardware promise.
 
 启动后可选择新游戏或继续本机的版本化存档。当前 save v13 同时记录稳定地图标识、
 归一化坐标、对话行号、敌人标识、战斗状态、月芽采集方式、环境见闻、三项敌情、守堤与药篓选择；v1–v12 自动迁移，未知地图、无效对话、未知敌人、非法采集、见闻、敌情或支线状态不会被静默放进错误场景。游戏会在成功交互、战斗行动和持续

@@ -70,7 +70,7 @@ test-rpg-input: rpg-import-assets ## Exercise real semantic input events, focus 
 	@./scripts/godot --headless --path rpg --script res://tests/input_runner.gd
 
 test-rpg-performance: rpg-import-assets ## Benchmark deterministic movement, battle resolution, and scene cleanup
-	@./scripts/godot --headless --path rpg --script res://tests/performance_runner.gd
+	@./scripts/godot --headless --fixed-fps 60 --path rpg --script res://tests/performance_runner.gd
 
 check-rpg-package: ## Export the Godot pack twice, compare bytes, and boot it headlessly
 	@./scripts/check_rpg_package

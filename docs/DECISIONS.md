@@ -198,7 +198,10 @@ main-scene create/destroy cycles. The first two have independent 2.5-second ceil
 lifecycle has a 5-second ceiling, a 120-node cap, and must restore the root-child baseline after
 every cycle. Budgets live in excluded test data and are intentionally far above the current local
 measurements so shared CI detects order-of-magnitude regressions without pretending to certify a
-release device. Animation speed and combat outcomes remain outside these wall-clock thresholds.
+release device. The lifecycle runner uses Godot's fixed 60 FPS clock, which disables real-time
+synchronization while preserving every awaited settle frame; scheduler sleep therefore cannot turn
+shared-runner variance into a false regression. Animation speed and combat outcomes remain outside
+these wall-clock thresholds.
 
 ### 2026-08-02 — Stable enemy IDs select reproducible pixel-atlas rows
 
