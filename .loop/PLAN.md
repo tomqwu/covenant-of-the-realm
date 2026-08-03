@@ -14,7 +14,7 @@
 - [x] Cover both route orders, both endpoints, repeated interaction, fixed-landmark fallback,
   waiting-player and oversized-delta determinism, keyboard/mouse/controller input, continue/replay,
   performance/lifecycle, captures, package contents, and boot behavior.
-- [ ] Run the repository-wide `make check`, review the complete diff, commit, push, and monitor Draft
+- [x] Run the repository-wide `make check`, review the complete diff, commit, push, and monitor Draft
   PR #7 without merging it.
 
 ## Recently completed
