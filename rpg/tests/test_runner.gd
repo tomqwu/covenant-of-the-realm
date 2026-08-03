@@ -26,6 +26,7 @@ func _run() -> void:
 	_test_initial_state()
 	_test_enemy_catalog()
 	_test_exploration_rules()
+	_test_life_landmark_observations()
 	_test_state_restore()
 	_test_dialogue_state()
 	_test_versioned_save()
@@ -99,8 +100,8 @@ func _test_map_landmark_adapter() -> void:
 	_expect_false(contract["collision_authority"], "地标表现不成为第二套碰撞权威")
 	var landmark_image: Image = occluder.texture.get_image()
 	_expect_equal(landmark_image.get_format(), Image.FORMAT_RGBA8, "地标源图导入后保留 RGBA8 像素格式")
-	_expect_equal(landmark_image.get_size(), Vector2i(1536, 128), "地标源图完整包含八个固定帧")
-	for column in range(8):
+	_expect_equal(landmark_image.get_size(), Vector2i(2112, 128), "地标源图完整包含十一个固定帧")
+	for column in range(11):
 		_expect_true(
 			_image_region_has_opaque_pixel(landmark_image, Rect2i(column * 192, 0, 192, 128)),
 			"地标图集第 %d 列包含可见像素" % column
@@ -262,6 +263,134 @@ func _test_exploration_rules() -> void:
 	walked_spring.move(Vector2.UP, 0.67)
 	walked_spring.move(Vector2.LEFT, 0.55)
 	_expect_equal(walked_spring.interaction_action(true, true), "breakthrough", "可从温脉石床继续步行到静坐息石")
+
+
+func _test_life_landmark_observations() -> void:
+	var ferry_state = JourneyStateScript.new()
+	var ferry_before: Dictionary = ferry_state.snapshot()
+	var ferry_cases := [
+		{"action": JourneyStateScript.INSPECT_BOAT_REPAIR, "event": "boat_repair_inspected", "label": "补船木架"},
+		{"action": JourneyStateScript.INSPECT_DRYING_RACK, "event": "drying_rack_inspected", "label": "晾晒竹架"},
+	]
+	for landmark_case in ferry_cases:
+		var action_id: String = landmark_case["action"]
+		_expect_true(ferry_state.available_actions().has(action_id), "%s观察在渡口阶段可用" % landmark_case["label"])
+		for repeat_index in range(2):
+			var observation: Dictionary = ferry_state.choose(action_id)
+			_expect_true(observation["ok"], "%s第%d次观察成功" % [landmark_case["label"], repeat_index + 1])
+			_expect_equal(observation["events"], [landmark_case["event"]], "%s重复返回稳定语义事件" % landmark_case["label"])
+			_expect_equal(observation["snapshot"], ferry_before, "%s观察结果不产生持久快照字段" % landmark_case["label"])
+			_expect_equal(ferry_state.snapshot(), ferry_before, "%s观察不暗中改变旅程状态" % landmark_case["label"])
+		_expect_true(ferry_state.available_actions().has(action_id), "%s重复观察后仍保留可用行动" % landmark_case["label"])
+	var before_wrong_rain: Dictionary = ferry_state.snapshot()
+	var wrong_rain: Dictionary = ferry_state.choose(JourneyStateScript.INSPECT_RAIN_SHELTER)
+	_expect_false(wrong_rain["ok"], "渡口阶段不能远程查看山道避雨石棚")
+	_expect_equal(wrong_rain["events"], ["invalid_action"], "错地图生活观察返回稳定非法行动事件")
+	_expect_equal(ferry_state.snapshot(), before_wrong_rain, "错地图生活观察原子拒绝")
+
+	var path_state = JourneyStateScript.new()
+	path_state.choose(JourneyStateScript.TALK_TO_COMPANION)
+	path_state.choose(JourneyStateScript.GATHER_MOONLEAF)
+	path_state.choose(JourneyStateScript.ENTER_SPRING)
+	var path_before: Dictionary = path_state.snapshot()
+	_expect_true(path_state.available_actions().has(JourneyStateScript.INSPECT_RAIN_SHELTER), "山道阶段提供可重复避雨石棚观察")
+	for repeat_index in range(2):
+		var shelter_observation: Dictionary = path_state.choose(JourneyStateScript.INSPECT_RAIN_SHELTER)
+		_expect_true(shelter_observation["ok"], "避雨石棚第%d次观察成功" % [repeat_index + 1])
+		_expect_equal(shelter_observation["events"], ["rain_shelter_inspected"], "避雨石棚重复返回稳定语义事件")
+		_expect_equal(shelter_observation["snapshot"], path_before, "避雨石棚观察结果不产生持久快照字段")
+		_expect_equal(path_state.snapshot(), path_before, "避雨石棚观察不暗中改变旅程状态")
+	_expect_true(path_state.available_actions().has(JourneyStateScript.INSPECT_RAIN_SHELTER), "避雨石棚重复观察后仍保留可用行动")
+	for ferry_action in [JourneyStateScript.INSPECT_BOAT_REPAIR, JourneyStateScript.INSPECT_DRYING_RACK]:
+		var wrong_ferry_observation: Dictionary = path_state.choose(ferry_action)
+		_expect_false(wrong_ferry_observation["ok"], "山道阶段不能远程触发渡口生活观察")
+		_expect_equal(path_state.snapshot(), path_before, "山道错地图生活观察原子拒绝")
+	_expect_true(path_state.choose(JourneyStateScript.BYPASS_ENEMY)["ok"], "生活观察测试可建立泉室错误阶段")
+	var spring_before: Dictionary = path_state.snapshot()
+	for landmark_action in [
+		JourneyStateScript.INSPECT_BOAT_REPAIR,
+		JourneyStateScript.INSPECT_DRYING_RACK,
+		JourneyStateScript.INSPECT_RAIN_SHELTER,
+	]:
+		var spring_observation: Dictionary = path_state.choose(landmark_action)
+		_expect_false(spring_observation["ok"], "泉室阶段拒绝地图生活观察")
+		_expect_equal(path_state.snapshot(), spring_before, "泉室阶段生活观察原子拒绝")
+
+	_expect_equal(ExplorationStateScript.BOAT_REPAIR_POSITION, Vector2(0.38, 0.295), "补船木架使用稳定归一化坐标")
+	_expect_equal(ExplorationStateScript.DRYING_RACK_POSITION, Vector2(0.92, 0.43), "晾晒竹架使用稳定归一化坐标")
+	_expect_equal(ExplorationStateScript.PATH_RAIN_SHELTER_POSITION, Vector2(0.53, 0.67), "避雨石棚使用稳定归一化坐标")
+	var ferry_exploration = ExplorationStateScript.new()
+	var ferry_life_positions := [
+		ExplorationStateScript.BOAT_REPAIR_POSITION,
+		ExplorationStateScript.DRYING_RACK_POSITION,
+	]
+	var existing_ferry_positions := [
+		ExplorationStateScript.START_POSITION,
+		ExplorationStateScript.MOONLEAF_POSITION,
+		ExplorationStateScript.SPRING_GATE_POSITION,
+		ExplorationStateScript.COMPANION_POSITION,
+		ExplorationStateScript.FERRY_WATERMARK_POSITION,
+		ExplorationStateScript.FERRYMAN_POSITION,
+		ExplorationStateScript.HERBKEEPER_POSITION,
+	]
+	for life_position in ferry_life_positions:
+		_expect_true(ferry_exploration.is_walkable(life_position), "渡口生活地标锚点位于可行走区域")
+		for existing_position in existing_ferry_positions:
+			_expect_true(life_position.distance_to(existing_position) > ExplorationStateScript.INTERACTION_RADIUS * 2.0, "渡口生活地标不与既有交互半径重叠")
+	_expect_true(
+		ExplorationStateScript.BOAT_REPAIR_POSITION.distance_to(ExplorationStateScript.DRYING_RACK_POSITION) > ExplorationStateScript.INTERACTION_RADIUS * 2.0,
+		"两个渡口生活地标交互半径彼此分离"
+	)
+	var boat_visual_feet := Vector2(0.38, 0.35)
+	_expect_true(ferry_exploration.is_walkable(boat_visual_feet), "补船木架视觉脚点位于可行走地表")
+	_expect_true(
+		boat_visual_feet.distance_to(ExplorationStateScript.BOAT_REPAIR_POSITION) <= ExplorationStateScript.INTERACTION_RADIUS,
+		"补船木架视觉脚点落在交互半径内"
+	)
+	_expect_true(ferry_exploration.restore({"map_id": "zhaohe_ferry", "player_x": boat_visual_feet.x, "player_y": boat_visual_feet.y}), "玩家可站到补船木架视觉脚点")
+	_expect_equal(ferry_exploration.interaction_action(false, true), ExplorationStateScript.INSPECT_BOAT_REPAIR, "站在补船木架视觉脚点可直接查看")
+
+	var path_exploration = ExplorationStateScript.new()
+	_expect_true(path_exploration.transition_to(ExplorationStateScript.MOUNTAIN_PATH_MAP_ID), "生活地标测试可进入山道地图")
+	_expect_true(path_exploration.is_walkable(ExplorationStateScript.PATH_RAIN_SHELTER_POSITION), "避雨石棚锚点位于可行走山道")
+	var existing_path_positions := [
+		ExplorationStateScript.PATH_RETURN_POSITION,
+		ExplorationStateScript.PATH_MARKER_POSITION,
+		ExplorationStateScript.PATH_SPRING_SEAM_POSITION,
+		ExplorationStateScript.PATH_ABANDONED_BASKET_POSITION,
+		ExplorationStateScript.PATH_ROCK_SPOOR_POSITION,
+		ExplorationStateScript.PATH_MOSS_SPOOR_POSITION,
+		ExplorationStateScript.PATH_PUPPET_SPOOR_POSITION,
+		ExplorationStateScript.PATH_ENEMY_POSITION,
+		ExplorationStateScript.PATH_MOSS_POSITION,
+		ExplorationStateScript.PATH_PUPPET_POSITION,
+		ExplorationStateScript.PATH_BYPASS_POSITION,
+		ExplorationStateScript.PATH_RETREAT_POSITION,
+	]
+	for existing_position in existing_path_positions:
+		_expect_true(
+			ExplorationStateScript.PATH_RAIN_SHELTER_POSITION.distance_to(existing_position) > ExplorationStateScript.INTERACTION_RADIUS * 2.0,
+			"避雨石棚不与既有山道交互半径重叠"
+		)
+
+	var boat_route = ExplorationStateScript.new()
+	boat_route.move(Vector2.UP, 0.80)
+	boat_route.move(Vector2.LEFT, 0.27)
+	_expect_equal(boat_route.interaction_action(false, true), ExplorationStateScript.INSPECT_BOAT_REPAIR, "可从渡口出生点公开步行到补船木架")
+	_expect_true(boat_route.player_position.distance_to(ExplorationStateScript.BOAT_REPAIR_POSITION) <= ExplorationStateScript.INTERACTION_RADIUS, "补船木架公开路线终点进入交互半径")
+	var drying_route = ExplorationStateScript.new()
+	drying_route.move(Vector2.UP, 1.17)
+	drying_route.move(Vector2.RIGHT, 1.50)
+	drying_route.move(Vector2.DOWN, 0.90)
+	_expect_equal(drying_route.interaction_action(false, true), ExplorationStateScript.INSPECT_DRYING_RACK, "可从渡口出生点绕建筑公开步行到晾晒竹架")
+	_expect_true(drying_route.player_position.distance_to(ExplorationStateScript.DRYING_RACK_POSITION) <= ExplorationStateScript.INTERACTION_RADIUS, "晾晒竹架公开路线终点进入交互半径")
+	var shelter_route = ExplorationStateScript.new()
+	_expect_true(shelter_route.transition_to(ExplorationStateScript.MOUNTAIN_PATH_MAP_ID), "避雨石棚路线从山道公开出生点开始")
+	shelter_route.move(Vector2.UP, 0.20)
+	shelter_route.move(Vector2.RIGHT, 1.24)
+	shelter_route.move(Vector2.DOWN, 0.17)
+	_expect_equal(shelter_route.interaction_action(true, true), ExplorationStateScript.INSPECT_RAIN_SHELTER, "可从山道出生点绕过坡石公开步行到避雨石棚")
+	_expect_true(shelter_route.player_position.distance_to(ExplorationStateScript.PATH_RAIN_SHELTER_POSITION) <= ExplorationStateScript.INTERACTION_RADIUS, "避雨石棚公开路线终点进入交互半径")
 
 
 func _test_state_restore() -> void:
@@ -1726,13 +1855,21 @@ func _test_scene_smoke() -> void:
 	_expect_equal(enemy_sprite.enemy_id, "rock_armor_young", "非法表现标识不会覆盖当前敌人")
 	var map_canvas = instance.get_node("%MapCanvas")
 	var landmark_contract: Dictionary = map_canvas.landmark_visual_contract()
-	_expect_equal(landmark_contract["schema_version"], 1, "照禾地标表现合同使用稳定版本")
+	_expect_equal(landmark_contract["schema_version"], 2, "照禾地标表现合同使用稳定版本")
 	_expect_equal(landmark_contract["atlas_path"], "res://assets/pixel/zhaohe_landmarks.png", "地图读取提交的原创地标图集")
-	_expect_equal(landmark_contract["atlas_size"], Vector2(1536, 128), "八个地标帧完整装入固定图集")
+	_expect_equal(landmark_contract["atlas_size"], Vector2(2112, 128), "十一个地标帧完整装入固定图集")
 	_expect_equal(landmark_contract["frame_size"], Vector2i(192, 128), "每个地标区域使用固定像素边界")
-	_expect_equal(landmark_contract["profiles"].size(), 8, "表现合同只暴露八个稳定地标标识")
-	for profile_id in ["tree_celadon", "ferry_house_rust", "ferry_house_ochre", "ferry_house_teal", "ferry_dock", "mountain_rock", "spring_cave", "spring_gate"]:
+	_expect_equal(landmark_contract["profiles"].size(), 11, "表现合同只暴露十一个稳定地标标识")
+	for profile_id in ["tree_celadon", "ferry_house_rust", "ferry_house_ochre", "ferry_house_teal", "ferry_dock", "mountain_rock", "spring_cave", "spring_gate", "ferry_boat_repair", "ferry_drying_rack", "path_rain_shelter"]:
 		_expect_true(landmark_contract["profiles"].has(profile_id), "地标合同包含 %s" % profile_id)
+	var life_landmarks: Dictionary = landmark_contract["life_landmarks"]
+	_expect_equal(life_landmarks.size(), 3, "地标合同精确暴露三处生活地标")
+	_expect_equal(life_landmarks["ferry_boat_repair"]["visual_feet"], Vector2(0.38, 0.35), "补船木架视觉脚点避开既有树冠并贴近可走地表")
+	_expect_equal(life_landmarks["ferry_boat_repair"]["interaction_anchor"], ExplorationStateScript.BOAT_REPAIR_POSITION, "补船木架表现复用 domain 交互锚点")
+	_expect_equal(life_landmarks["ferry_drying_rack"]["visual_feet"], Vector2(0.915, 0.48), "晾晒竹架收在东侧房屋旁")
+	_expect_equal(life_landmarks["ferry_drying_rack"]["interaction_anchor"], ExplorationStateScript.DRYING_RACK_POSITION, "晾晒竹架表现复用 domain 交互锚点")
+	_expect_equal(life_landmarks["path_rain_shelter"]["visual_feet"], Vector2(0.575, 0.69), "避雨石棚位于山道下缘开放地带")
+	_expect_equal(life_landmarks["path_rain_shelter"]["interaction_anchor"], ExplorationStateScript.PATH_RAIN_SHELTER_POSITION, "避雨石棚表现复用 domain 交互锚点")
 	_expect_equal(landmark_contract["filter"], CanvasItem.TEXTURE_FILTER_NEAREST, "地图地标以最近邻绘制")
 	_expect_true(landmark_contract["pixel_snap"], "地图地标脚点锁定整数像素")
 	_expect_false(landmark_contract["collision_authority"], "地标图集不替代确定性碰撞规则")
@@ -1912,6 +2049,35 @@ func _test_scene_smoke() -> void:
 	_expect_equal(initial_follow["point_count"], 2, "同行开始时只建立安全休息位与主角脚印")
 	_expect_false(instance.interact()["ok"], "完成交谈后原地没有重复奖励")
 	_expect_true(instance.get_node("%EventLabel").text.contains("附近没有"), "无目标交互给出中文反馈")
+
+	instance.move_player(Vector2.LEFT, 0.27)
+	instance.move_player(Vector2.UP, 0.80)
+	await process_frame
+	_expect_equal(_first_action_button(instance).text, "查看补船木架", "场景通过公开移动到达补船木架并显示中文行动")
+	var boat_life_snapshot: Dictionary = instance.journey.snapshot()
+	await _press_action(instance, "查看补船木架")
+	_expect_true(instance.get_node("%EventLabel").text.contains("渡舟午后就能再下水"), "补船木架显示中文生活事件")
+	_expect_equal(instance.journey.snapshot(), boat_life_snapshot, "补船木架不修改完整旅程快照")
+	await _press_action(instance, "查看补船木架")
+	_expect_equal(_first_action_button(instance).text, "查看补船木架", "补船木架调查后仍可重复选择")
+	_expect_equal(instance.journey.snapshot(), boat_life_snapshot, "重复查看补船木架仍不修改旅程快照")
+
+	instance.move_player(Vector2.DOWN, 0.80)
+	instance.move_player(Vector2.RIGHT, 0.27)
+	instance.move_player(Vector2.LEFT, 0.10)
+	instance.move_player(Vector2.UP, 1.17)
+	instance.move_player(Vector2.RIGHT, 1.60)
+	instance.move_player(Vector2.DOWN, 0.91)
+	await process_frame
+	_expect_equal(_first_action_button(instance).text, "查看晾晒竹架", "场景通过公开移动到达晾晒竹架并显示中文行动")
+	var drying_life_snapshot: Dictionary = instance.journey.snapshot()
+	await _press_action(instance, "查看晾晒竹架")
+	_expect_true(instance.get_node("%EventLabel").text.contains("木牌记着翻晒时辰"), "晾晒竹架显示中文生活事件")
+	_expect_equal(instance.journey.snapshot(), drying_life_snapshot, "晾晒竹架不修改完整旅程快照")
+	await _press_action(instance, "查看晾晒竹架")
+	_expect_equal(_first_action_button(instance).text, "查看晾晒竹架", "晾晒竹架调查后仍可重复选择")
+	_expect_equal(instance.journey.snapshot(), drying_life_snapshot, "重复查看晾晒竹架仍不修改旅程快照")
+
 	_expect_true(instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.41, "player_y": 0.66}), "场景测试到达守堤人身旁")
 	instance._render([])
 	_expect_equal(_action_button_count(instance), 1, "梁叔身旁只显示近距离守堤行动")
@@ -2004,6 +2170,18 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.exploration.map_id, "cangquan_path", "场景切换到稳定山道地图标识")
 	_expect_true(instance.get_node("%PathGround").visible, "山道 TileMapLayer 在探索阶段可见")
 	_expect_true(instance.get_node("%MapCanvas").uses_mountain_path_tile_layers(), "山道使用独立 TileMapLayer")
+	instance.move_player(Vector2.UP, 0.20)
+	instance.move_player(Vector2.RIGHT, 1.24)
+	instance.move_player(Vector2.DOWN, 0.17)
+	await process_frame
+	_expect_equal(_first_action_button(instance).text, "查看避雨石棚", "场景通过公开移动从山道入口到达避雨石棚")
+	var shelter_life_snapshot: Dictionary = instance.journey.snapshot()
+	await _press_action(instance, "查看避雨石棚")
+	_expect_true(instance.get_node("%EventLabel").text.contains("干柴、引火绒"), "避雨石棚显示中文生活事件")
+	_expect_equal(instance.journey.snapshot(), shelter_life_snapshot, "避雨石棚不修改完整旅程快照")
+	await _press_action(instance, "查看避雨石棚")
+	_expect_equal(_first_action_button(instance).text, "查看避雨石棚", "避雨石棚调查后仍可重复选择")
+	_expect_equal(instance.journey.snapshot(), shelter_life_snapshot, "重复查看避雨石棚仍不修改旅程快照")
 	_expect_true(instance.get_node("%PathRockEnemySprite").visible, "山道显示岩甲幼兽像素轮廓")
 	_expect_true(instance.get_node("%PathMossEnemySprite").visible, "山道显示泉苔寄壳像素轮廓")
 	_expect_true(instance.get_node("%PathPuppetEnemySprite").visible, "山道显示失衡石傀像素轮廓")

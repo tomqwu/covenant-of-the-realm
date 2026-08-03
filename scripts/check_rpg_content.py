@@ -84,6 +84,41 @@ FIRST_BREATH_MESSAGE_IDS = {
     "meridians_warmed",
     "spring_listened",
 }
+LIFE_LANDMARK_ACTIONS = {
+    "riverbank": [
+        {
+            "id": "inspect_boat_repair",
+            "label": "查看补船木架",
+            "possible_targets": ["riverbank"],
+        },
+        {
+            "id": "inspect_drying_rack",
+            "label": "查看晾晒竹架",
+            "possible_targets": ["riverbank"],
+        },
+    ],
+    "mountain_path": [
+        {
+            "id": "inspect_rain_shelter",
+            "label": "查看避雨石棚",
+            "possible_targets": ["mountain_path"],
+        },
+    ],
+}
+LIFE_LANDMARK_MESSAGES = {
+    "boat_repair_inspected": (
+        "补船木架上压着一块新桐木。旧船板被削成楔子，湿麻绳和桐油在晨风里慢慢收干；"
+        "渡舟午后就能再下水。"
+    ),
+    "drying_rack_inspected": (
+        "竹架把月芽叶、芦根和刚洗过的布分层晾开。木牌记着翻晒时辰，"
+        "药香与河风各有自己的位置。"
+    ),
+    "rain_shelter_inspected": (
+        "避雨石棚下留着干柴、引火绒和一只空水瓢。石壁刻着旧规："
+        "取一束，后来补一束。"
+    ),
+}
 
 
 def _mapping(value: Any, label: str, failures: list[str]) -> dict[str, Any]:
@@ -153,6 +188,59 @@ def _validate_first_breath_contract(
             f"{source}.messages is missing first-breath events: "
             + ", ".join(missing_messages)
         )
+
+
+def _validate_life_landmark_contract(
+    story: dict[str, Any],
+    nodes: dict[str, Any],
+    messages: dict[str, Any],
+    source: str,
+    failures: list[str],
+) -> None:
+    """Lock the three shipped repeatable observations to their authored maps."""
+    if story.get("story_id") != FIRST_BREATH_STORY_ID:
+        return
+
+    for node_id, expected_actions in LIFE_LANDMARK_ACTIONS.items():
+        node = nodes.get(node_id)
+        if not isinstance(node, dict):
+            continue
+        actions = node.get("actions")
+        if not isinstance(actions, list):
+            continue
+        actions_by_id = {
+            action.get("id"): action
+            for action in actions
+            if isinstance(action, dict) and isinstance(action.get("id"), str)
+        }
+        for expected in expected_actions:
+            action_id = expected["id"]
+            action = actions_by_id.get(action_id)
+            if action is None:
+                failures.append(
+                    f"{source}.nodes.{node_id}.actions is missing life-landmark "
+                    f"action '{action_id}'"
+                )
+                continue
+            for field in ("label", "possible_targets"):
+                expected_value = expected[field]
+                if action.get(field) != expected_value:
+                    failures.append(
+                        f"{source}.nodes.{node_id}.actions.{action_id}.{field} must be "
+                        f"{expected_value!r}"
+                    )
+
+    missing_messages = sorted(set(LIFE_LANDMARK_MESSAGES) - set(messages))
+    if missing_messages:
+        failures.append(
+            f"{source}.messages is missing life-landmark events: "
+            + ", ".join(missing_messages)
+        )
+    for message_id, expected_text in LIFE_LANDMARK_MESSAGES.items():
+        if message_id in messages and messages[message_id] != expected_text:
+            failures.append(
+                f"{source}.messages.{message_id} must be {expected_text!r}"
+            )
 
 
 def validate_story(data: Any, source: str = "story") -> list[str]:
@@ -237,6 +325,7 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
             _text(message, f"{source}.messages.{message_id}", failures)
 
     _validate_first_breath_contract(story, nodes, messages, source, failures)
+    _validate_life_landmark_contract(story, nodes, messages, source, failures)
 
     if not dialogues:
         failures.append(f"{source}.dialogues must not be empty")

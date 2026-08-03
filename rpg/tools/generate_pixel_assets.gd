@@ -6,7 +6,7 @@ const ATLAS_SIZE := Vector2i(128, 224)
 const ENEMY_FRAME_SIZE := Vector2i(64, 64)
 const ENEMY_ATLAS_SIZE := Vector2i(128, 256)
 const LANDMARK_FRAME_SIZE := Vector2i(192, 128)
-const LANDMARK_ATLAS_SIZE := Vector2i(1536, 128)
+const LANDMARK_ATLAS_SIZE := Vector2i(2112, 128)
 const LANDMARK_PROFILES := [
 	"tree_celadon",
 	"ferry_house_rust",
@@ -16,6 +16,9 @@ const LANDMARK_PROFILES := [
 	"mountain_rock",
 	"spring_cave",
 	"spring_gate",
+	"ferry_boat_repair",
+	"ferry_drying_rack",
+	"path_rain_shelter",
 ]
 const TRANSPARENT := Color(0, 0, 0, 0)
 const INK := Color("27312e")
@@ -126,6 +129,12 @@ func _generate_landmark_atlas() -> void:
 				_draw_landmark_cave(image, origin)
 			"spring_gate":
 				_draw_landmark_gate(image, origin)
+			"ferry_boat_repair":
+				_draw_landmark_boat_repair(image, origin)
+			"ferry_drying_rack":
+				_draw_landmark_drying_rack(image, origin)
+			"path_rain_shelter":
+				_draw_landmark_rain_shelter(image, origin)
 	var output_path := _asset_output_path("zhaohe_landmarks.png")
 	var error := image.save_png(output_path)
 	if error != OK:
@@ -216,6 +225,70 @@ func _draw_landmark_gate(image: Image, origin: Vector2i) -> void:
 	_fill(image, Rect2i(origin.x + 91, origin.y + 50, 10, 10), GOLD)
 	_fill(image, Rect2i(origin.x + 83, origin.y + 72, 26, 15), Color("d7c9a7"))
 	_fill(image, Rect2i(origin.x + 87, origin.y + 76, 18, 3), INK.lightened(0.15))
+
+
+func _draw_landmark_boat_repair(image: Image, origin: Vector2i) -> void:
+	# A low, open repair cradle keeps the riverbank silhouette readable without
+	# pretending to own collision. Fresh paulownia, old planks, rope and one tool
+	# establish ordinary ferry work in the bright morning palette.
+	_fill(image, Rect2i(origin.x + 23, origin.y + 122, 146, 4), Color(0.15, 0.19, 0.18, 0.25))
+	_fill(image, Rect2i(origin.x + 47, origin.y + 91, 8, 32), Color("5d513c"))
+	_fill(image, Rect2i(origin.x + 137, origin.y + 91, 8, 32), Color("5d513c"))
+	_fill(image, Rect2i(origin.x + 39, origin.y + 91, 24, 6), Color("a9784f"))
+	_fill(image, Rect2i(origin.x + 129, origin.y + 91, 24, 6), Color("a9784f"))
+	_fill(image, Rect2i(origin.x + 27, origin.y + 72, 138, 8), INK.lightened(0.08))
+	_fill(image, Rect2i(origin.x + 34, origin.y + 67, 124, 20), Color("a9784f"))
+	_fill(image, Rect2i(origin.x + 43, origin.y + 76, 106, 16), Color("c28a58"))
+	_fill(image, Rect2i(origin.x + 53, origin.y + 82, 86, 12), Color("d9b895"))
+	_fill(image, Rect2i(origin.x + 48, origin.y + 62, 96, 6), Color("e7a76f"))
+	for rib_x in [55, 75, 96, 117, 137]:
+		_fill(image, Rect2i(origin.x + rib_x, origin.y + 55, 4, 31), Color("735b43"))
+	_fill(image, Rect2i(origin.x + 149, origin.y + 92, 5, 25), Color("e4c36e"))
+	_fill(image, Rect2i(origin.x + 145, origin.y + 90, 13, 5), Color("735b43"))
+	_fill(image, Rect2i(origin.x + 29, origin.y + 101, 15, 12), Color("58738f"))
+	_fill(image, Rect2i(origin.x + 32, origin.y + 98, 9, 4), Color("f2e6cb"))
+
+
+func _draw_landmark_drying_rack(image: Image, origin: Vector2i) -> void:
+	# The narrow footprint fits beside the eastern house: herbs, washed cloth and
+	# a time tablet hang in distinct material blocks instead of noisy decoration.
+	_fill(image, Rect2i(origin.x + 39, origin.y + 122, 114, 4), Color(0.15, 0.19, 0.18, 0.24))
+	_fill(image, Rect2i(origin.x + 47, origin.y + 50, 7, 73), Color("735b43"))
+	_fill(image, Rect2i(origin.x + 139, origin.y + 50, 7, 73), Color("735b43"))
+	_fill(image, Rect2i(origin.x + 41, origin.y + 47, 111, 7), Color("a9784f"))
+	_fill(image, Rect2i(origin.x + 58, origin.y + 56, 23, 29), Color("f2e6cb"))
+	_fill(image, Rect2i(origin.x + 61, origin.y + 61, 17, 4), Color("58738f"))
+	_fill(image, Rect2i(origin.x + 87, origin.y + 56, 19, 34), Color("8ebb83"))
+	_fill(image, Rect2i(origin.x + 91, origin.y + 61, 11, 20), Color("739b70"))
+	_fill(image, Rect2i(origin.x + 113, origin.y + 56, 17, 27), Color("c6764f"))
+	_fill(image, Rect2i(origin.x + 116, origin.y + 61, 11, 5), Color("e7a76f"))
+	for bundle_x in [62, 74, 91, 103, 118, 128]:
+		_fill(image, Rect2i(origin.x + bundle_x, origin.y + 93, 3, 18), Color("526963"))
+		_fill(image, Rect2i(origin.x + bundle_x - 2, origin.y + 101, 7, 8), Color("8ebb83"))
+	_fill(image, Rect2i(origin.x + 134, origin.y + 69, 12, 17), Color("d7c9a7"))
+	_fill(image, Rect2i(origin.x + 136, origin.y + 73, 8, 2), INK.lightened(0.15))
+	_fill(image, Rect2i(origin.x + 136, origin.y + 78, 7, 2), INK.lightened(0.15))
+
+
+func _draw_landmark_rain_shelter(image: Image, origin: Vector2i) -> void:
+	# Open sides communicate that the shelter is non-blocking presentation. A dry
+	# wood bundle, water dipper and stone bench make the travellers' compact real.
+	_fill(image, Rect2i(origin.x + 35, origin.y + 122, 122, 4), Color(0.15, 0.19, 0.18, 0.28))
+	_fill(image, Rect2i(origin.x + 48, origin.y + 68, 8, 55), Color("5d513c"))
+	_fill(image, Rect2i(origin.x + 137, origin.y + 68, 8, 55), Color("5d513c"))
+	_fill(image, Rect2i(origin.x + 34, origin.y + 55, 124, 10), Color("806e50"))
+	_fill(image, Rect2i(origin.x + 41, origin.y + 48, 110, 9), Color("a88b57"))
+	_fill(image, Rect2i(origin.x + 52, origin.y + 41, 88, 8), Color("d9b895"))
+	_fill(image, Rect2i(origin.x + 61, origin.y + 91, 71, 22), Color("60766f"))
+	_fill(image, Rect2i(origin.x + 67, origin.y + 86, 59, 9), Color("829a8f"))
+	_fill(image, Rect2i(origin.x + 72, origin.y + 89, 25, 4), Color("9bada2"))
+	_fill(image, Rect2i(origin.x + 55, origin.y + 104, 14, 14), Color("735b43"))
+	_fill(image, Rect2i(origin.x + 58, origin.y + 100, 8, 5), Color("e7a76f"))
+	_fill(image, Rect2i(origin.x + 121, origin.y + 101, 8, 15), Color("58738f"))
+	_fill(image, Rect2i(origin.x + 117, origin.y + 99, 15, 4), Color("f2e6cb"))
+	_fill(image, Rect2i(origin.x + 82, origin.y + 68, 30, 13), Color("f2e6cb"))
+	_fill(image, Rect2i(origin.x + 87, origin.y + 72, 20, 3), INK.lightened(0.15))
+	_fill(image, Rect2i(origin.x + 88, origin.y + 77, 16, 2), INK.lightened(0.15))
 
 
 func _asset_output_path(file_name: String) -> String:

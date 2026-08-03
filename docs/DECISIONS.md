@@ -4,11 +4,28 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — Repeatable Zhaohe life landmarks are spatial prose, not progression
+
+The ferry boat-repair rack, ferry drying rack, and mountain-path rain shelter are three original,
+always-repeatable proximity interactions. Each provides a short Chinese observation about ordinary
+work and mutual aid, with no item, statistic, journal entry, ending echo, hidden relationship value,
+or other reward. Repeating an action returns the same semantic event while leaving the Journey
+snapshot byte-for-byte equivalent; the existing save schema remains v14. Ordinary movement may
+still autosave the player's coordinate under the existing persistence contract.
+
+Keyboard, mouse, and controller all enter the same domain action path. The three authored anchors
+are publicly reachable through `move()`, stay separated from other interaction radii, and are paired
+with three new 192×128 regions in the original Zhaohe landmark atlas. That atlas is now 2112×128
+with 11 fixed profiles under asset contract v3; MapCanvas visual contract v2 binds each visual feet
+position to its phase, interaction anchor, and action ID without granting collision, story, or save
+authority. Seven generated atlases still reproduce twice against their Git-index blobs. The scene
+remains 110 static nodes with a 120-node peak and zero lifecycle leaks.
+
 ### 2026-08-03 — Zhaohe landmarks use one reproducible pixel atlas
 
-The ferry, mountain path, and battle view now consume one original 1536×128 RGBA atlas with eight
-fixed 192×128 regions: celadon tree, three ferry houses, dock, mountain rock, spring cave, and
-spring gate. The project-authored Godot generator can target an isolated directory; the asset gate
+The ferry, mountain path, and battle view now consume one original 2112×128 RGBA atlas with eleven
+fixed 192×128 regions: celadon tree, three ferry houses, dock, mountain rock, spring cave, spring
+gate, boat-repair rack, drying rack, and rain shelter. The project-authored Godot generator can target an isolated directory; the asset gate
 regenerates all seven committed atlases twice and requires both runs, the worktree, and Git index
 to match byte for byte. The contract fixes profile order, foot anchor, nearest filtering, integer snapping,
 transparent bounds, and `collision_authority: false`.
@@ -23,8 +40,8 @@ The mountain return coordinate previously sat over a water tile even though the 
 domain allowed it. A fixed 5×5 stone bridge now covers that authored gate approach while preserving
 the stable coordinate and old saves; all path spawn and interaction anchors are tested against
 non-water ground. The scene remains 110 static nodes with a 120-node peak and zero leaks. Two
-34-PNG capture passes are byte-identical, and the reproducible package is 552,060 bytes with
-SHA-256 `14ff2a2a2b239f7ffff92fff269e3325d54cde5d9fd4d3fc7b01b630ac6ebca9` and 15 explicit
+34-PNG capture passes are byte-identical, and the reproducible package is 559,676 bytes with
+SHA-256 `482485ac5610f7d9157461b4d178fcac0712a23674980e131d6a2a9bfd3d4f1d` and 15 explicit
 runtime-resource probes.
 
 ### 2026-08-03 — First breath is a saved three-point spatial ritual

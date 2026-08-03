@@ -73,6 +73,62 @@ def test_first_breath_contract_rejects_malformed_spring_shapes() -> None:
     assert "story.nodes.spring.actions[1] must be an object" in validate_story(data)
 
 
+def test_first_breath_story_locks_repeatable_life_landmark_contract() -> None:
+    data = story()
+    data["nodes"]["riverbank"]["actions"] = [
+        action
+        for action in data["nodes"]["riverbank"]["actions"]
+        if action["id"] != "inspect_boat_repair"
+    ]
+    drying_rack = next(
+        action
+        for action in data["nodes"]["riverbank"]["actions"]
+        if action["id"] == "inspect_drying_rack"
+    )
+    drying_rack["label"] = "查看别处"
+    rain_shelter = next(
+        action
+        for action in data["nodes"]["mountain_path"]["actions"]
+        if action["id"] == "inspect_rain_shelter"
+    )
+    rain_shelter["possible_targets"] = ["riverbank"]
+    data["messages"].pop("rain_shelter_inspected")
+    data["messages"]["boat_repair_inspected"] = "一段被意外改写的文字。"
+
+    failures = validate_story(data)
+    assert (
+        "story.nodes.riverbank.actions is missing life-landmark action "
+        "'inspect_boat_repair'" in failures
+    )
+    assert (
+        "story.nodes.riverbank.actions.inspect_drying_rack.label must be "
+        "'查看晾晒竹架'" in failures
+    )
+    assert (
+        "story.nodes.mountain_path.actions.inspect_rain_shelter.possible_targets "
+        "must be ['mountain_path']" in failures
+    )
+    assert (
+        "story.messages is missing life-landmark events: rain_shelter_inspected"
+        in failures
+    )
+    assert any(
+        failure.startswith("story.messages.boat_repair_inspected must be ")
+        for failure in failures
+    )
+
+    data = story()
+    data["nodes"]["riverbank"] = []
+    assert "story.nodes.riverbank must be an object" in validate_story(data)
+
+    data = story()
+    data["nodes"]["riverbank"]["actions"] = {}
+    assert (
+        "story.nodes.riverbank.actions must be a non-empty list"
+        in validate_story(data)
+    )
+
+
 def test_rejects_non_object_and_missing_contract() -> None:
     assert validate_story([]) == ["story must be an object"]
     failures = validate_story({"schema_version": 2})

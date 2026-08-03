@@ -6,6 +6,9 @@ const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
 const TALK_TO_FERRYMAN := "talk_to_ferryman"
 const TALK_TO_HERBKEEPER := "talk_to_herbkeeper"
+const INSPECT_BOAT_REPAIR := "inspect_boat_repair"
+const INSPECT_DRYING_RACK := "inspect_drying_rack"
+const INSPECT_RAIN_SHELTER := "inspect_rain_shelter"
 const INSPECT_PATH_MARKER := "inspect_path_marker"
 const INSPECT_FERRY_WATERMARK := "inspect_ferry_watermark"
 const INSPECT_SPRING_SEAM := "inspect_spring_seam"
@@ -34,9 +37,12 @@ const COMPANION_POSITION := Vector2(0.53, 0.51)
 const FERRY_WATERMARK_POSITION := Vector2(0.43, 0.42)
 const FERRYMAN_POSITION := Vector2(0.41, 0.66)
 const HERBKEEPER_POSITION := Vector2(0.75, 0.66)
+const BOAT_REPAIR_POSITION := Vector2(0.38, 0.295)
+const DRYING_RACK_POSITION := Vector2(0.92, 0.43)
 const PATH_START_POSITION := Vector2(0.16, 0.68)
 const PATH_RETURN_POSITION := Vector2(0.10, 0.68)
 const PATH_MARKER_POSITION := Vector2(0.43, 0.57)
+const PATH_RAIN_SHELTER_POSITION := Vector2(0.53, 0.67)
 const PATH_SPRING_SEAM_POSITION := Vector2(0.40, 0.30)
 const PATH_ABANDONED_BASKET_POSITION := Vector2(0.68, 0.60)
 const PATH_ROCK_SPOOR_POSITION := Vector2(0.65, 0.22)
@@ -111,6 +117,8 @@ func interaction_action(
 			return RETURN_TO_FERRY
 		if player_position.distance_to(PATH_MARKER_POSITION) <= INTERACTION_RADIUS:
 			return INSPECT_PATH_MARKER
+		if player_position.distance_to(PATH_RAIN_SHELTER_POSITION) <= INTERACTION_RADIUS:
+			return INSPECT_RAIN_SHELTER
 		if not discoveries.has("spring_seam") and player_position.distance_to(PATH_SPRING_SEAM_POSITION) <= INTERACTION_RADIUS:
 			return INSPECT_SPRING_SEAM
 		if not discoveries.has("abandoned_basket") and player_position.distance_to(PATH_ABANDONED_BASKET_POSITION) <= INTERACTION_RADIUS:
@@ -130,6 +138,10 @@ func interaction_action(
 		if player_position.distance_to(PATH_BYPASS_POSITION) <= INTERACTION_RADIUS:
 			return BYPASS_ENEMY
 		return ""
+	if player_position.distance_to(BOAT_REPAIR_POSITION) <= INTERACTION_RADIUS:
+		return INSPECT_BOAT_REPAIR
+	if player_position.distance_to(DRYING_RACK_POSITION) <= INTERACTION_RADIUS:
+		return INSPECT_DRYING_RACK
 	if not discoveries.has("ferry_watermark") and player_position.distance_to(FERRY_WATERMARK_POSITION) <= INTERACTION_RADIUS:
 		return INSPECT_FERRY_WATERMARK
 	if ferryman_response == "unanswered" and player_position.distance_to(FERRYMAN_POSITION) <= INTERACTION_RADIUS:

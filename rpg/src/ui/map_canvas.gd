@@ -15,6 +15,9 @@ const LANDMARK_PROFILE_COLUMNS := {
 	"mountain_rock": 5,
 	"spring_cave": 6,
 	"spring_gate": 7,
+	"ferry_boat_repair": 8,
+	"ferry_drying_rack": 9,
+	"path_rain_shelter": 10,
 }
 const INK_ROOT := Color("27312e")
 const COOL_SHADOW := Color("355e63")
@@ -28,6 +31,9 @@ const DAWN_PEACH := Color("e7a76f")
 const ROCK_SPOOR_POSITION := Vector2(0.65, 0.22)
 const MOSS_SPOOR_POSITION := Vector2(0.36, 0.43)
 const PUPPET_SPOOR_POSITION := Vector2(0.91, 0.34)
+const BOAT_REPAIR_VISUAL_FEET := Vector2(0.38, 0.35)
+const DRYING_RACK_VISUAL_FEET := Vector2(0.915, 0.48)
+const RAIN_SHELTER_VISUAL_FEET := Vector2(0.575, 0.69)
 
 @onready var player_sprite = %PlayerSprite
 @onready var companion_sprite = %CompanionSprite
@@ -193,11 +199,31 @@ func uses_map_detail_layer() -> bool:
 
 func landmark_visual_contract() -> Dictionary:
 	return {
-		"schema_version": 1,
+		"schema_version": 2,
 		"atlas_path": LANDMARK_ATLAS.resource_path,
 		"atlas_size": LANDMARK_ATLAS.get_size(),
 		"frame_size": LANDMARK_FRAME_SIZE,
 		"profiles": LANDMARK_PROFILE_COLUMNS.keys(),
+		"life_landmarks": {
+			"ferry_boat_repair": {
+				"phase_id": "riverbank",
+				"visual_feet": BOAT_REPAIR_VISUAL_FEET,
+				"interaction_anchor": ExplorationStateScript.BOAT_REPAIR_POSITION,
+				"action_id": "inspect_boat_repair",
+			},
+			"ferry_drying_rack": {
+				"phase_id": "riverbank",
+				"visual_feet": DRYING_RACK_VISUAL_FEET,
+				"interaction_anchor": ExplorationStateScript.DRYING_RACK_POSITION,
+				"action_id": "inspect_drying_rack",
+			},
+			"path_rain_shelter": {
+				"phase_id": "mountain_path",
+				"visual_feet": RAIN_SHELTER_VISUAL_FEET,
+				"interaction_anchor": ExplorationStateScript.PATH_RAIN_SHELTER_POSITION,
+				"action_id": "inspect_rain_shelter",
+			},
+		},
 		"filter": texture_filter,
 		"pixel_snap": true,
 		"collision_authority": false,
@@ -529,6 +555,8 @@ func _draw_riverbank() -> void:
 		]), 48.0)
 
 	_draw_landmark("ferry_dock", Vector2(size.x * 0.21, size.y * 0.58))
+	_draw_landmark("ferry_boat_repair", BOAT_REPAIR_VISUAL_FEET * size)
+	_draw_landmark("ferry_drying_rack", DRYING_RACK_VISUAL_FEET * size)
 
 	for index in range(10):
 		var plant := Vector2(size.x * 0.63 + float(index % 5) * 28.0, size.y * 0.57 + float(index / 5) * 28.0)
@@ -549,6 +577,8 @@ func _draw_riverbank() -> void:
 		_draw_interaction_marker(Vector2(size.x * 0.75, size.y * 0.66), nearby_action == "talk_to_herbkeeper")
 	if not gathered_moonleaf:
 		_draw_interaction_marker(Vector2(size.x * 0.69, size.y * 0.62), nearby_action == "gather_moonleaf")
+	_draw_interaction_marker(ExplorationStateScript.BOAT_REPAIR_POSITION * size, nearby_action == "inspect_boat_repair")
+	_draw_interaction_marker(ExplorationStateScript.DRYING_RACK_POSITION * size, nearby_action == "inspect_drying_rack")
 	_draw_interaction_marker(Vector2(size.x * 0.88, size.y * 0.18), nearby_action == "enter_spring")
 
 func _draw_battle_path() -> void:
@@ -587,6 +617,7 @@ func _draw_mountain_path() -> void:
 		_draw_landmark("mountain_rock", rock_position + Vector2(0, 34))
 	_draw_landmark("spring_cave", Vector2(size.x * 0.84 + 64.0, size.y * 0.12 + 90.0))
 	_draw_landmark("spring_gate", Vector2(size.x * 0.10, size.y * 0.68 + 25.0))
+	_draw_landmark("path_rain_shelter", RAIN_SHELTER_VISUAL_FEET * size)
 	_draw_spring_seam(Vector2(size.x * 0.40, size.y * 0.30), discoveries.has("spring_seam"))
 	if basket_response != "return":
 		_draw_abandoned_basket(Vector2(size.x * 0.68, size.y * 0.60), discoveries.has("abandoned_basket"), basket_response == "trail")
@@ -595,6 +626,7 @@ func _draw_mountain_path() -> void:
 	_draw_enemy_trace(PUPPET_SPOOR_POSITION * size, "puppet", enemy_intel.has("unbalanced_stone_puppet"))
 	_draw_interaction_marker(Vector2(size.x * 0.10, size.y * 0.68), nearby_action == "return_to_ferry")
 	_draw_interaction_marker(Vector2(size.x * 0.43, size.y * 0.57), nearby_action == "inspect_path_marker")
+	_draw_interaction_marker(ExplorationStateScript.PATH_RAIN_SHELTER_POSITION * size, nearby_action == "inspect_rain_shelter")
 	if not discoveries.has("spring_seam"):
 		_draw_interaction_marker(Vector2(size.x * 0.40, size.y * 0.30), nearby_action == "inspect_spring_seam")
 	if not discoveries.has("abandoned_basket"):

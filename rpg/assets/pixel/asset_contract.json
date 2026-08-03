@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "origin": "original",
   "tile_grid_px": 32,
   "actor_frame_px": [32, 56],
@@ -74,7 +74,7 @@
     "file": "zhaohe_landmarks.png",
     "frame_size_px": [192, 128],
     "foot_anchor_px": [96, 127],
-    "columns": 8,
+    "columns": 11,
     "rows": 1,
     "texture_filter": "nearest",
     "pixel_snap": true,
@@ -87,7 +87,10 @@
       "ferry_dock",
       "mountain_rock",
       "spring_cave",
-      "spring_gate"
+      "spring_gate",
+      "ferry_boat_repair",
+      "ferry_drying_rack",
+      "path_rain_shelter"
     ],
     "occluding_profiles": [
       "tree_celadon",

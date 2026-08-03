@@ -23,8 +23,8 @@ nearest Git revision, clean/dirty source state, required runtime resources, and 
 resources. `make play-rpg-package` launches that pack with the pinned Godot entrypoint. The package
 gate exports the PCK and manifest twice, requires byte-identical results, verifies the manifest,
 probes the packed namespace for 15 runtime resources and nine excluded `tests/`/`tools/` files,
-then boots the pack headlessly. The current reproducible PCK is 552,060 bytes with SHA-256
-`14ff2a2a2b239f7ffff92fff269e3325d54cde5d9fd4d3fc7b01b630ac6ebca9`.
+then boots the pack headlessly. The current reproducible PCK is 559,676 bytes with SHA-256
+`482485ac5610f7d9157461b4d178fcac0712a23674980e131d6a2a9bfd3d4f1d`.
 A native `.app`/`.exe` is intentionally deferred until platform export templates,
 signing identity, product icon, and distribution target are confirmed.
 
@@ -83,13 +83,18 @@ settings v3 增加“标准/大字”文字大小和“关闭/开启”高对比
 会由同伴救回渡口，不会形成无法继续的死档。渡口与山道地表已由 36×20 个原创
 32 px 图块组成真正的 `TileMapLayer`；同一张 256×64 图集的第二行还提供芦苇、
 岸草、碎石、野花、石裂、苔痕、落叶与水沫，并由一个无物理/导航权威的稀疏
-细节层按地图确定性铺设。房屋、树木、码头、巨石、洞口和山门已迁入一张原创
-1536×128 RGBA 地标图集；八个固定 192×128 区域使用最近邻过滤和整数脚点，七张
+细节层按地图确定性铺设。房屋、树木、码头、巨石、洞口、山门与三处生活地标已迁入一张原创
+2112×128 RGBA 地标图集；十一个固定 192×128 区域使用最近邻过滤和整数脚点，七张
 提交图集每次由项目生成器在两个临时目录重建并逐字节核对 Git。三处房屋和四处
 树木继续复用按脚底 Y 排序的既有前景节点；山道与战斗镜头分别复用五处和四处，
 没有增加场景节点或碰撞权威。角色走到物体后方会被遮挡，走到前方则覆盖前景，
 地图深度不会穿过对话或菜单模态层。山道返程山门另有固定 5×5 石桥，保证出生点、
 退路和所有交互锚点都落在非水地表，同时保持 save v14 坐标兼容。
+
+渡口的补船木架、晾晒竹架和山道的避雨石棚是三处可重复查看的空间叙事。每次靠近
+都可用键盘、鼠标或手柄触发同一条原创中文行动；它们不发资源、数值、札记或结算
+奖励，也不写入旅程快照。普通移动仍可按既有规则自动保存位置，但这三项行动本身
+不增加持久状态，因此 Journey snapshot 与 save schema v14 均保持不变。
 
 渡口、山道、战斗、泉室和章节结算之间使用 0.48 秒的明亮纸墨转场。转场文字来自
 同一份已验证原创内容，活动期间由透明输入接收层临时接管鼠标、键盘和手柄焦点，

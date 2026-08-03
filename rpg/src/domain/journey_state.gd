@@ -11,6 +11,9 @@ const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
 const TALK_TO_FERRYMAN := "talk_to_ferryman"
 const TALK_TO_HERBKEEPER := "talk_to_herbkeeper"
+const INSPECT_BOAT_REPAIR := "inspect_boat_repair"
+const INSPECT_DRYING_RACK := "inspect_drying_rack"
+const INSPECT_RAIN_SHELTER := "inspect_rain_shelter"
 const INSPECT_PATH_MARKER := "inspect_path_marker"
 const INSPECT_FERRY_WATERMARK := "inspect_ferry_watermark"
 const INSPECT_SPRING_SEAM := "inspect_spring_seam"
@@ -112,6 +115,8 @@ func available_actions() -> PackedStringArray:
 	match phase:
 		Phase.RIVERBANK:
 			var actions := PackedStringArray()
+			actions.append(INSPECT_BOAT_REPAIR)
+			actions.append(INSPECT_DRYING_RACK)
 			if not discoveries.has(DISCOVERY_FERRY_WATERMARK):
 				actions.append(INSPECT_FERRY_WATERMARK)
 			if not talked_to_companion:
@@ -126,7 +131,7 @@ func available_actions() -> PackedStringArray:
 			actions.append(ENTER_SPRING)
 			return actions
 		Phase.MOUNTAIN_PATH:
-			var path_actions := PackedStringArray([INSPECT_PATH_MARKER])
+			var path_actions := PackedStringArray([INSPECT_PATH_MARKER, INSPECT_RAIN_SHELTER])
 			if not discoveries.has(DISCOVERY_SPRING_SEAM):
 				path_actions.append(INSPECT_SPRING_SEAM)
 			if not discoveries.has(DISCOVERY_ABANDONED_BASKET):
@@ -169,6 +174,8 @@ func choose(action_id: String) -> Dictionary:
 		Phase.MOUNTAIN_PATH:
 			if action_id == INSPECT_PATH_MARKER:
 				return _result(true, ["path_marker_inspected"])
+			if action_id == INSPECT_RAIN_SHELTER:
+				return _result(true, ["rain_shelter_inspected"])
 			if action_id == INSPECT_SPRING_SEAM:
 				return _record_discovery(DISCOVERY_SPRING_SEAM, "spring_seam_discovered")
 			if action_id == INSPECT_ABANDONED_BASKET:
@@ -402,6 +409,10 @@ func restore(snapshot_data: Dictionary) -> bool:
 
 
 func _choose_riverbank(action_id: String) -> Dictionary:
+	if action_id == INSPECT_BOAT_REPAIR:
+		return _result(true, ["boat_repair_inspected"])
+	if action_id == INSPECT_DRYING_RACK:
+		return _result(true, ["drying_rack_inspected"])
 	if action_id == INSPECT_FERRY_WATERMARK:
 		return _record_discovery(DISCOVERY_FERRY_WATERMARK, "ferry_watermark_discovered")
 	if action_id == TALK_TO_COMPANION:

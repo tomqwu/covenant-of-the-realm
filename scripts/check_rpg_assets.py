@@ -15,10 +15,10 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MAP_ATLAS_COLUMNS = 8
 MAP_ATLAS_ROWS = 2
 MAP_ATLAS_SIZE_PX = (256, 64)
-LANDMARK_ATLAS_COLUMNS = 8
+LANDMARK_ATLAS_COLUMNS = 11
 LANDMARK_ATLAS_ROWS = 1
 LANDMARK_FRAME_SIZE_PX = (192, 128)
-LANDMARK_ATLAS_SIZE_PX = (1536, 128)
+LANDMARK_ATLAS_SIZE_PX = (2112, 128)
 MAP_BASE_TILE_NAMES = [
     "grass",
     "water",
@@ -48,6 +48,9 @@ LANDMARK_PROFILES = [
     "mountain_rock",
     "spring_cave",
     "spring_gate",
+    "ferry_boat_repair",
+    "ferry_drying_rack",
+    "path_rain_shelter",
 ]
 OCCLUDING_LANDMARK_PROFILES = LANDMARK_PROFILES[:4]
 
@@ -138,7 +141,7 @@ def validate_contract(data: Any) -> list[str]:
     if not isinstance(data, dict):
         return ["asset contract must be an object"]
     expected = {
-        "schema_version": 2,
+        "schema_version": 3,
         "origin": "original",
         "tile_grid_px": 32,
         "actor_frame_px": [32, 56],
@@ -294,7 +297,7 @@ def validate_contract(data: Any) -> list[str]:
     if landmark_atlas.get("collision_authority") is not False:
         failures.append("landmark_atlas.collision_authority must be false")
     if landmark_atlas.get("profiles") != LANDMARK_PROFILES:
-        failures.append("landmark_atlas.profiles must match the eight stable landmark IDs")
+        failures.append("landmark_atlas.profiles must match the eleven stable landmark IDs")
     if landmark_atlas.get("occluding_profiles") != OCCLUDING_LANDMARK_PROFILES:
         failures.append(
             "landmark_atlas.occluding_profiles must contain only tree and house IDs"
@@ -329,7 +332,7 @@ def main() -> None:
     print(
         "RPG pixel assets passed: "
         f"{len(data['atlases'])} actors, four animated enemies, "
-        "one 32 px map atlas, and eight environment landmarks validated."
+        "one 32 px map atlas, and eleven environment landmarks validated."
     )
 
 

@@ -40,6 +40,9 @@ LANDMARK_PROFILES = [
     "mountain_rock",
     "spring_cave",
     "spring_gate",
+    "ferry_boat_repair",
+    "ferry_drying_rack",
+    "path_rain_shelter",
 ]
 
 
@@ -88,7 +91,7 @@ def valid_contract(
     for file_name in [*actor_files, enemy_file]:
         shutil.copyfile(source_asset_dir / file_name, tmp_path / file_name)
     _write_png(tmp_path / "ferry_tiles.png", 256, 64)
-    _write_png(tmp_path / "zhaohe_landmarks.png", 1536, 128)
+    _write_png(tmp_path / "zhaohe_landmarks.png", 2112, 128)
     monkeypatch.setattr(check_rpg_assets, "ASSET_DIR", tmp_path)
     return data
 
@@ -173,7 +176,7 @@ def test_map_atlas_rejects_wrong_png_dimensions(
 def test_landmark_atlas_accepts_exact_profile_contract(
     valid_contract: dict[str, Any],
 ) -> None:
-    assert valid_contract["schema_version"] == 2
+    assert valid_contract["schema_version"] == 3
     assert valid_contract["landmark_atlas"]["profiles"] == LANDMARK_PROFILES
     assert check_rpg_assets.validate_contract(valid_contract) == []
 
@@ -191,7 +194,7 @@ def test_landmark_atlas_requires_an_object(valid_contract: dict[str, Any]) -> No
     [
         ("frame_size_px", [128, 128], "landmark_atlas.frame_size_px must be [192, 128]"),
         ("foot_anchor_px", [95, 127], "landmark_atlas.foot_anchor_px must be [96, 127]"),
-        ("columns", 4, "landmark_atlas.columns must be 8"),
+        ("columns", 4, "landmark_atlas.columns must be 11"),
         ("rows", 2, "landmark_atlas.rows must be 1"),
         ("texture_filter", "linear", "landmark_atlas.texture_filter must be nearest"),
         ("pixel_snap", False, "landmark_atlas.pixel_snap must be true"),
@@ -236,7 +239,7 @@ def test_landmark_atlas_rejects_a_missing_file(valid_contract: dict[str, Any]) -
     assert "missing landmark atlas: missing_landmarks.png" in failures
 
 
-@pytest.mark.parametrize(("width", "height"), [(1536, 127), (1535, 128)])
+@pytest.mark.parametrize(("width", "height"), [(2112, 127), (2111, 128)])
 def test_landmark_atlas_rejects_wrong_png_dimensions(
     valid_contract: dict[str, Any], width: int, height: int
 ) -> None:
@@ -245,7 +248,7 @@ def test_landmark_atlas_rejects_wrong_png_dimensions(
     failures = check_rpg_assets.validate_contract(valid_contract)
 
     assert (
-        f"zhaohe_landmarks.png: expected (1536, 128), got {(width, height)}"
+        f"zhaohe_landmarks.png: expected (2112, 128), got {(width, height)}"
         in failures
     )
 
@@ -281,7 +284,7 @@ def test_landmark_atlas_rejects_a_bad_chunk_crc(valid_contract: dict[str, Any]) 
 def test_landmark_atlas_rejects_non_rgba8_pixels(valid_contract: dict[str, Any]) -> None:
     _write_png(
         check_rpg_assets.ASSET_DIR / "zhaohe_landmarks.png",
-        1536,
+        2112,
         128,
         color_type=2,
     )
@@ -296,7 +299,7 @@ def test_landmark_atlas_rejects_invalid_compressed_pixels(
 ) -> None:
     _write_png(
         check_rpg_assets.ASSET_DIR / "zhaohe_landmarks.png",
-        1536,
+        2112,
         128,
         compressed_data=b"not-zlib",
     )
