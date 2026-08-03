@@ -246,13 +246,13 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		if int(spring_detail_contract["rebuild_count"]) != 2 or bool(spring_detail_contract["visible"]):
 			failures.append("藏泉石室必须隐藏山道细节且不得重建细节缓存")
 
+		# These actions have no transition or deferred node creation: `_render()`
+		# replaces the single nearby-action child synchronously. Sample immediately
+		# so the lifecycle budget measures work rather than four fixed-clock waits
+		# that add no coverage across every cycle.
 		instance._on_action("listen_to_spring")
-		await process_frame
-		await process_frame
 		state_peaks["spring_listened"] = maxi(int(state_peaks["spring_listened"]), _count_nodes(instance))
 		instance._on_action("warm_meridians")
-		await process_frame
-		await process_frame
 		state_peaks["spring_warmed"] = maxi(int(state_peaks["spring_warmed"]), _count_nodes(instance))
 		instance._on_action("breakthrough")
 		instance.get_node("%SceneTransition").finish()
