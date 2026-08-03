@@ -109,7 +109,7 @@ func _run() -> void:
 	_expect(game.journey.patrol_response == "herbs_first", "手柄 A 确认先翻药叶选择")
 	_expect(game.patrol.target_index == 2 and game.patrol.route_step == 1, "巡路选择立即重定向确定性路线")
 	var patrol_disk: Dictionary = SaveGameScript.read(SAVE_PATH)
-	_expect(patrol_disk["data"]["save_version"] == 15, "巡路选择写入 save v15")
+	_expect(patrol_disk["data"]["save_version"] == SaveGameScript.SAVE_VERSION, "巡路选择写入 save v16")
 	var stored_patrol: Dictionary = patrol_disk["data"]["patrol"]
 	_expect(
 		is_equal_approx(float(stored_patrol["position_x"]), game.patrol.position.x)
@@ -118,12 +118,43 @@ func _run() -> void:
 		and int(stored_patrol["route_step"]) == game.patrol.route_step
 		and is_equal_approx(float(stored_patrol["dwell_remaining"]), game.patrol.dwell_remaining)
 		and bool(stored_patrol["yielding_to_player"]) == game.patrol.yielding_to_player,
-		"save v15 顶层原子保存巡路位置与目标"
+		"save v16 顶层原子保存巡路位置与目标"
 	)
 	var herbs_distance_before: float = game.patrol.position.distance_to(PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT])
 	game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51})
 	game.patrol.advance(0.25, game.exploration.player_position)
 	_expect(game.patrol.position.distance_to(PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT]) < herbs_distance_before, "真实输入选择后首次位移实际接近晾晒架")
+	var input_worksite_context: Dictionary = _wait_for_worksite_input(
+		game,
+		PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT],
+		"talk_at_herbs_worksite"
+	)
+	_expect(input_worksite_context.get("worksite_id") == "herbs" and input_worksite_context.get("route_role") == "priority", "真实输入到达药叶优先晾晒工位")
+	var worksite_button := _first_action_button(game)
+	_expect(worksite_button != null and worksite_button.text == "问问竹架这头", "端点停留显示可点击中文工位行动")
+	var worksite_journey_before: Dictionary = game.journey.snapshot()
+	if worksite_button != null:
+		await _trigger_mouse_click(worksite_button.get_global_rect().get_center())
+	_expect(game.dialogue.active and game.dialogue.dialogue_id == "patrol_herbs_priority", "真实鼠标点击开启晾晒优先回响")
+	_expect(game.get_node("%DialoguePortrait").visual_contract()["portrait_id"] == "tao_xiaoman", "工位回响保持陶小满纸绘头像")
+	await _trigger_key(KEY_E)
+	await _trigger_key(KEY_E)
+	_expect(game.dialogue.line_index == 1, "真实键盘 E 可显示全文并推进工位台词")
+	game.skip_dialogue_to_response()
+	await _settle()
+	var worksite_focus := root.gui_get_focus_owner()
+	_expect(worksite_focus is Button and worksite_focus.text == "替她扶稳晾叶竹匾。", "晾晒工位默认聚焦第一项对等回应")
+	await _trigger_ui_key(KEY_TAB)
+	worksite_focus = root.gui_get_focus_owner()
+	_expect(worksite_focus is Button and worksite_focus.text == "陪她看清叶背日影。", "真实键盘 Tab 可选择第二项工位回应")
+	await _trigger_joy_button(JOY_BUTTON_A)
+	_expect(not game.dialogue.active, "手柄 A 确认晾晒工位回应")
+	_expect(game.journey.snapshot() == worksite_journey_before, "工位键鼠手柄流程不修改任何 Journey 字段")
+	_expect(game.get_node("%EventLabel").text == str(game.content["messages"]["patrol_herbs_light_checked"]), "手柄确认产生稳定日影回声")
+	_expect(is_zero_approx(game.patrol.dwell_remaining), "工位回应只将当前停留归零")
+	var worksite_disk: Dictionary = SaveGameScript.read(SAVE_PATH)
+	_expect(worksite_disk["data"]["save_version"] == SaveGameScript.SAVE_VERSION and worksite_disk["data"]["dialogue"]["active"] == false, "端点回应原子写入空闲对话 save v16")
+	_expect(_snapshots_match(worksite_disk["data"]["journey"], worksite_journey_before), "端点 save v16 不夹带隐藏奖励")
 	_expect(game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51}), "巡路输入验收后返回同行起点")
 	game._render([])
 
@@ -339,9 +370,9 @@ func _run() -> void:
 	breath_journey.choose("bypass_enemy")
 	var breath_exploration = ExplorationStateScript.new()
 	_expect(breath_exploration.transition_to(ExplorationStateScript.CANGQUAN_SPRING_MAP_ID), "输入验收建立合法藏泉石室地图")
-	_expect(SaveGameScript.write(breath_journey.snapshot(), breath_exploration.snapshot(), SAVE_PATH)["ok"], "输入验收建立未开始的三步引息 save v15 存档")
+	_expect(SaveGameScript.write(breath_journey.snapshot(), breath_exploration.snapshot(), SAVE_PATH)["ok"], "输入验收建立未开始的三步引息 save v16 存档")
 	var breath_disk: Dictionary = SaveGameScript.read(SAVE_PATH)
-	_expect(breath_disk["data"]["save_version"] == 15 and typeof(breath_disk["data"].get("patrol")) == TYPE_DICTIONARY, "输入夹具包含 save v15 顶层 patrol 快照")
+	_expect(breath_disk["data"]["save_version"] == SaveGameScript.SAVE_VERSION and typeof(breath_disk["data"].get("patrol")) == TYPE_DICTIONARY, "输入夹具包含 save v16 顶层 patrol 快照")
 
 	game = scene.instantiate()
 	game.configure_save_path(SAVE_PATH)
@@ -364,7 +395,7 @@ func _run() -> void:
 	if listen_button != null:
 		await _trigger_mouse_click(listen_button.get_global_rect().get_center())
 	_expect(game.journey.first_breath_stage == "listened", "真实鼠标点击完成听泉辨脉")
-	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "listened", "鼠标步骤立即写入 v15 存档")
+	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "listened", "鼠标步骤立即写入 v16 存档")
 
 	_expect(game.exploration.restore({
 		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
@@ -375,7 +406,7 @@ func _run() -> void:
 	await _settle()
 	await _trigger_key(KEY_E)
 	_expect(game.journey.first_breath_stage == "warmed" and not game.journey.gathered_moonleaf, "真实键盘 E 完成月芽温脉并消耗灵草")
-	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "warmed", "键盘步骤立即写入 v15 存档")
+	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "warmed", "键盘步骤立即写入 v16 存档")
 
 	_expect(game.exploration.restore({
 		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
@@ -386,7 +417,7 @@ func _run() -> void:
 	await _settle()
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(game.journey.first_breath_stage == "completed" and game.journey.phase_id() == "complete", "真实手柄 A 完成静坐引息")
-	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "completed", "手柄步骤立即写入 v15 存档")
+	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "completed", "手柄步骤立即写入 v16 存档")
 
 	game.get_node("%AudioManager").set_audio_enabled(false)
 	game.queue_free()
@@ -400,6 +431,32 @@ func _run() -> void:
 		for failure in failures:
 			push_error(failure)
 		quit(1)
+
+
+func _wait_for_worksite_input(game: Node, worksite_position: Vector2, expected_action_id: String) -> Dictionary:
+	_expect(game.exploration.restore({
+		"map_id": ExplorationStateScript.DEFAULT_MAP_ID,
+		"player_x": worksite_position.x,
+		"player_y": worksite_position.y,
+	}), "真实输入玩家可在工位端点守候")
+	game._render([])
+	var context: Dictionary = game.patrol.worksite_context(game.journey.patrol_response)
+	for _step in range(400):
+		if str(context.get("action_id", "")) == expected_action_id:
+			break
+		game._process(0.10)
+		context = game.patrol.worksite_context(game.journey.patrol_response)
+	_expect(str(context.get("action_id", "")) == expected_action_id, "真实输入巡路在有界步数内到达工位")
+	_expect(game.patrol.position.is_equal_approx(worksite_position) and game.patrol.dwell_remaining > 0.0, "真实输入工位行动绑定精确端点停留")
+	_expect(game.nearby_action_id == expected_action_id, "真实输入玩家可在工位半径内交互")
+	return context
+
+
+func _first_action_button(game: Node) -> Button:
+	for child in game.get_node("%Actions").get_children():
+		if child is Button:
+			return child
+	return null
 
 
 func _find_action_button(game: Node, label: String) -> Button:
@@ -514,6 +571,34 @@ func _trigger_mouse_click(position: Vector2) -> void:
 func _settle() -> void:
 	await process_frame
 	await process_frame
+
+
+func _snapshots_match(left: Variant, right: Variant) -> bool:
+	var left_type := typeof(left)
+	var right_type := typeof(right)
+	if left_type in [TYPE_INT, TYPE_FLOAT] and right_type in [TYPE_INT, TYPE_FLOAT]:
+		return is_equal_approx(float(left), float(right))
+	if left_type != right_type:
+		return false
+	if left_type == TYPE_DICTIONARY:
+		var left_dictionary: Dictionary = left
+		var right_dictionary: Dictionary = right
+		if left_dictionary.size() != right_dictionary.size():
+			return false
+		for key in right_dictionary:
+			if not left_dictionary.has(key) or not _snapshots_match(left_dictionary[key], right_dictionary[key]):
+				return false
+		return true
+	if left_type == TYPE_ARRAY:
+		var left_array: Array = left
+		var right_array: Array = right
+		if left_array.size() != right_array.size():
+			return false
+		for index in right_array.size():
+			if not _snapshots_match(left_array[index], right_array[index]):
+				return false
+		return true
+	return left == right
 
 
 func _expect(value: bool, label: String) -> void:

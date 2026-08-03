@@ -169,7 +169,7 @@ func _process(delta: float) -> void:
 		return
 	var patrol_before: Dictionary = patrol.snapshot()
 	if journey.phase_id() == "riverbank" and journey.talked_to_companion:
-		patrol.advance(delta, exploration.player_position)
+		patrol.advance(delta, exploration.player_position, journey.patrol_response)
 	var patrol_changed := patrol.snapshot() != patrol_before
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var player_moved := false
@@ -286,7 +286,13 @@ func _render(event_ids: Array) -> void:
 		snapshot.get("enemy_intel", []),
 		str(snapshot.get("first_breath_stage", "unstarted"))
 	)
-	map_canvas.set_patrol_state(patrol.position, patrol.motion_direction(), patrol.is_moving(), snapshot["talked_to_companion"])
+	map_canvas.set_patrol_state(
+		patrol.position,
+		patrol.motion_direction(),
+		patrol.is_moving(),
+		snapshot["talked_to_companion"],
+		_patrol_worksite_id(snapshot)
+	)
 	nearby_action_id = _resolved_nearby_action(snapshot)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	_sync_world_camera()
@@ -551,6 +557,9 @@ func _on_action(action_id: String) -> void:
 	if action_id == JourneyStateScript.TALK_TO_PATROL_RUNNER and journey.patrol_response == JourneyStateScript.PATROL_UNANSWERED:
 		_start_patrol_dialogue()
 		return
+	if action_id in [PatrolStateScript.TALK_AT_BOAT_WORKSITE, PatrolStateScript.TALK_AT_HERBS_WORKSITE]:
+		_start_patrol_work_dialogue(action_id)
+		return
 	if action_id == JourneyStateScript.REVIEW_JOURNEY and journey.phase_id() == "complete":
 		_start_chapter_epilogue()
 		return
@@ -574,7 +583,14 @@ func move_player(direction: Vector2, delta: float) -> Vector2:
 	exploration.move(direction, delta)
 	map_canvas.set_player_motion(direction if not exploration.player_position.is_equal_approx(previous_position) else Vector2.ZERO)
 	nearby_action_id = _resolved_nearby_action(journey.snapshot())
-	map_canvas.set_patrol_state(patrol.position, patrol.motion_direction(), patrol.is_moving(), journey.talked_to_companion)
+	var snapshot := journey.snapshot()
+	map_canvas.set_patrol_state(
+		patrol.position,
+		patrol.motion_direction(),
+		patrol.is_moving(),
+		journey.talked_to_companion,
+		_patrol_worksite_id(snapshot)
+	)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	_sync_world_camera()
 	if nearby_action_id != previous_action:
@@ -601,7 +617,13 @@ func world_camera_contract() -> Dictionary:
 func _refresh_nearby_action() -> void:
 	var previous_action := nearby_action_id
 	nearby_action_id = _resolved_nearby_action(journey.snapshot())
-	map_canvas.set_patrol_state(patrol.position, patrol.motion_direction(), patrol.is_moving(), journey.talked_to_companion)
+	map_canvas.set_patrol_state(
+		patrol.position,
+		patrol.motion_direction(),
+		patrol.is_moving(),
+		journey.talked_to_companion,
+		_patrol_worksite_id(journey.snapshot())
+	)
 	map_canvas.set_nearby_action(nearby_action_id)
 	if nearby_action_id != previous_action:
 		_build_actions(content["nodes"][journey.phase_id()])
@@ -609,9 +631,9 @@ func _refresh_nearby_action() -> void:
 
 func _resolved_nearby_action(snapshot: Dictionary) -> String:
 	# A yielding moving person must remain addressable when a public road crosses
-	# a static landmark radius. The one-shot patrol dialogue wins only while it is
-	# unanswered and nearby; after it resolves (or the runner leaves), the fixed
-	# landmark immediately becomes available again.
+	# a static landmark radius. The briefing or temporary worksite dialogue wins
+	# only while its live patrol eligibility holds; after it resolves (or the
+	# runner leaves), the fixed landmark immediately becomes available again.
 	if snapshot["phase"] == "riverbank":
 		var patrol_action := patrol.interaction_action(
 			exploration.player_position,
@@ -634,6 +656,12 @@ func _resolved_nearby_action(snapshot: Dictionary) -> String:
 	return ""
 
 
+func _patrol_worksite_id(snapshot: Dictionary) -> String:
+	if snapshot.get("phase") != "riverbank" or not bool(snapshot.get("talked_to_companion", false)):
+		return ""
+	return str(patrol.worksite_context(str(snapshot.get("patrol_response", "unanswered"))).get("worksite_id", ""))
+
+
 func interact() -> Dictionary:
 	if not _is_exploration_phase() or nearby_action_id.is_empty():
 		var no_target := {"ok": false, "events": ["nothing_nearby"], "snapshot": journey.snapshot()}
@@ -647,6 +675,8 @@ func interact() -> Dictionary:
 		return _start_herbkeeper_dialogue()
 	if nearby_action_id == JourneyStateScript.TALK_TO_PATROL_RUNNER and journey.patrol_response == JourneyStateScript.PATROL_UNANSWERED:
 		return _start_patrol_dialogue()
+	if nearby_action_id in [PatrolStateScript.TALK_AT_BOAT_WORKSITE, PatrolStateScript.TALK_AT_HERBS_WORKSITE]:
+		return _start_patrol_work_dialogue(nearby_action_id)
 	var result: Dictionary = journey.choose(nearby_action_id)
 	if result["ok"]:
 		_sync_exploration_after_action(nearby_action_id, result["events"])
@@ -1079,6 +1109,26 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 					return {"ok": false, "reason": "存档中的对话与剧情进度不一致"}
 				if restored_patrol.interaction_action(restored_exploration.player_position, restored_journey.patrol_response, true).is_empty():
 					return {"ok": false, "reason": "存档中的巡路对话位置无效"}
+			DialogueStateScript.PATROL_BOAT_PRIORITY, DialogueStateScript.PATROL_BOAT_FOLLOWUP, DialogueStateScript.PATROL_HERBS_PRIORITY, DialogueStateScript.PATROL_HERBS_FOLLOWUP:
+				var saved_worksite: Dictionary = DialogueStateScript.patrol_work_context(restored_dialogue.dialogue_id)
+				var current_worksite: Dictionary = restored_patrol.worksite_context(restored_journey.patrol_response)
+				if (
+					restored_journey.phase_id() != "riverbank"
+					or not restored_journey.talked_to_companion
+					or str(saved_worksite.get("patrol_response", "")) != restored_journey.patrol_response
+					or str(current_worksite.get("worksite_id", "")) != str(saved_worksite.get("worksite_id", ""))
+					or DialogueStateScript.patrol_work_dialogue_id(
+						str(saved_worksite.get("worksite_id", "")),
+						restored_journey.patrol_response
+					) != restored_dialogue.dialogue_id
+				):
+					return {"ok": false, "reason": "存档中的工作点对话与巡路先后不一致"}
+				if restored_patrol.interaction_action(
+					restored_exploration.player_position,
+					restored_journey.patrol_response,
+					true
+				) != str(current_worksite.get("action_id", "")):
+					return {"ok": false, "reason": "存档中的工作点对话位置无效"}
 		var dialogue_data: Dictionary = content.get("dialogues", {}).get(restored_dialogue.dialogue_id, {})
 		if dialogue_data.is_empty() or restored_dialogue.line_index > dialogue_data.get("lines", []).size():
 			return {"ok": false, "reason": "存档中的对话位置无效"}
@@ -1162,6 +1212,31 @@ func _start_patrol_dialogue() -> Dictionary:
 	return {"ok": true, "events": ["dialogue_started"], "snapshot": journey.snapshot()}
 
 
+func _start_patrol_work_dialogue(action_id: String) -> Dictionary:
+	var worksite: Dictionary = patrol.worksite_context(journey.patrol_response)
+	var dialogue_id := DialogueStateScript.patrol_work_dialogue_id(
+		str(worksite.get("worksite_id", "")),
+		journey.patrol_response
+	)
+	if (
+		journey.phase_id() != "riverbank"
+		or not journey.talked_to_companion
+		or str(worksite.get("action_id", "")) != action_id
+		or patrol.interaction_action(
+			exploration.player_position,
+			journey.patrol_response,
+			true
+		) != action_id
+		or dialogue_id.is_empty()
+		or not dialogue.start(dialogue_id)
+	):
+		return {"ok": false, "events": ["patrol_worksite_unavailable"], "snapshot": journey.snapshot()}
+	dialogue_history_visible = false
+	_render_dialogue_overlay()
+	_save_game()
+	return {"ok": true, "events": ["dialogue_started"], "snapshot": journey.snapshot()}
+
+
 func advance_dialogue() -> void:
 	if not dialogue.active or _dialogue_at_choices():
 		return
@@ -1211,11 +1286,24 @@ func _choose_dialogue_response(response_id: String) -> void:
 	if not staged_journey.restore(journey.snapshot()):
 		push_error("无法暂存对话回应前的旅程状态")
 		return
+	var journey_before: Dictionary = staged_journey.snapshot()
 	var staged_patrol = null
+	var patrol_work_context: Dictionary = DialogueStateScript.patrol_work_context(dialogue.dialogue_id)
 	if dialogue.dialogue_id == DialogueStateScript.PATROL_RUNNER_BRIEFING:
 		staged_patrol = PatrolStateScript.new()
 		if not staged_patrol.restore(patrol.snapshot()) or not staged_patrol.apply_priority(response_id):
 			push_error("巡路回应无法应用到确定性路线：%s" % response_id)
+			return
+	elif not patrol_work_context.is_empty():
+		staged_patrol = PatrolStateScript.new()
+		var current_worksite: Dictionary = patrol.worksite_context(staged_journey.patrol_response)
+		if (
+			not staged_patrol.restore(patrol.snapshot())
+			or str(patrol_work_context.get("patrol_response", "")) != staged_journey.patrol_response
+			or str(current_worksite.get("worksite_id", "")) != str(patrol_work_context.get("worksite_id", ""))
+			or not staged_patrol.finish_worksite(str(patrol_work_context.get("worksite_id", "")))
+		):
+			push_error("巡路工作点回应无法原子结束停留：%s" % response_id)
 			return
 	var result: Dictionary
 	match dialogue.dialogue_id:
@@ -1229,9 +1317,17 @@ func _choose_dialogue_response(response_id: String) -> void:
 			result = staged_journey.complete_basket_dialogue(response_id)
 		DialogueStateScript.PATROL_RUNNER_BRIEFING:
 			result = staged_journey.complete_patrol_dialogue(response_id)
+		DialogueStateScript.PATROL_BOAT_PRIORITY, DialogueStateScript.PATROL_BOAT_FOLLOWUP, DialogueStateScript.PATROL_HERBS_PRIORITY, DialogueStateScript.PATROL_HERBS_FOLLOWUP:
+			result = staged_journey.complete_patrol_work_dialogue(
+				str(patrol_work_context.get("worksite_id", "")),
+				response_id
+			)
 		_:
 			return
 	if not result["ok"]:
+		return
+	if not patrol_work_context.is_empty() and staged_journey.snapshot() != journey_before:
+		push_error("巡路工作点回应不得修改旅程状态：%s" % response_id)
 		return
 	if not result["events"].has(expected_event_id):
 		push_error("对话回应与规则事件不一致：%s" % response_id)

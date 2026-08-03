@@ -7,7 +7,7 @@ const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
 
-const SAVE_VERSION := 15
+const SAVE_VERSION := 16
 const STORY_ID := "zhaohe_first_breath"
 const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 
@@ -154,6 +154,8 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		return _result(false, {}, "invalid_journey")
 	if typeof(payload.get("exploration")) != TYPE_DICTIONARY:
 		return _result(false, {}, "invalid_exploration")
+	if version_number < SAVE_VERSION and _legacy_contains_patrol_work_dialogue(payload):
+		return _result(false, {}, "invalid_dialogue")
 	if version_number == 1:
 		var migrated := payload.duplicate(true)
 		migrated["save_version"] = SAVE_VERSION
@@ -247,6 +249,10 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		var migrated := payload.duplicate(true)
 		migrated["save_version"] = SAVE_VERSION
 		return _validated_migration(migrated, 14)
+	if version_number == 15:
+		var migrated := payload.duplicate(true)
+		migrated["save_version"] = SAVE_VERSION
+		return _validated_migration(migrated, 15, false)
 	return _validate_current(payload)
 
 
@@ -275,21 +281,23 @@ static func _validate_current(payload: Dictionary) -> Dictionary:
 		return _result(false, {}, "invalid_map_phase")
 	if not _dialogue_matches_journey(restored_dialogue, restored_journey):
 		return _result(false, {}, "invalid_dialogue")
-	if (
-		restored_dialogue.active
-		and restored_dialogue.dialogue_id == DialogueStateScript.PATROL_RUNNER_BRIEFING
-		and restored_patrol.interaction_action(
-			restored_exploration.player_position,
-			restored_journey.patrol_response,
-			true
-		).is_empty()
+	if not _patrol_dialogue_matches_world(
+		restored_dialogue,
+		restored_journey,
+		restored_exploration,
+		restored_patrol
 	):
 		return _result(false, {}, "invalid_dialogue")
 	return _result(true, payload, "")
 
 
-static func _validated_migration(payload: Dictionary, source_version: int) -> Dictionary:
-	_migrate_patrol_snapshot(payload)
+static func _validated_migration(
+	payload: Dictionary,
+	source_version: int,
+	migrate_patrol: bool = true
+) -> Dictionary:
+	if migrate_patrol:
+		_migrate_patrol_snapshot(payload)
 	_normalize_migrated_exploration(payload["journey"], payload["exploration"])
 	var result := _validate_current(payload)
 	if result["ok"]:
@@ -319,7 +327,47 @@ static func _dialogue_matches_journey(dialogue, journey) -> bool:
 				and journey.talked_to_companion
 				and journey.patrol_response == JourneyStateScript.PATROL_UNANSWERED
 			)
+	var patrol_work_context: Dictionary = DialogueStateScript.patrol_work_context(dialogue.dialogue_id)
+	if not patrol_work_context.is_empty():
+		return (
+			journey.phase_id() == "riverbank"
+			and journey.talked_to_companion
+			and journey.patrol_response == str(patrol_work_context.get("patrol_response", ""))
+		)
 	return false
+
+
+static func _patrol_dialogue_matches_world(dialogue, journey, exploration, patrol) -> bool:
+	if not dialogue.active:
+		return true
+	if dialogue.dialogue_id == DialogueStateScript.PATROL_RUNNER_BRIEFING:
+		return patrol.interaction_action(
+			exploration.player_position,
+			journey.patrol_response,
+			true
+		) == PatrolStateScript.TALK_TO_PATROL_RUNNER
+	var saved_context: Dictionary = DialogueStateScript.patrol_work_context(dialogue.dialogue_id)
+	if saved_context.is_empty():
+		return true
+	var current_context: Dictionary = patrol.worksite_context(journey.patrol_response)
+	if (
+		str(current_context.get("worksite_id", "")) != str(saved_context.get("worksite_id", ""))
+		or str(current_context.get("route_role", "")) != str(saved_context.get("route_role", ""))
+		or DialogueStateScript.patrol_work_dialogue_id(
+			str(current_context.get("worksite_id", "")),
+			journey.patrol_response
+		) != dialogue.dialogue_id
+	):
+		return false
+	var expected_action := str(current_context.get("action_id", ""))
+	return (
+		not expected_action.is_empty()
+		and patrol.interaction_action(
+			exploration.player_position,
+			journey.patrol_response,
+			true
+		) == expected_action
+	)
 
 
 static func _exploration_matches_journey(exploration, journey) -> bool:
@@ -417,6 +465,15 @@ static func _mark_source(result: Dictionary, source: String) -> Dictionary:
 
 static func _blocks_fallback(result: Dictionary) -> bool:
 	return not result["ok"] and result["reason"] in ["unsupported_version", "wrong_story"]
+
+
+static func _legacy_contains_patrol_work_dialogue(payload: Dictionary) -> bool:
+	var dialogue_snapshot = payload.get("dialogue")
+	if typeof(dialogue_snapshot) != TYPE_DICTIONARY:
+		return false
+	return not DialogueStateScript.patrol_work_context(
+		str(dialogue_snapshot.get("dialogue_id", DialogueStateScript.NONE))
+	).is_empty()
 
 
 static func _legacy_briefing_response(journey_snapshot: Dictionary) -> String:

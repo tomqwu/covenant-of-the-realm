@@ -1,34 +1,36 @@
 # Loop Plan
 
-## Current loop — four-profile semantic enemy animation
+## Current loop — ferry-runner worksite echoes
 
-- [x] Expand the generated enemy atlas from two to six columns without changing the four stable
-  profile rows, 64×64 frame size, foot anchor, nearest filtering, or integer placement.
-- [x] Add deterministic idle, attack, and reaction animations; consume one fixed-priority battle
-  event per action while terminal/profile-transition events safely reset to idle.
-- [x] Keep damage, intent, round timing, input, collision, phase, and save v15 authority outside the
-  animation adapter; keep all three mountain-path warning sprites idle-only.
-- [x] Cover all profiles, event-order priority, unknown inputs, invalid/oversized presentation deltas,
-  fast/reduced motion, terminal suppression, input parity, save restore, lifecycle, assets, captures,
-  package contents, and boot behavior.
-- [x] Run the repository-wide `make check`, review the complete diff, commit, push, and monitor Draft
+- [x] Derive a temporary worksite interaction only while 陶小满 is dwelling at the exact boat-frame
+  or drying-rack endpoint after the route order is selected; let an endpoint-waiting player observe
+  arrival instead of trapping the runner in courtesy yielding.
+- [x] Add four route-aware original Chinese prose variants and two genuinely selectable,
+  consequence-neutral responses per worksite. Freeze the patrol during dialogue; commit only the
+  semantic echo plus the current dwell ending, with the complete Journey snapshot unchanged.
+- [x] Upgrade to save v16 because the persisted active-dialogue enum expands; migrate v1–v15
+  conservatively and reject wrong route, worksite, range, line, legacy enum, malformed, and future
+  combinations without adding a one-shot completion flag.
+- [x] Cover both route orders, both endpoints, repeated interaction, fixed-landmark fallback,
+  waiting-player and oversized-delta determinism, keyboard/mouse/controller input, continue/replay,
+  performance/lifecycle, captures, package contents, and boot behavior.
+- [ ] Run the repository-wide `make check`, review the complete diff, commit, push, and monitor Draft
   PR #7 without merging it.
 
-## Recently completed — 48×27 bounded rolling camera
+## Recently completed
 
-- [x] Expand both exploration maps to 48×27 under one bounded integer-pixel `WorldRoot` transform.
-- [x] Keep HUD/modal layers fixed, preserve normalized save coordinates, and cover every edge,
-  transition, restore, capture, package, and lifecycle boundary.
+- [x] Add generated two-frame idle, attack, and reaction animation for all four stable enemy
+  profiles without giving presentation any rule, timing, or save authority.
+- [x] Expand both exploration maps to 48×27 under one bounded integer-pixel `WorldRoot` transform
+  while preserving fixed UI, normalized save coordinates, edge framing, and lifecycle budgets.
 
 ## Next unblocked loops
 
-1. Pay off the ferry-runner route choice at both work endpoints with original, reward-free spatial
-   reactions and resumable prose.
-2. Add an accessibility dialogue-speed preference with conservative settings migration and physical
+1. Add an accessibility dialogue-speed preference with conservative settings migration and physical
    input coverage.
-3. Continue painted-paper portrait refinement and denser original NPC schedules after the semantic
+2. Continue painted-paper portrait refinement and denser original NPC schedules after the semantic
    animation pipeline is stable.
-4. Add intent-specific telegraphs or visible outgoing-enemy defeat only after structured presentation
+3. Add intent-specific telegraphs or visible outgoing-enemy defeat only after structured presentation
    context can identify the resolved intent and replaced profile without entering the domain save.
 
 ## Blocked production boundary

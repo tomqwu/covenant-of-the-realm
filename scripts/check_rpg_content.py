@@ -127,6 +127,18 @@ PATROL_ACTION = {
     "label": "问问陶小满",
     "possible_targets": ["riverbank"],
 }
+PATROL_WORKSITE_ACTIONS = {
+    "talk_at_boat_worksite": {
+        "id": "talk_at_boat_worksite",
+        "label": "问问船架这头",
+        "possible_targets": ["riverbank"],
+    },
+    "talk_at_herbs_worksite": {
+        "id": "talk_at_herbs_worksite",
+        "label": "问问竹架这头",
+        "possible_targets": ["riverbank"],
+    },
+}
 PATROL_DIALOGUE = {
     "lines": [
         {
@@ -176,6 +188,124 @@ PATROL_MESSAGES = {
     ),
     "patrol_unavailable": "陶小满还没有开始巡路，或今天的先后已经定下。",
     "invalid_patrol_response": "这不是此刻可以作出的巡路安排。",
+}
+PATROL_WORKSITE_DIALOGUES = {
+    "patrol_boat_priority": {
+        "lines": [
+            {
+                "speaker": "陶小满",
+                "text": "先送来的木楔已经压在篷布底下，河雾只在布角结了细珠。",
+            },
+            {
+                "speaker": "陶小满",
+                "text": "我每回折到西头都再按一遍，免得梁叔量好缺口却找不着料。",
+            },
+        ],
+        "choices": [
+            {
+                "id": "secure_boat_cloth",
+                "label": "替她压稳篷布边角。",
+                "event_id": "patrol_boat_cloth_secured",
+            },
+            {
+                "id": "check_boat_measure",
+                "label": "陪她核对木楔尺痕。",
+                "event_id": "patrol_boat_measure_checked",
+            },
+        ],
+        "choice_prompt": "船架这头已经接上手。你愿意再帮她确认哪一处？",
+    },
+    "patrol_boat_followup": {
+        "lines": [
+            {
+                "speaker": "陶小满",
+                "text": "东边药叶先翻妥了，木楔也没让河雾咬着；油布一路都扎得紧。",
+            },
+            {
+                "speaker": "陶小满",
+                "text": "梁叔量好缺口，我把两枚楔子平码在尺边，谁接手都看得明白。",
+            },
+        ],
+        "choices": [
+            {
+                "id": "secure_boat_cloth",
+                "label": "替她压稳篷布边角。",
+                "event_id": "patrol_boat_cloth_secured",
+            },
+            {
+                "id": "check_boat_measure",
+                "label": "陪她核对木楔尺痕。",
+                "event_id": "patrol_boat_measure_checked",
+            },
+        ],
+        "choice_prompt": "船架这头已经接上手。你愿意再帮她确认哪一处？",
+    },
+    "patrol_herbs_priority": {
+        "lines": [
+            {
+                "speaker": "陶小满",
+                "text": "先翻过的药叶已经散了背潮，竹架上的木牌也挪到下一格。",
+            },
+            {
+                "speaker": "陶小满",
+                "text": "我每回折到东头都摸一下叶边；不粘手，就能放心去看船架。",
+            },
+        ],
+        "choices": [
+            {
+                "id": "steady_herb_tray",
+                "label": "替她扶稳晾叶竹匾。",
+                "event_id": "patrol_herbs_tray_steadied",
+            },
+            {
+                "id": "check_herb_light",
+                "label": "陪她看清叶背日影。",
+                "event_id": "patrol_herbs_light_checked",
+            },
+        ],
+        "choice_prompt": "竹架这头已经照看妥当。你愿意再帮她确认哪一处？",
+    },
+    "patrol_herbs_followup": {
+        "lines": [
+            {
+                "speaker": "陶小满",
+                "text": "西头先收好了木楔。日影偏了半格，药叶仍赶上了该翻的时辰。",
+            },
+            {
+                "speaker": "陶小满",
+                "text": "两头都接上才算完；渡口的活不是争第一，是别让下一双手空等。",
+            },
+        ],
+        "choices": [
+            {
+                "id": "steady_herb_tray",
+                "label": "替她扶稳晾叶竹匾。",
+                "event_id": "patrol_herbs_tray_steadied",
+            },
+            {
+                "id": "check_herb_light",
+                "label": "陪她看清叶背日影。",
+                "event_id": "patrol_herbs_light_checked",
+            },
+        ],
+        "choice_prompt": "竹架这头已经照看妥当。你愿意再帮她确认哪一处？",
+    },
+}
+PATROL_WORKSITE_MESSAGES = {
+    "patrol_boat_cloth_secured": (
+        "你按住篷布边角，陶小满重新收紧系绳；河风掠过木架，没有再钻进布缝。"
+    ),
+    "patrol_boat_measure_checked": (
+        "你与陶小满顺着梁叔留下的尺痕核对木楔；两枚楔子仍平码在缺口旁。"
+    ),
+    "patrol_herbs_tray_steadied": (
+        "你扶住被河风顶起的竹匾，陶小满将叶片理开，让潮气继续从缝间散去。"
+    ),
+    "patrol_herbs_light_checked": (
+        "你与陶小满沿竹架看过一遍叶背日影；她把木牌挪正，下一次翻晒仍有时辰可循。"
+    ),
+    "patrol_worksite_unavailable": "此刻陶小满不在可一起搭手的工作点。",
+    "invalid_patrol_work_response": "这不是此刻可作出的搭手方式。",
 }
 PATROL_JOURNAL_SIDE_ENTRIES = {
     "patrol_boat_first": {
@@ -350,6 +480,24 @@ def _validate_patrol_contract(
             f"{PATROL_ACTION!r}"
         )
 
+    actions_by_id = {
+        action.get("id"): action
+        for action in actions
+        if isinstance(action, dict) and isinstance(action.get("id"), str)
+    }
+    for action_id, expected_action in PATROL_WORKSITE_ACTIONS.items():
+        action = actions_by_id.get(action_id)
+        if action is None:
+            failures.append(
+                f"{source}.nodes.riverbank.actions is missing patrol worksite "
+                f"action '{action_id}'"
+            )
+        elif action != expected_action:
+            failures.append(
+                f"{source}.nodes.riverbank.actions.{action_id} must be "
+                f"{expected_action!r}"
+            )
+
     dialogue = dialogues.get("patrol_runner_briefing")
     dialogue = dialogue if isinstance(dialogue, dict) else {}
     for field, expected_value in PATROL_DIALOGUE.items():
@@ -360,6 +508,17 @@ def _validate_patrol_contract(
             )
 
     for message_id, expected_text in PATROL_MESSAGES.items():
+        if messages.get(message_id) != expected_text:
+            failures.append(f"{source}.messages.{message_id} must be {expected_text!r}")
+
+    for dialogue_id, expected_dialogue in PATROL_WORKSITE_DIALOGUES.items():
+        if dialogues.get(dialogue_id) != expected_dialogue:
+            failures.append(
+                f"{source}.dialogues.{dialogue_id} must match the exact patrol "
+                "worksite script"
+            )
+
+    for message_id, expected_text in PATROL_WORKSITE_MESSAGES.items():
         if messages.get(message_id) != expected_text:
             failures.append(f"{source}.messages.{message_id} must be {expected_text!r}")
 

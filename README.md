@@ -7,7 +7,7 @@
 
 **《山河有契》**（英文工作名：**Covenant of the Realm**）正在发展为一款原创、
 中文优先、章节式的 2D 修仙剧情 RPG。Godot 可玩章节已经串联自由移动、碰撞、
-双地图地表、第三张藏泉石室微地图与原创像素细节层、可恢复分支与章节余波对话、明亮纸绘头像、可选择“见闻/灵物志”的行旅札记、脚印式同伴跟随、陶小满六点送件巡路、持久环境见闻、三痕辨势、守堤与药篓双结果支线、补船木架/晾晒竹架/避雨石棚三处可重复生活叙事、近距离采集、三类意图窗口敌人、守巢首领、事件驱动的四敌攻击/受击像素动画、可撤退回合战斗、同伴援护、版本化存档和“听泉辨脉 → 月芽温脉 → 静坐引息”的首次境界突破；现有多人
+双地图地表、第三张藏泉石室微地图与原创像素细节层、可恢复分支与章节余波对话、明亮纸绘头像、可选择“见闻/灵物志”的行旅札记、脚印式同伴跟随、陶小满六点送件巡路及船架/竹架两端点回响、持久环境见闻、三痕辨势、守堤与药篓双结果支线、补船木架/晾晒竹架/避雨石棚三处可重复生活叙事、近距离采集、三类意图窗口敌人、守巢首领、事件驱动的四敌攻击/受击像素动画、可撤退回合战斗、同伴援护、版本化存档和“听泉辨脉 → 月芽温脉 → 静坐引息”的首次境界突破；现有多人
 MUD 与单人 PWA 作为可运行研究原型保留。
 
 ## Play the RPG graybox
@@ -80,12 +80,12 @@ make check                   # RPG, MUD, and preserved PWA gates
 make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
-The repository pytest gate passes 134 tests at 100% statement and branch coverage (545 statements /
-272 branches). Godot behavior is covered by 2,348 headless rule/scene assertions plus an independent
-246-check chapter E2E and 133-check physical-input/focus path. Eight committed pixel atlases are
-regenerated twice and must match the Git index byte for byte. The reproducible 642,328-byte PCK has SHA-256
-`c12fbb5088b92c4107c78d2be544a7b67974ed00381d98279284c1da75ca4340`; its probe requires
-20 runtime resources, excludes nine development resources, and two consecutive 37-PNG capture runs
+The repository pytest gate passes 136 tests at 100% statement and branch coverage (561 statements /
+286 branches). Godot behavior is covered by 2,627 headless rule/scene assertions plus an independent
+319-check chapter E2E and 150-check physical-input/focus path. Eight committed pixel atlases are
+regenerated twice and must match the Git index byte for byte. The reproducible 672,056-byte PCK has SHA-256
+`ad8a2e042bc085bbdd97ff2f98adadb8345d925fd5276065d410a8413e3ac295`; its probe requires
+20 runtime resources, excludes nine development resources, and two consecutive 39-PNG capture runs
 produce identical SHA-256 sets. The MUD adapter has
 isolated Evennia tests, and its release path
 is exercised through two real concurrent Telnet clients. The preserved browser prototype retains

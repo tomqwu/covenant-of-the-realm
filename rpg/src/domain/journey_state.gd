@@ -12,6 +12,8 @@ const TALK_TO_COMPANION := "talk_to_companion"
 const TALK_TO_FERRYMAN := "talk_to_ferryman"
 const TALK_TO_HERBKEEPER := "talk_to_herbkeeper"
 const TALK_TO_PATROL_RUNNER := "talk_to_patrol_runner"
+const TALK_AT_BOAT_WORKSITE := "talk_at_boat_worksite"
+const TALK_AT_HERBS_WORKSITE := "talk_at_herbs_worksite"
 const INSPECT_BOAT_REPAIR := "inspect_boat_repair"
 const INSPECT_DRYING_RACK := "inspect_drying_rack"
 const INSPECT_RAIN_SHELTER := "inspect_rain_shelter"
@@ -58,6 +60,14 @@ const PATROL_UNANSWERED := "unanswered"
 const PATROL_BOAT_FIRST := "boat_first"
 const PATROL_HERBS_FIRST := "herbs_first"
 const PATROL_RESPONSES := [PATROL_UNANSWERED, PATROL_BOAT_FIRST, PATROL_HERBS_FIRST]
+const WORKSITE_BOAT := "boat"
+const WORKSITE_HERBS := "herbs"
+const SECURE_BOAT_CLOTH := "secure_boat_cloth"
+const CHECK_BOAT_MEASURE := "check_boat_measure"
+const STEADY_HERB_TRAY := "steady_herb_tray"
+const CHECK_HERB_LIGHT := "check_herb_light"
+const BOAT_WORK_RESPONSES := [SECURE_BOAT_CLOTH, CHECK_BOAT_MEASURE]
+const HERBS_WORK_RESPONSES := [STEADY_HERB_TRAY, CHECK_HERB_LIGHT]
 const MOONLEAF_UNSELECTED := "unselected"
 const MOONLEAF_WHOLE_PLANT := "whole_plant"
 const MOONLEAF_CUTTING := "cutting"
@@ -133,6 +143,9 @@ func available_actions() -> PackedStringArray:
 				actions.append(TALK_TO_HERBKEEPER)
 			if talked_to_companion and patrol_response == PATROL_UNANSWERED:
 				actions.append(TALK_TO_PATROL_RUNNER)
+			if talked_to_companion and patrol_response != PATROL_UNANSWERED:
+				actions.append(TALK_AT_BOAT_WORKSITE)
+				actions.append(TALK_AT_HERBS_WORKSITE)
 			if not gathered_moonleaf:
 				actions.append(GATHER_MOONLEAF)
 				actions.append(GATHER_MOONLEAF_CUTTING)
@@ -643,6 +656,28 @@ func complete_patrol_dialogue(response_id: String) -> Dictionary:
 		return _result(false, ["invalid_patrol_response"])
 	patrol_response = response_id
 	return _result(true, ["patrol_%s" % response_id])
+
+
+func complete_patrol_work_dialogue(worksite_id: String, response_id: String) -> Dictionary:
+	if phase != Phase.RIVERBANK or not talked_to_companion or patrol_response == PATROL_UNANSWERED:
+		return _result(false, ["patrol_worksite_unavailable"])
+	var event_id := ""
+	match worksite_id:
+		WORKSITE_BOAT:
+			match response_id:
+				SECURE_BOAT_CLOTH:
+					event_id = "patrol_boat_cloth_secured"
+				CHECK_BOAT_MEASURE:
+					event_id = "patrol_boat_measure_checked"
+		WORKSITE_HERBS:
+			match response_id:
+				STEADY_HERB_TRAY:
+					event_id = "patrol_herbs_tray_steadied"
+				CHECK_HERB_LIGHT:
+					event_id = "patrol_herbs_light_checked"
+	if event_id.is_empty():
+		return _result(false, ["invalid_patrol_work_response"])
+	return _result(true, [event_id])
 
 
 func current_enemy_profile() -> Dictionary:

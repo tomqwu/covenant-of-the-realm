@@ -99,8 +99,8 @@ func _run() -> void:
 	var patrol_dialogue_text: String = game.get_node("%DialogueLabel").text
 	var patrol_dialogue_snapshot: Dictionary = game.patrol.snapshot()
 	var patrol_dialogue_disk: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
-	_expect(patrol_dialogue_disk["data"]["save_version"] == 15, "E2E 巡路对话写入 save v15")
-	_expect(_snapshots_match(patrol_dialogue_disk["data"]["patrol"], patrol_dialogue_snapshot), "E2E save v15 顶层保存完整巡路快照")
+	_expect(patrol_dialogue_disk["data"]["save_version"] == SaveGameScript.SAVE_VERSION, "E2E 巡路对话写入 save v16")
+	_expect(_snapshots_match(patrol_dialogue_disk["data"]["patrol"], patrol_dialogue_snapshot), "E2E save v16 顶层保存完整巡路快照")
 	game.queue_free()
 	await _settle()
 	game = scene.instantiate()
@@ -118,13 +118,88 @@ func _run() -> void:
 	_expect(game.journey.patrol_response == "boat_first", "E2E 主路线保存先送船架选择")
 	_expect(game.patrol.target_index == 1 and game.patrol.route_step == -1, "E2E 先送船架立即把确定性路线指向西端")
 	var chosen_patrol_disk: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
-	_expect(chosen_patrol_disk["data"]["journey"]["patrol_response"] == "boat_first", "E2E 巡路先后进入 v15 旅程快照")
-	_expect(_snapshots_match(chosen_patrol_disk["data"]["patrol"], game.patrol.snapshot()), "E2E 路线重定向与选择原子写入同一 v15 存档")
+	_expect(chosen_patrol_disk["data"]["journey"]["patrol_response"] == "boat_first", "E2E 巡路先后进入 v16 旅程快照")
+	_expect(_snapshots_match(chosen_patrol_disk["data"]["patrol"], game.patrol.snapshot()), "E2E 路线重定向与选择原子写入同一 v16 存档")
 	var boat_distance_before: float = game.patrol.position.distance_to(PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT])
 	game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51})
 	game.patrol.advance(0.25, game.exploration.player_position)
 	_expect(game.patrol.position.distance_to(PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT]) < boat_distance_before, "E2E 木楔优先后的首次位移实际接近补船架")
 	_expect(game.get_node("%EventLabel").text.contains("木楔"), "E2E 巡路选择显示原创中文结果")
+
+	var boat_priority_context: Dictionary = _wait_for_worksite(
+		game,
+		PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT],
+		"talk_at_boat_worksite",
+		"木楔优先路线抵达补船工位"
+	)
+	_expect(boat_priority_context.get("worksite_id") == "boat" and boat_priority_context.get("route_role") == "priority", "E2E 补船端点识别木楔优先路线")
+	var boat_priority_journey: Dictionary = game.journey.snapshot()
+	await _trigger_semantic_action(game, "interact")
+	_expect(game.dialogue.active and game.dialogue.dialogue_id == "patrol_boat_priority", "E2E 补船优先端点开启结构化空间回响")
+	game.show_full_dialogue_line()
+	game.advance_dialogue()
+	var boat_worksite_line: int = game.dialogue.line_index
+	var boat_worksite_text: String = game.get_node("%DialogueLabel").text
+	var boat_worksite_patrol: Dictionary = game.patrol.snapshot()
+	var boat_worksite_disk: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect(boat_worksite_disk["data"]["save_version"] == SaveGameScript.SAVE_VERSION, "E2E 工位中途对话写入 save v16")
+	_expect(_snapshots_match(boat_worksite_disk["data"]["journey"], boat_priority_journey), "E2E 工位对话不提前改写旅程")
+	_expect(_snapshots_match(boat_worksite_disk["data"]["patrol"], boat_worksite_patrol), "E2E 工位中途存档保留端点停留")
+	game.queue_free()
+	await _settle()
+	game = scene.instantiate()
+	game.configure_save_path(TEST_SAVE_PATH)
+	game.configure_settings_path(TEST_SETTINGS_PATH)
+	root.add_child(game)
+	await _settle()
+	_expect(game.continue_game(), "E2E 可从新场景恢复补船工位中途对话")
+	_expect(game.dialogue.dialogue_id == "patrol_boat_priority" and game.dialogue.line_index == boat_worksite_line, "E2E 工位恢复保持路线对话标识与行号")
+	_expect(game.get_node("%DialogueLabel").text == boat_worksite_text, "E2E 工位恢复保持当前原创台词")
+	_expect(_snapshots_match(game.patrol.snapshot(), boat_worksite_patrol), "E2E 工位恢复保持端点坐标、目标与停留")
+	_expect(_snapshots_match(game.journey.snapshot(), boat_priority_journey), "E2E 工位恢复不伪造奖励或剧情进度")
+	game.skip_dialogue_to_response()
+	await _settle()
+	await _press_dialogue_choice(game, "替她压稳篷布边角。")
+	_expect(_snapshots_match(game.journey.snapshot(), boat_priority_journey), "E2E 压住油布只结束工位停留而不改变 Journey")
+	_expect(game.get_node("%EventLabel").text == str(game.content["messages"]["patrol_boat_cloth_secured"]), "E2E 补船工位选项返回稳定语义回声")
+	_expect(game.patrol.worksite_context(game.journey.patrol_response).is_empty(), "E2E 补船回应后当前停留结束")
+	_expect(is_zero_approx(game.patrol.dwell_remaining), "E2E 补船回应把当前端点停留归零")
+	_expect(game.exploration.restore({
+		"map_id": "zhaohe_ferry",
+		"player_x": ExplorationStateScript.BOAT_REPAIR_POSITION.x,
+		"player_y": ExplorationStateScript.BOAT_REPAIR_POSITION.y,
+	}), "E2E 工位回应后站到补船木架")
+	game._render([])
+	_expect(game.nearby_action_id == "inspect_boat_repair", "E2E 陶小满离开当前停留后固定补船地标立即恢复")
+
+	var herbs_followup_context: Dictionary = _wait_for_worksite(
+		game,
+		PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT],
+		"talk_at_herbs_worksite",
+		"木楔优先路线继续抵达晾晒工位"
+	)
+	_expect(herbs_followup_context.get("worksite_id") == "herbs" and herbs_followup_context.get("route_role") == "followup", "E2E 晾晒端点识别木楔优先的后续工位")
+	await _complete_worksite_dialogue(
+		game,
+		"patrol_herbs_followup",
+		"陪她看清叶背日影。",
+		"patrol_herbs_light_checked",
+		"木楔优先路线的晾晒后续回响"
+	)
+	var repeated_boat_context: Dictionary = _wait_for_worksite(
+		game,
+		PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT],
+		"talk_at_boat_worksite",
+		"巡路一轮后重新抵达补船工位"
+	)
+	_expect(repeated_boat_context.get("route_role") == "priority", "E2E 无一次性标记的补船空间回响可重复")
+	await _complete_worksite_dialogue(
+		game,
+		"patrol_boat_priority",
+		"陪她核对木楔尺痕。",
+		"patrol_boat_measure_checked",
+		"巡路一轮后重复补船回响"
+	)
 	game.open_journal()
 	await _settle()
 	_expect(game.journal_contract()["entries_text"].contains("先往补船架的脚步"), "E2E 巡路结果进入内容驱动札记")
@@ -521,6 +596,34 @@ func _run() -> void:
 	resumed.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51})
 	resumed.patrol.advance(0.25, resumed.exploration.player_position)
 	_expect(resumed.patrol.position.distance_to(PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT]) < herbs_distance_before, "E2E 药叶优先后的首次位移实际接近晾晒架")
+	var herbs_priority_context: Dictionary = _wait_for_worksite(
+		resumed,
+		PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT],
+		"talk_at_herbs_worksite",
+		"药叶优先重游抵达晾晒工位"
+	)
+	_expect(herbs_priority_context.get("worksite_id") == "herbs" and herbs_priority_context.get("route_role") == "priority", "E2E 重游晾晒端点识别药叶优先路线")
+	await _complete_worksite_dialogue(
+		resumed,
+		"patrol_herbs_priority",
+		"替她扶稳晾叶竹匾。",
+		"patrol_herbs_tray_steadied",
+		"药叶优先路线的晾晒优先回响"
+	)
+	var boat_followup_context: Dictionary = _wait_for_worksite(
+		resumed,
+		PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT],
+		"talk_at_boat_worksite",
+		"药叶优先重游继续抵达补船工位"
+	)
+	_expect(boat_followup_context.get("worksite_id") == "boat" and boat_followup_context.get("route_role") == "followup", "E2E 重游补船端点识别药叶优先的后续工位")
+	await _complete_worksite_dialogue(
+		resumed,
+		"patrol_boat_followup",
+		"陪她核对木楔尺痕。",
+		"patrol_boat_measure_checked",
+		"药叶优先路线的补船后续回响"
+	)
 	_expect(resumed.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.41, "player_y": 0.66}), "E2E 重游到达渡口守堤人")
 	resumed._render([])
 	await _trigger_semantic_action(resumed, "interact")
@@ -593,7 +696,7 @@ func _run() -> void:
 	_expect(not resumed.get_node("%TitleOverlay").visible, "E2E 第二次明确确认后重新开局")
 	_expect(resumed.journey.phase_id() == "riverbank" and resumed.journey.ferryman_response == "unanswered" and resumed.journey.basket_response == "unanswered" and resumed.journey.patrol_response == "unanswered", "E2E 明确覆盖建立干净序章状态")
 	_expect(SaveGameScript.read(TEST_SAVE_PATH)["data"]["journey"]["phase"] == "riverbank", "E2E 新序章状态已安全落盘")
-	_expect(_snapshots_match(SaveGameScript.read(TEST_SAVE_PATH)["data"]["patrol"], resumed.patrol.snapshot()), "E2E 新序章将默认巡路状态写入 v15 顶层")
+	_expect(_snapshots_match(SaveGameScript.read(TEST_SAVE_PATH)["data"]["patrol"], resumed.patrol.snapshot()), "E2E 新序章将默认巡路状态写入 v16 顶层")
 
 	resumed.queue_free()
 	await _settle()
@@ -606,6 +709,54 @@ func _run() -> void:
 		for failure in failures:
 			push_error(failure)
 		quit(1)
+
+
+func _wait_for_worksite(
+	game: Node,
+	worksite_position: Vector2,
+	expected_action_id: String,
+	label: String
+) -> Dictionary:
+	_expect(game.exploration.restore({
+		"map_id": ExplorationStateScript.DEFAULT_MAP_ID,
+		"player_x": worksite_position.x,
+		"player_y": worksite_position.y,
+	}), "%s：玩家可以提前在端点守候" % label)
+	game._render([])
+	var context: Dictionary = game.patrol.worksite_context(game.journey.patrol_response)
+	for _step in range(400):
+		if str(context.get("action_id", "")) == expected_action_id:
+			break
+		game._process(0.10)
+		context = game.patrol.worksite_context(game.journey.patrol_response)
+	_expect(str(context.get("action_id", "")) == expected_action_id, "%s：确定性巡路在 40 秒内到达" % label)
+	_expect(game.patrol.position.is_equal_approx(worksite_position), "%s：陶小满精确停在工位路点" % label)
+	_expect(game.patrol.dwell_remaining > 0.0, "%s：空间回响只在端点停留期出现" % label)
+	_expect(game.nearby_action_id == expected_action_id, "%s：守候玩家获得对应中文交互" % label)
+	return context
+
+
+func _complete_worksite_dialogue(
+	game: Node,
+	expected_dialogue_id: String,
+	choice_label: String,
+	expected_event_id: String,
+	label: String
+) -> void:
+	var journey_before: Dictionary = game.journey.snapshot()
+	var patrol_before: Dictionary = game.patrol.snapshot()
+	await _trigger_semantic_action(game, "interact")
+	_expect(game.dialogue.active and game.dialogue.dialogue_id == expected_dialogue_id, "%s：开启稳定路线对话" % label)
+	game._process(PatrolStateScript.ENDPOINT_DWELL_SECONDS + 1.0)
+	_expect(_snapshots_match(game.patrol.snapshot(), patrol_before), "%s：活动对话冻结端点巡路" % label)
+	game.skip_dialogue_to_response()
+	await _settle()
+	await _press_dialogue_choice(game, choice_label)
+	_expect(not game.dialogue.active, "%s：真实选项完成工位回响" % label)
+	_expect(_snapshots_match(game.journey.snapshot(), journey_before), "%s：完成前后 Journey 逐字段不变" % label)
+	_expect(game.get_node("%EventLabel").text == str(game.content["messages"][expected_event_id]), "%s：选项产生稳定内容事件" % label)
+	_expect(is_zero_approx(game.patrol.dwell_remaining), "%s：完成后仅结束当前停留" % label)
+	_expect(game.patrol.worksite_context(game.journey.patrol_response).is_empty(), "%s：当前工位不在离开前重复弹出" % label)
 
 
 func _place_at_spring(game: Node, position: Vector2, label: String) -> void:

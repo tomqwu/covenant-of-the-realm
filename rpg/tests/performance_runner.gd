@@ -107,12 +107,22 @@ func _benchmark_movement(budget: Dictionary) -> Dictionary:
 func _benchmark_patrol(budget: Dictionary) -> Dictionary:
 	var patrol = PatrolStateScript.new()
 	var exploration = ExplorationStateScript.new()
+	if not patrol.apply_priority(PatrolStateScript.RESPONSE_BOAT_FIRST):
+		failures.append("独立巡路性能夹具无法设定木楔优先路线")
 	var iterations := int(budget["patrol_iterations"])
 	var started := Time.get_ticks_usec()
 	var interaction_checksum := 0
+	var worksite_count := 0
 	var far_player := Vector2(0.40, 0.16)
 	for index in range(iterations):
-		patrol.advance(0.016, far_player)
+		patrol.advance(0.016, far_player, PatrolStateScript.RESPONSE_BOAT_FIRST)
+		var worksite: Dictionary = patrol.worksite_context(PatrolStateScript.RESPONSE_BOAT_FIRST)
+		if not worksite.is_empty():
+			interaction_checksum += str(worksite.get("action_id", "")).length()
+			worksite_count += 1
+			if not patrol.finish_worksite(str(worksite.get("worksite_id", ""))):
+				failures.append("独立巡路性能循环无法结束合法工位停留")
+				break
 		if index % 31 == 0:
 			interaction_checksum += patrol.interaction_action(
 				patrol.position,
@@ -126,10 +136,27 @@ func _benchmark_patrol(budget: Dictionary) -> Dictionary:
 		failures.append("独立巡路性能循环产生了不可行走终点")
 	if contract["route_points"] != PatrolStateScript.WAYPOINTS or bool(contract["collision_authority"]) or bool(contract["quest_authority"]):
 		failures.append("独立巡路性能循环改变了固定路线或权威边界")
+	if worksite_count <= 0:
+		failures.append("独立巡路性能循环没有覆盖端点工位查询")
+	var herbs_endpoint = PatrolStateScript.new()
+	if (
+		not herbs_endpoint.restore({
+			"position_x": PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT].x,
+			"position_y": PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT].y,
+			"target_index": PatrolStateScript.HERBS_WAYPOINT - 1,
+			"route_step": -1,
+			"dwell_remaining": PatrolStateScript.ENDPOINT_DWELL_SECONDS,
+			"yielding_to_player": false,
+		})
+		or herbs_endpoint.worksite_context(PatrolStateScript.RESPONSE_HERBS_FIRST).get("route_role") != "priority"
+		or not herbs_endpoint.finish_worksite(PatrolStateScript.WORKSITE_HERBS)
+	):
+		failures.append("独立巡路性能合同未覆盖药叶优先工位与完成路径")
 	return {
 		"iterations": iterations,
 		"elapsed_ms": snappedf(elapsed_ms, 0.01),
 		"interaction_checksum": interaction_checksum,
+		"worksite_count": worksite_count,
 		"position": patrol.position,
 		"target_index": patrol.target_index,
 	}
@@ -198,6 +225,7 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		"path": 0,
 		"dialogue": 0,
 		"patrol": 0,
+		"patrol_worksite_dialogue": 0,
 		"battle": 0,
 		"battle_action_immediate": 0,
 		"battle_action_stable": 0,
@@ -253,6 +281,35 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		var patrol_visual: Dictionary = instance.get_node("%MapCanvas").patrol_visual_contract()
 		if not bool(patrol_visual["visible"]) or not bool(patrol_visual["active"]):
 			failures.append("完成同行简报后独立巡路角色必须进入渡口场景")
+		var patrol_choice: Dictionary = instance.journey.complete_patrol_dialogue(PatrolStateScript.RESPONSE_BOAT_FIRST)
+		if not bool(patrol_choice.get("ok", false)) or not instance.patrol.apply_priority(PatrolStateScript.RESPONSE_BOAT_FIRST):
+			failures.append("工位对话生命周期夹具无法设定木楔优先路线")
+		if not instance.patrol.restore({
+			"position_x": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT].x,
+			"position_y": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT].y,
+			"target_index": PatrolStateScript.BOAT_WAYPOINT + 1,
+			"route_step": 1,
+			"dwell_remaining": PatrolStateScript.ENDPOINT_DWELL_SECONDS,
+			"yielding_to_player": false,
+		}):
+			failures.append("工位对话生命周期夹具无法恢复合法补船停留")
+		if not instance.exploration.restore({
+			"map_id": ExplorationStateScript.DEFAULT_MAP_ID,
+			"player_x": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT].x,
+			"player_y": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT].y,
+		}):
+			failures.append("工位对话生命周期夹具无法恢复近距玩家")
+		instance._render([])
+		var worksite_start: Dictionary = instance.interact()
+		if not bool(worksite_start.get("ok", false)) or instance.dialogue.dialogue_id != "patrol_boat_priority":
+			failures.append("补船优先工位必须进入结构化对话")
+		instance.skip_dialogue_to_response()
+		await process_frame
+		await process_frame
+		state_peaks["patrol_worksite_dialogue"] = maxi(int(state_peaks["patrol_worksite_dialogue"]), _count_nodes(instance))
+		instance._choose_dialogue_response("secure_boat_cloth")
+		if instance.dialogue.active or not is_zero_approx(instance.patrol.dwell_remaining):
+			failures.append("工位回应必须结束对话与当前停留")
 		instance._on_action("gather_moonleaf")
 		instance._on_action("enter_spring")
 		instance.get_node("%SceneTransition").finish()

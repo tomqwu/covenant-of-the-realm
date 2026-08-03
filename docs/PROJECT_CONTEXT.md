@@ -22,8 +22,9 @@ breakthroughs and major secret-realm reveals. The active lighting and palette co
 The current playable baseline also uses three original, repeatable spatial-prose interactions —
 the ferry boat-repair rack, drying rack, and mountain rain shelter. Keyboard, mouse, and controller
 reach the same no-reward actions; they do not change the Journey snapshot or add save fields.
-Their original schema decision remains intact; the current save v15 upgrade belongs only to the
-independent ferry-runner route and response.
+Their original schema decision remains intact. Save v15 introduced the independent ferry-runner
+route and response; current save v16 adds no field and only expands the resumable active-dialogue
+enum for four route-aware variants across the runner's two worksite actions.
 
 The content remains original. The user has not established a production license for any
 external novel IP, so no protected characters, names, prose, locations, treasures, or plot
@@ -130,20 +131,20 @@ Nakama may be evaluated later if the product grows into match-based content, ext
 
 Expand the executable RPG graybox into a complete 90-minute original chapter:
 
-1. top-down movement, collision, proximity interaction, 48×27 32 px TileMapLayer ground, a shared deterministic detail layer, an eleven-profile asset-backed landmark atlas, a bounded integer-pixel rolling camera, and a saved six-waypoint ferry-runner route between two work sites in 照禾渡口 / 藏泉山道, including three repeatable no-reward life landmarks (implemented; final hand-authored map refinement remains);
+1. top-down movement, collision, proximity interaction, 48×27 32 px TileMapLayer ground, a shared deterministic detail layer, an eleven-profile asset-backed landmark atlas, a bounded integer-pixel rolling camera, and a saved six-waypoint ferry-runner route between two work sites in 照禾渡口 / 藏泉山道, including three repeatable no-reward life landmarks and route-order-aware reactions at both runner endpoints (implemented; final hand-authored map refinement remains);
 2. resumable seven-line companion briefing, two attitude responses, dynamic quest-state presentation, and a resumable five-line chapter epilogue reflecting the played route (implemented);
 3. 月芽田两种不会锁死主线的采集方式、可见余留与结算回声（implemented）;
 4. 藏泉山道 free exploration, warning, optional stone-marker investigation, return/retreat, no-combat bypass, mid-map save, and companion rescue path (implemented);
 5. three regular enemy profiles plus a shared-resolver boss, stable intent-local counter windows, three optional spatial spoor investigations, a no-spoiler `灵物志`, material weaknesses, armor-break and focus states, and semantic attack/reaction animation for all four profiles (implemented; animation and intelligence change presentation only, never combat results);
 6. an active chapter companion and a visible two-turn tactical deployable (implemented);
-7. side-story-, patrol-route-, discovery-, harvest-, battle-status-, enemy-intelligence-, dialogue-, first-breath-stage-, and map-aware save v15, title/continue, two-step new-game protection, crash-consistent temporary/backup recovery with anti-downgrade validation, chapter replay, and an input-safe no-spoiler journey journal (implemented; v1–v14 migrate explicitly, phase/map/dialogue/patrol combinations are validated strictly, and replay clears the ritual and patrol state);
-8. mouse, keyboard, and controller parity with physical-event/focus acceptance coverage, including selectable journal pages, proximity investigations, the route-order dialogue, and all three repeatable life-landmark actions (implemented);
+7. side-story-, patrol-route-, discovery-, harvest-, battle-status-, enemy-intelligence-, dialogue-, first-breath-stage-, and map-aware save v16, title/continue, two-step new-game protection, crash-consistent temporary/backup recovery with anti-downgrade validation, chapter replay, and an input-safe no-spoiler journey journal (implemented; v1–v15 migrate explicitly, phase/map/dialogue/patrol combinations are validated strictly, v16 adds no field beyond its expanded dialogue enum, and replay clears the ritual and patrol state);
+8. mouse, keyboard, and controller parity with physical-event/focus acceptance coverage, including selectable journal pages, proximity investigations, the route-order dialogue, a representative herbs-priority runner worksite reaction (with the full four-variant matrix in E2E), and all three repeatable life-landmark actions (implemented);
 9. original visual direction and opt-in procedural ambience with recorded provenance (reproducible protagonist/companion/ferryman/herbkeeper/ferry-runner, enemy, ground/detail, and 2112×128 Zhaohe landmark atlases; animated map actors; and bright painted-paper dialogue portraits implemented; final art refinement remains);
 10. a third `cangquan_spring` micro-map and the ordered spatial ritual “听泉辨脉 → 月芽温脉 → 静坐引息” (implemented; wrong-order actions reject atomically, every successful step autosaves, and restoration preserves the exact ritual stage and coordinate);
 11. new-game-to-ending-to-save-resume-to-replay automated Godot acceptance path (implemented).
 
-The next production milestone is a 15–20 minute asset-backed sample chapter, prioritizing the
-ferry-runner endpoint payoff, a dialogue-speed preference, painted portrait refinement, denser NPC schedules, and longer original
+The next production milestone is a 15–20 minute asset-backed sample chapter, prioritizing a
+dialogue-speed preference, painted portrait refinement, denser NPC schedules, and longer original
 side-story content before expanding to the full 90-minute target. The ordered implementation and decision boundaries are recorded in
 [Next Production Plan v0.1](design/NEXT_PRODUCTION_PLAN_v0.1.md).
 

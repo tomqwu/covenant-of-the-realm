@@ -5,6 +5,7 @@ const CAPTURE_SAVE_PATH := "user://capture-ui-save.json"
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
+const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
 const CAPTURE_SETTINGS_PATH := "user://capture-ui-settings.json"
 
 
@@ -83,6 +84,8 @@ func _capture_flow() -> void:
 	await _settle()
 	await _save_frame("01-patrol-choice.png")
 	instance._choose_dialogue_response("boat_first")
+	var worksite_journey_snapshot: Dictionary = instance.journey.snapshot()
+	var worksite_patrol_snapshot: Dictionary = instance.patrol.snapshot()
 	instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.41, "player_y": 0.66})
 	instance._render([])
 	await _settle()
@@ -258,6 +261,7 @@ func _capture_flow() -> void:
 	instance.show_full_dialogue_line()
 	await _settle()
 	await _save_frame("04-chapter-epilogue.png")
+	await _capture_worksite_reactions(instance, worksite_journey_snapshot, worksite_patrol_snapshot)
 	SaveGameScript.remove(CAPTURE_SAVE_PATH)
 	SettingsStoreScript.remove(CAPTURE_SETTINGS_PATH)
 	quit(0)
@@ -270,10 +274,79 @@ func _settle() -> void:
 	await process_frame
 
 
-func _save_frame(filename: String) -> void:
+func _capture_worksite_reactions(
+	instance,
+	journey_snapshot: Dictionary,
+	patrol_snapshot: Dictionary
+) -> void:
+	assert(instance.journey.restore(journey_snapshot), "工位参考图必须恢复已选择的渡口旅程")
+	assert(instance.patrol.restore(patrol_snapshot), "工位参考图必须恢复已选择的巡路方向")
+	assert(instance.dialogue.restore({"active": false, "dialogue_id": "", "line_index": 0}),
+		"工位参考图必须从空闲对话状态开始")
+	instance.get_node("%DialogueOverlay").hide()
+	instance.get_node("%SceneTransition").finish()
+
+	assert(instance.patrol.restore({
+		"position_x": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT].x,
+		"position_y": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT].y,
+		"target_index": PatrolStateScript.BOAT_WAYPOINT + 1,
+		"route_step": 1,
+		"dwell_remaining": PatrolStateScript.ENDPOINT_DWELL_SECONDS,
+		"yielding_to_player": false,
+	}), "补船工位参考图必须从合法端点停留开始")
+	assert(instance.exploration.restore({
+		"map_id": ExplorationStateScript.DEFAULT_MAP_ID,
+		"player_x": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT].x,
+		"player_y": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT].y,
+	}), "补船工位参考图玩家必须在交互半径内")
+	instance._render([])
+	instance.get_node("%SceneTransition").finish()
+	var boat_capture_context: Dictionary = instance.patrol.worksite_context(instance.journey.patrol_response)
+	assert(boat_capture_context.get("action_id") == "talk_at_boat_worksite" and boat_capture_context.get("route_role") == "priority",
+		"补船工位参考图必须保留木楔优先空间语义")
+	instance._on_action("talk_at_boat_worksite")
+	instance.show_full_dialogue_line()
+	assert(instance.patrol.position.is_equal_approx(PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT])
+		and instance.dialogue.dialogue_id == "patrol_boat_priority",
+		"补船参考图必须锁定端点与优先台词")
+	await _settle()
+	_assert_tao_dialogue_ready(instance, "补船工位")
+	await _save_frame("01-patrol-boat-reaction.png", true)
+	instance.skip_dialogue_to_response()
+	instance._choose_dialogue_response("secure_boat_cloth")
+	await _settle()
+
+	assert(instance.patrol.restore({
+		"position_x": PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT].x,
+		"position_y": PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT].y,
+		"target_index": PatrolStateScript.HERBS_WAYPOINT - 1,
+		"route_step": -1,
+		"dwell_remaining": PatrolStateScript.ENDPOINT_DWELL_SECONDS,
+		"yielding_to_player": false,
+	}), "晾晒工位参考图必须从合法端点停留开始")
+	assert(instance.exploration.restore({
+		"map_id": ExplorationStateScript.DEFAULT_MAP_ID,
+		"player_x": PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT].x,
+		"player_y": PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT].y,
+	}), "晾晒工位参考图玩家必须在交互半径内")
+	instance._render([])
+	var herbs_capture_context: Dictionary = instance.patrol.worksite_context(instance.journey.patrol_response)
+	assert(herbs_capture_context.get("action_id") == "talk_at_herbs_worksite" and herbs_capture_context.get("route_role") == "followup",
+		"晾晒工位参考图必须保留木楔优先后续语义")
+	instance._on_action("talk_at_herbs_worksite")
+	instance.show_full_dialogue_line()
+	assert(instance.patrol.position.is_equal_approx(PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT])
+		and instance.dialogue.dialogue_id == "patrol_herbs_followup",
+		"晾晒参考图必须锁定端点与后续台词")
+	await _settle()
+	_assert_tao_dialogue_ready(instance, "晾晒工位")
+	await _save_frame("01-patrol-herbs-reaction.png", true)
+
+
+func _save_frame(filename: String, preserve_patrol: bool = false) -> void:
 	var was_paused := paused
 	paused = true
-	_normalize_capture_state()
+	_normalize_capture_state(preserve_patrol)
 	_freeze_animated_sprites()
 	RenderingServer.force_draw(false)
 	await process_frame
@@ -296,18 +369,31 @@ func _freeze_animated_sprites() -> void:
 		sprite.frame_progress = 0.0
 
 
-func _normalize_capture_state() -> void:
+func _assert_tao_dialogue_ready(game, label: String) -> void:
+	var portrait: Control = game.get_node("%DialoguePortrait")
+	var identity: Label = game.get_node("%DialoguePortraitLabel")
+	assert(game.get_node("%DialogueOverlay").visible, "%s参考图必须显示对话层" % label)
+	assert(not game.get_node("%SceneTransition").visible, "%s参考图不得残留场景转场" % label)
+	assert(portrait.visible and portrait.visual_contract()["portrait_id"] == "tao_xiaoman",
+		"%s参考图必须完整显示陶小满头像" % label)
+	assert(identity.visible and identity.text == "陶小满 · 照禾渡口跑腿人",
+		"%s参考图必须完整显示陶小满身份条" % label)
+
+
+func _normalize_capture_state(preserve_patrol: bool = false) -> void:
 	var game := root.find_child("Main", true, false)
 	if game != null and game.get("patrol") != null:
 		var patrol_state = game.get("patrol")
 		var journey_state = game.get("journey")
-		patrol_state.reset()
+		if not preserve_patrol:
+			patrol_state.reset()
 		if journey_state.phase_id() == "riverbank":
 			game.get_node("%MapCanvas").set_patrol_state(
 				patrol_state.position,
 				patrol_state.motion_direction(),
 				patrol_state.is_moving(),
-				journey_state.talked_to_companion
+				journey_state.talked_to_companion,
+				str(patrol_state.worksite_context(journey_state.patrol_response).get("worksite_id", ""))
 			)
 	var map_canvas := root.find_child("MapCanvas", true, false)
 	if map_canvas != null and map_canvas.feedback_remaining > 0.0:

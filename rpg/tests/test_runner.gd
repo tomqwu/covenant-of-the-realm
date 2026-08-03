@@ -29,10 +29,12 @@ func _run() -> void:
 	_test_enemy_catalog()
 	_test_exploration_rules()
 	_test_patrol_state()
+	_test_patrol_endpoint_work()
 	_test_life_landmark_observations()
 	_test_state_restore()
 	_test_dialogue_state()
 	_test_versioned_save()
+	_test_patrol_work_save_validation()
 	_test_crash_consistent_save_recovery()
 	_test_stale_temporary_branch_replacement()
 	_test_all_save_artifact_barriers()
@@ -486,6 +488,129 @@ func _test_patrol_state() -> void:
 	_expect_equal(herbs_first.interaction_action(herbs_first.position, "unanswered", false), "", "未激活巡路人时不伪造交互")
 
 
+func _test_patrol_endpoint_work() -> void:
+	var endpoint_cases := [
+		{
+			"worksite_id": PatrolStateScript.WORKSITE_BOAT,
+			"action_id": PatrolStateScript.TALK_AT_BOAT_WORKSITE,
+			"position": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT],
+		},
+		{
+			"worksite_id": PatrolStateScript.WORKSITE_HERBS,
+			"action_id": PatrolStateScript.TALK_AT_HERBS_WORKSITE,
+			"position": PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT],
+		},
+	]
+	var route_cases := [
+		{"response": PatrolStateScript.RESPONSE_BOAT_FIRST, "priority": PatrolStateScript.WORKSITE_BOAT},
+		{"response": PatrolStateScript.RESPONSE_HERBS_FIRST, "priority": PatrolStateScript.WORKSITE_HERBS},
+	]
+	for route_case in route_cases:
+		for endpoint_case in endpoint_cases:
+			var patrol = PatrolStateScript.new()
+			var worksite_id: String = endpoint_case["worksite_id"]
+			var action_id: String = endpoint_case["action_id"]
+			var response_id: String = route_case["response"]
+			_expect_true(patrol.restore(_patrol_endpoint_snapshot(worksite_id)), "%s 路线的 %s 工作点可恢复" % [response_id, worksite_id])
+			var expected_role := "priority" if worksite_id == route_case["priority"] else "followup"
+			_expect_equal(patrol.worksite_context(response_id), {
+				"worksite_id": worksite_id,
+				"action_id": action_id,
+				"route_role": expected_role,
+			}, "%s×%s 精确映射工作点、行动与先后角色" % [response_id, worksite_id])
+			_expect_equal(patrol.interaction_action(endpoint_case["position"], response_id), action_id, "%s×%s 近距提供端点交谈" % [response_id, worksite_id])
+			_expect_equal(
+				patrol.interaction_action(endpoint_case["position"] + Vector2(PatrolStateScript.INTERACTION_RADIUS + 0.001, 0.0), response_id),
+				"",
+				"%s×%s 半径外不提供远程端点交谈" % [response_id, worksite_id]
+			)
+			var before_wrong_finish: Dictionary = patrol.snapshot()
+			var wrong_worksite := PatrolStateScript.WORKSITE_HERBS if worksite_id == PatrolStateScript.WORKSITE_BOAT else PatrolStateScript.WORKSITE_BOAT
+			_expect_false(patrol.finish_worksite(wrong_worksite), "%s 工作点拒绝结束另一端停留" % worksite_id)
+			_expect_equal(patrol.snapshot(), before_wrong_finish, "错误工作点结束保持巡路快照原子不变")
+			_expect_true(patrol.finish_worksite(worksite_id), "%s 工作点选择后可结束当前停留" % worksite_id)
+			var after_finish: Dictionary = patrol.snapshot()
+			_expect_equal(after_finish["dwell_remaining"], 0.0, "结束 %s 工作点只清零停留余量" % worksite_id)
+			for key in before_wrong_finish:
+				if key != "dwell_remaining":
+					_expect_equal(after_finish[key], before_wrong_finish[key], "结束 %s 工作点不修改 %s" % [worksite_id, key])
+			_expect_equal(patrol.worksite_context(response_id), {}, "停留结束后 %s 工作点上下文立即失效" % worksite_id)
+			_expect_equal(patrol.interaction_action(endpoint_case["position"], response_id), "", "停留结束后 %s 不重复开启工作点对话" % worksite_id)
+			_expect_false(patrol.finish_worksite(worksite_id), "%s 停留不能重复结束" % worksite_id)
+
+	var no_route = PatrolStateScript.new()
+	_expect_true(no_route.restore(_patrol_endpoint_snapshot(PatrolStateScript.WORKSITE_BOAT)), "未选路线端点夹具合法")
+	_expect_equal(no_route.worksite_context(PatrolStateScript.RESPONSE_UNANSWERED), {}, "未选路线不伪造工作点上下文")
+	_expect_equal(
+		no_route.interaction_action(no_route.position, PatrolStateScript.RESPONSE_UNANSWERED),
+		PatrolStateScript.TALK_TO_PATROL_RUNNER,
+		"未选路线时端点近距仍只提供初次巡路委托"
+	)
+	_expect_equal(no_route.interaction_action(Vector2(NAN, no_route.position.y), PatrolStateScript.RESPONSE_UNANSWERED), "", "非有限玩家坐标不能伪造巡路交互")
+	var zero_dwell = PatrolStateScript.new()
+	_expect_true(zero_dwell.restore(_patrol_endpoint_snapshot(PatrolStateScript.WORKSITE_BOAT, 0.0)), "零停留端点仍是合法移动起点")
+	_expect_equal(zero_dwell.worksite_context(PatrolStateScript.RESPONSE_BOAT_FIRST), {}, "精确端点但无停留时不伪造工作点")
+	_expect_false(zero_dwell.finish_worksite(PatrolStateScript.WORKSITE_BOAT), "零停留端点不能重复完成工作")
+	var midroute = PatrolStateScript.new()
+	var midroute_snapshot := PatrolStateScript.default_snapshot()
+	midroute_snapshot["dwell_remaining"] = 0.0
+	_expect_true(midroute.restore(midroute_snapshot), "路线中段端点否定夹具合法")
+	_expect_equal(midroute.worksite_context(PatrolStateScript.RESPONSE_BOAT_FIRST), {}, "路线中段不会只凭已选路线伪造工作点")
+
+	for route_case in route_cases:
+		var response_id: String = route_case["response"]
+		var target_worksite: String = route_case["priority"]
+		var target_position := (
+			PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT]
+			if target_worksite == PatrolStateScript.WORKSITE_BOAT
+			else PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT]
+		)
+		var waiting = PatrolStateScript.new()
+		_expect_true(waiting.apply_priority(response_id), "%s 等候测试先应用路线选择" % response_id)
+		waiting.advance(30.0, target_position, response_id)
+		_expect_true(waiting.position.distance_to(target_position) <= PatrolStateScript.POSITION_EPSILON, "玩家守候 %s 时陶小满仍先抵达端点" % target_worksite)
+		_expect_true(waiting.dwell_remaining > 0.0, "抵达 %s 后保留可交互停留窗口" % target_worksite)
+		_expect_true(waiting.yielding_to_player, "抵达 %s 后近距玩家冻结陶小满" % target_worksite)
+		_expect_false(waiting.worksite_context(response_id).is_empty(), "抵达 %s 后立即产生工作点上下文" % target_worksite)
+		var frozen_snapshot: Dictionary = waiting.snapshot()
+		waiting.advance(30.0, target_position, response_id)
+		_expect_equal(waiting.snapshot(), frozen_snapshot, "玩家继续守候 %s 时大增量也不吞掉停留窗口" % target_worksite)
+		var finished_while_near = PatrolStateScript.new()
+		_expect_true(finished_while_near.restore(frozen_snapshot), "%s 近距回应夹具恢复到站状态" % target_worksite)
+		_expect_true(finished_while_near.finish_worksite(target_worksite), "%s 近距回应可原子结束停留" % target_worksite)
+		_expect_true(finished_while_near.yielding_to_player, "%s 回应只结束停留并保留礼让状态" % target_worksite)
+		_expect_false(finished_while_near.is_moving(), "%s 回应后玩家仍近时保持 idle 而不原地走路" % target_worksite)
+		var finished_near_position: Vector2 = finished_while_near.position
+		finished_while_near.advance(0.1, target_position, response_id)
+		_expect_equal(finished_while_near.position, finished_near_position, "%s 回应后近距玩家继续冻结位置" % target_worksite)
+		finished_while_near.advance(0.1, target_position + Vector2(PatrolStateScript.YIELD_EXIT_RADIUS + 0.001, 0.0), response_id)
+		_expect_false(finished_while_near.yielding_to_player, "%s 回应后玩家离开十分路宽才解除礼让" % target_worksite)
+		_expect_true(finished_while_near.is_moving(), "%s 回应后玩家离开才恢复移动动画合同" % target_worksite)
+		_expect_true(finished_while_near.position.distance_to(finished_near_position) > 0.0, "%s 回应后玩家离开才恢复路线位移" % target_worksite)
+		waiting.advance(0.1, Vector2(-1.0, -1.0), response_id)
+		_expect_false(waiting.yielding_to_player, "玩家离开 %s 后解除让路" % target_worksite)
+		_expect_true(waiting.dwell_remaining < float(frozen_snapshot["dwell_remaining"]), "玩家离开 %s 后停留计时恢复" % target_worksite)
+
+		var sliced = PatrolStateScript.new()
+		_expect_true(sliced.apply_priority(response_id), "%s 切片测试应用同一路线" % response_id)
+		for _step in range(300):
+			sliced.advance(PatrolStateScript.MAX_STEP_SECONDS, target_position, response_id)
+		_expect_true(sliced.position.distance_to(target_position) <= PatrolStateScript.POSITION_EPSILON, "%s 大步与固定切片都抵达目标端点" % response_id)
+		_expect_equal(sliced.target_index, frozen_snapshot["target_index"], "%s 大步与固定切片保持相同后续目标" % response_id)
+		_expect_equal(sliced.route_step, frozen_snapshot["route_step"], "%s 大步与固定切片保持相同折返方向" % response_id)
+		_expect_true(absf(sliced.dwell_remaining - float(frozen_snapshot["dwell_remaining"])) <= PatrolStateScript.POSITION_EPSILON * 4.0, "%s 大步与固定切片保持相同端点停留" % response_id)
+		_expect_true(sliced.yielding_to_player, "%s 固定切片同样在到站后礼让玩家" % response_id)
+
+	var selected_courtesy = PatrolStateScript.new()
+	var selected_moving_snapshot := PatrolStateScript.default_snapshot()
+	selected_moving_snapshot["dwell_remaining"] = 0.0
+	_expect_true(selected_courtesy.restore(selected_moving_snapshot), "已选路线礼让测试恢复合法中段")
+	var selected_origin: Vector2 = selected_courtesy.position
+	selected_courtesy.advance(1.0, selected_origin + Vector2(0.02, 0.0), PatrolStateScript.RESPONSE_BOAT_FIRST)
+	_expect_true(selected_courtesy.yielding_to_player, "已选路线在非目标端点仍按每个固定步长礼让近距玩家")
+	_expect_equal(selected_courtesy.position, selected_origin, "普通近距礼让不会被端点守候例外误穿透")
+
+
 func _test_life_landmark_observations() -> void:
 	var ferry_state = JourneyStateScript.new()
 	var ferry_before: Dictionary = ferry_state.snapshot()
@@ -783,6 +908,33 @@ func _test_dialogue_state() -> void:
 	_expect_true(restored_patrol_dialogue.restore(patrol_dialogue_snapshot), "巡路对话可在两项选择前恢复")
 	_expect_equal(restored_patrol_dialogue.dialogue_id, "patrol_runner_briefing", "巡路恢复保持稳定对话标识")
 	_expect_true(restored_patrol_dialogue.finish(), "巡路回应后释放结构化对话")
+	var patrol_work_dialogues := [
+		{"worksite_id": "boat", "patrol_response": "boat_first", "dialogue_id": "patrol_boat_priority", "route_role": "priority", "action_id": "talk_at_boat_worksite"},
+		{"worksite_id": "boat", "patrol_response": "herbs_first", "dialogue_id": "patrol_boat_followup", "route_role": "followup", "action_id": "talk_at_boat_worksite"},
+		{"worksite_id": "herbs", "patrol_response": "herbs_first", "dialogue_id": "patrol_herbs_priority", "route_role": "priority", "action_id": "talk_at_herbs_worksite"},
+		{"worksite_id": "herbs", "patrol_response": "boat_first", "dialogue_id": "patrol_herbs_followup", "route_role": "followup", "action_id": "talk_at_herbs_worksite"},
+	]
+	for work_dialogue in patrol_work_dialogues:
+		_expect_equal(
+			DialogueStateScript.patrol_work_dialogue_id(work_dialogue["worksite_id"], work_dialogue["patrol_response"]),
+			work_dialogue["dialogue_id"],
+			"工作点与路线稳定映射 %s" % work_dialogue["dialogue_id"]
+		)
+		_expect_equal(DialogueStateScript.patrol_work_context(work_dialogue["dialogue_id"]), {
+			"worksite_id": work_dialogue["worksite_id"],
+			"patrol_response": work_dialogue["patrol_response"],
+			"route_role": work_dialogue["route_role"],
+			"action_id": work_dialogue["action_id"],
+		}, "工作点对话 %s 可无损反向映射" % work_dialogue["dialogue_id"])
+		var work_state = DialogueStateScript.new()
+		_expect_true(work_state.start(work_dialogue["dialogue_id"]), "%s 是受支持结构化对话" % work_dialogue["dialogue_id"])
+		_expect_true(work_state.advance(2), "%s 可逐句推进" % work_dialogue["dialogue_id"])
+		var restored_work = DialogueStateScript.new()
+		_expect_true(restored_work.restore(work_state.snapshot()), "%s 可在回应前恢复" % work_dialogue["dialogue_id"])
+		_expect_equal(restored_work.dialogue_id, work_dialogue["dialogue_id"], "%s 恢复保持稳定标识" % work_dialogue["dialogue_id"])
+	_expect_equal(DialogueStateScript.patrol_work_dialogue_id("kiln", "boat_first"), "", "未知工作点不映射对话")
+	_expect_equal(DialogueStateScript.patrol_work_dialogue_id("boat", "unanswered"), "", "未选路线不映射工作点对话")
+	_expect_equal(DialogueStateScript.patrol_work_context("patrol_runner_briefing"), {}, "初次巡路委托不伪装为工作点上下文")
 	_expect_true(restored.restore({"active": true, "dialogue_id": "companion_briefing", "line_index": 8}), "规则状态允许未来内容扩充到第八行")
 	_expect_false(restored.restore({"active": true, "dialogue_id": "companion_briefing", "line_index": 65}), "异常过大的对话行号被拒绝")
 	_expect_false(restored.restore({"active": false, "dialogue_id": "companion_briefing", "line_index": 0}), "空闲状态不能保留对话标识")
@@ -821,9 +973,9 @@ func _test_versioned_save() -> void:
 	_expect_equal(loaded["data"]["journey"]["moonleaf_method"], "whole_plant", "新版存档保留取药方式")
 	_expect_equal(loaded["data"]["journey"]["enemy_id"], "rock_armor_young", "新版存档声明稳定敌人标识")
 	_expect_equal(loaded["data"]["journey"]["enemy_intel"], ["spring_moss_shell", "rock_armor_young"], "v13 磁盘往返保持敌情调查顺序")
-	_expect_equal(loaded["data"]["journey"]["first_breath_stage"], "unstarted", "v15 磁盘往返保持尚未开始的引息仪轨")
-	_expect_equal(loaded["data"]["journey"]["patrol_response"], "herbs_first", "v15 磁盘往返保持巡路先后选择")
-	_expect_true(loaded["data"].has("patrol"), "v15 存档在顶层声明独立巡路状态")
+	_expect_equal(loaded["data"]["journey"]["first_breath_stage"], "unstarted", "当前版本磁盘往返保持尚未开始的引息仪轨")
+	_expect_equal(loaded["data"]["journey"]["patrol_response"], "herbs_first", "当前版本磁盘往返保持巡路先后选择")
+	_expect_true(loaded["data"].has("patrol"), "当前版本存档在顶层声明独立巡路状态")
 	_expect_equal(loaded["data"]["exploration"]["map_id"], "cangquan_path", "新版战斗存档声明一致的山道地图标识")
 	var restored_dialogue = DialogueStateScript.new()
 	_expect_true(restored_dialogue.restore(loaded["data"]["dialogue"]), "新版存档包含可恢复的空闲对话状态")
@@ -1053,7 +1205,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v12["data"]["save_version"], SaveGameScript.SAVE_VERSION, "v12 迁移升级到当前版本")
 	_expect_equal(migrated_v12["data"]["journey"]["enemy_intel"], [], "v12 战斗存档迁移为空敌情而不虚构调查")
 	_expect_equal(migrated_v12["data"]["journey"]["first_breath_stage"], "unstarted", "v12 战斗存档不虚构引息仪轨进度")
-	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH, {}, false, patrol.snapshot())["ok"], "v12 迁移后可写回 v15 存档")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH, {}, false, patrol.snapshot())["ok"], "v12 迁移后可写回当前版本存档")
 
 	var version_thirteen_journey: Dictionary = journey.snapshot().duplicate(true)
 	version_thirteen_journey.erase("first_breath_stage")
@@ -1139,7 +1291,7 @@ func _test_versioned_save() -> void:
 	_expect_equal(migrated_v14["data"]["journey"]["patrol_response"], "unanswered", "v14 迁移不替玩家决定巡路先后")
 	_expect_equal(migrated_v14["data"]["patrol"], PatrolStateScript.default_snapshot(), "v14 迁移从中立默认路线开始")
 
-	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH, {}, false, patrol.snapshot())["ok"], "v14 迁移后可写回 v15 存档")
+	_expect_true(SaveGameScript.write(journey.snapshot(), exploration.snapshot(), TEST_SAVE_PATH, {}, false, patrol.snapshot())["ok"], "v14 迁移后可写回当前版本存档")
 	var valid_save_text := FileAccess.get_file_as_string(TEST_SAVE_PATH)
 	_write_test_file(TEST_SAVE_PATH + ".bak", valid_save_text)
 	_write_test_file(TEST_SAVE_PATH, "{broken")
@@ -1254,7 +1406,7 @@ func _test_versioned_save() -> void:
 		"exploration": exploration.snapshot(),
 		"dialogue": DialogueStateScript.default_snapshot(),
 	}))
-	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_patrol", "v15 当前存档缺少顶层巡路快照时拒绝恢复")
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_patrol", "v16 当前存档缺少顶层巡路快照时拒绝恢复")
 	var invalid_patrol_snapshot := PatrolStateScript.default_snapshot()
 	invalid_patrol_snapshot["position_x"] = 0.50
 	invalid_patrol_snapshot["position_y"] = 0.50
@@ -1266,7 +1418,7 @@ func _test_versioned_save() -> void:
 		"dialogue": DialogueStateScript.default_snapshot(),
 		"patrol": invalid_patrol_snapshot,
 	}))
-	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_patrol", "v15 当前存档拒绝离开公开路线的巡路快照")
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_patrol", "v16 当前存档拒绝离开公开路线的巡路快照")
 
 	var patrol_dialogue_journey = JourneyStateScript.new()
 	patrol_dialogue_journey.choose("talk_to_companion")
@@ -1295,6 +1447,112 @@ func _test_versioned_save() -> void:
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_json", "损坏 JSON 被安全拒绝")
 	SaveGameScript.remove(TEST_SAVE_PATH)
 	_expect_false(FileAccess.file_exists(TEST_SAVE_PATH), "测试存档和临时文件可清理")
+
+
+func _test_patrol_work_save_validation() -> void:
+	var dialogue_cases := [
+		{"worksite": "boat", "response": "boat_first", "dialogue_id": "patrol_boat_priority"},
+		{"worksite": "boat", "response": "herbs_first", "dialogue_id": "patrol_boat_followup"},
+		{"worksite": "herbs", "response": "herbs_first", "dialogue_id": "patrol_herbs_priority"},
+		{"worksite": "herbs", "response": "boat_first", "dialogue_id": "patrol_herbs_followup"},
+	]
+	var valid_boat_payload: Dictionary = {}
+	for dialogue_case in dialogue_cases:
+		var journey = JourneyStateScript.new()
+		_expect_true(journey.complete_companion_briefing("careful")["ok"], "%s 存档夹具完成同伴简报" % dialogue_case["dialogue_id"])
+		_expect_true(journey.complete_patrol_dialogue(dialogue_case["response"])["ok"], "%s 存档夹具记录路线" % dialogue_case["dialogue_id"])
+		var patrol_snapshot := _patrol_endpoint_snapshot(dialogue_case["worksite"])
+		var endpoint_position := Vector2(float(patrol_snapshot["position_x"]), float(patrol_snapshot["position_y"]))
+		var exploration = ExplorationStateScript.new()
+		_expect_true(exploration.restore({
+			"map_id": ExplorationStateScript.DEFAULT_MAP_ID,
+			"player_x": endpoint_position.x,
+			"player_y": endpoint_position.y,
+		}), "%s 存档夹具把玩家放在准确端点" % dialogue_case["dialogue_id"])
+		var payload := {
+			"save_version": SaveGameScript.SAVE_VERSION,
+			"story_id": SaveGameScript.STORY_ID,
+			"journey": journey.snapshot(),
+			"exploration": exploration.snapshot(),
+			"dialogue": {"active": true, "dialogue_id": dialogue_case["dialogue_id"], "line_index": 1},
+			"patrol": patrol_snapshot,
+		}
+		SaveGameScript.remove(TEST_SAVE_PATH)
+		_write_test_file(TEST_SAVE_PATH, JSON.stringify(payload))
+		var loaded: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+		_expect_true(loaded["ok"], "%s 的路线、端点、距离与停留一致时可恢复" % dialogue_case["dialogue_id"])
+		_expect_equal(loaded["data"]["dialogue"]["dialogue_id"], dialogue_case["dialogue_id"], "%s 活动位置按 v16 原样保留" % dialogue_case["dialogue_id"])
+		if dialogue_case["dialogue_id"] == "patrol_boat_priority":
+			valid_boat_payload = payload.duplicate(true)
+
+	var version_fifteen_payload: Dictionary = valid_boat_payload.duplicate(true)
+	version_fifteen_payload["save_version"] = 15
+	version_fifteen_payload["dialogue"] = DialogueStateScript.default_snapshot()
+	SaveGameScript.remove(TEST_SAVE_PATH)
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify(version_fifteen_payload))
+	var migrated_v15: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v15["ok"], "v15 巡路存档可显式迁移到 v16")
+	_expect_equal(migrated_v15["migrated_from_version"], 15, "v15 迁移声明准确来源版本")
+	_expect_equal(migrated_v15["data"]["save_version"], SaveGameScript.SAVE_VERSION, "v15 迁移只提升到当前 v16")
+	var restored_v15_journey = JourneyStateScript.new()
+	var restored_v15_patrol = PatrolStateScript.new()
+	var restored_v15_exploration = ExplorationStateScript.new()
+	_expect_true(restored_v15_journey.restore(migrated_v15["data"]["journey"]), "v15 迁移后的旅程仍可严格恢复")
+	_expect_true(restored_v15_patrol.restore(migrated_v15["data"]["patrol"]), "v15 迁移后的巡路仍可严格恢复")
+	_expect_true(restored_v15_exploration.restore(migrated_v15["data"]["exploration"]), "v15 迁移后的渡口空间仍可严格恢复")
+	_expect_equal(restored_v15_journey.snapshot(), version_fifteen_payload["journey"], "v15 迁移保留已选巡路先后")
+	_expect_equal(restored_v15_patrol.snapshot(), version_fifteen_payload["patrol"], "v15 迁移保留独立巡路位置与停留")
+	_expect_equal(restored_v15_exploration.snapshot(), version_fifteen_payload["exploration"], "v15 合法渡口空间快照原样保留")
+
+	for legacy_version in range(1, 16):
+		SaveGameScript.remove(TEST_SAVE_PATH)
+		_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+			"save_version": legacy_version,
+			"story_id": SaveGameScript.STORY_ID,
+			"journey": {},
+			"exploration": {},
+			"dialogue": {"active": true, "dialogue_id": "patrol_boat_priority", "line_index": 0},
+		}))
+		var forged_legacy: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+		_expect_false(forged_legacy["ok"], "v%d 不能伪造尚不存在的工作点对话" % legacy_version)
+		_expect_equal(forged_legacy["reason"], "invalid_dialogue", "v%d 伪造工作点对话返回稳定原因" % legacy_version)
+
+	var invalid_current_cases := []
+	var wrong_route: Dictionary = valid_boat_payload.duplicate(true)
+	wrong_route["journey"]["patrol_response"] = "herbs_first"
+	invalid_current_cases.append({"label": "活动对话与巡路选择错配", "payload": wrong_route})
+	var wrong_endpoint: Dictionary = valid_boat_payload.duplicate(true)
+	wrong_endpoint["patrol"] = _patrol_endpoint_snapshot(PatrolStateScript.WORKSITE_HERBS)
+	invalid_current_cases.append({"label": "活动对话与 NPC 工作点错配", "payload": wrong_endpoint})
+	var far_player: Dictionary = valid_boat_payload.duplicate(true)
+	far_player["exploration"] = ExplorationStateScript.new().snapshot()
+	invalid_current_cases.append({"label": "玩家远离活动工作点", "payload": far_player})
+	var no_dwell: Dictionary = valid_boat_payload.duplicate(true)
+	no_dwell["patrol"] = _patrol_endpoint_snapshot(PatrolStateScript.WORKSITE_BOAT, 0.0)
+	invalid_current_cases.append({"label": "活动工作点已结束停留", "payload": no_dwell})
+	var wrong_role: Dictionary = valid_boat_payload.duplicate(true)
+	wrong_role["dialogue"]["dialogue_id"] = "patrol_boat_followup"
+	invalid_current_cases.append({"label": "同一端点优先与后续角色错配", "payload": wrong_role})
+	var path_journey = JourneyStateScript.new()
+	path_journey.complete_companion_briefing("careful")
+	path_journey.complete_patrol_dialogue("boat_first")
+	path_journey.choose("gather_moonleaf")
+	path_journey.choose("enter_spring")
+	var wrong_scene: Dictionary = valid_boat_payload.duplicate(true)
+	wrong_scene["journey"] = path_journey.snapshot()
+	wrong_scene["exploration"] = {
+		"map_id": ExplorationStateScript.MOUNTAIN_PATH_MAP_ID,
+		"player_x": ExplorationStateScript.PATH_START_POSITION.x,
+		"player_y": ExplorationStateScript.PATH_START_POSITION.y,
+	}
+	invalid_current_cases.append({"label": "山道场景伪造渡口工作点对话", "payload": wrong_scene})
+	for invalid_case in invalid_current_cases:
+		SaveGameScript.remove(TEST_SAVE_PATH)
+		_write_test_file(TEST_SAVE_PATH, JSON.stringify(invalid_case["payload"]))
+		var invalid_result: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+		_expect_false(invalid_result["ok"], "%s 被当前存档拒绝" % invalid_case["label"])
+		_expect_equal(invalid_result["reason"], "invalid_dialogue", "%s 返回稳定跨状态原因" % invalid_case["label"])
+	SaveGameScript.remove(TEST_SAVE_PATH)
 
 
 func _test_crash_consistent_save_recovery() -> void:
@@ -1708,6 +1966,32 @@ func _test_patrol_side_story() -> void:
 			_expect_equal(herbs_first.snapshot()[key], briefed_snapshot[key], "药叶优先不暗中奖励或修改 %s" % key)
 	_expect_false(boat_first.available_actions().has("talk_to_patrol_runner"), "木楔优先后巡路行动隐藏")
 	_expect_false(herbs_first.available_actions().has("talk_to_patrol_runner"), "药叶优先后巡路行动隐藏")
+	for selected_route in [boat_first, herbs_first]:
+		_expect_true(selected_route.available_actions().has(JourneyStateScript.TALK_AT_BOAT_WORKSITE), "选定巡路后旅程目录公开船架端点行动")
+		_expect_true(selected_route.available_actions().has(JourneyStateScript.TALK_AT_HERBS_WORKSITE), "选定巡路后旅程目录公开竹架端点行动")
+		var before_remote_work: Dictionary = selected_route.snapshot()
+		_expect_equal(selected_route.choose(JourneyStateScript.TALK_AT_BOAT_WORKSITE)["events"], ["invalid_action"], "无空间上下文的 choose 不能远程代选船架回应")
+		_expect_equal(selected_route.choose(JourneyStateScript.TALK_AT_HERBS_WORKSITE)["events"], ["invalid_action"], "无空间上下文的 choose 不能远程代选竹架回应")
+		_expect_equal(selected_route.snapshot(), before_remote_work, "远程工作点 shortcut 被拒绝且不修改旅程")
+	var work_choice_cases := [
+		{"worksite": JourneyStateScript.WORKSITE_BOAT, "response": JourneyStateScript.SECURE_BOAT_CLOTH, "event": "patrol_boat_cloth_secured"},
+		{"worksite": JourneyStateScript.WORKSITE_BOAT, "response": JourneyStateScript.CHECK_BOAT_MEASURE, "event": "patrol_boat_measure_checked"},
+		{"worksite": JourneyStateScript.WORKSITE_HERBS, "response": JourneyStateScript.STEADY_HERB_TRAY, "event": "patrol_herbs_tray_steadied"},
+		{"worksite": JourneyStateScript.WORKSITE_HERBS, "response": JourneyStateScript.CHECK_HERB_LIGHT, "event": "patrol_herbs_light_checked"},
+	]
+	var work_snapshot: Dictionary = boat_first.snapshot()
+	for work_choice in work_choice_cases:
+		var work_result: Dictionary = boat_first.complete_patrol_work_dialogue(work_choice["worksite"], work_choice["response"])
+		_expect_true(work_result["ok"], "%s 可完成对应工作点回应" % work_choice["response"])
+		_expect_equal(work_result["events"], [work_choice["event"]], "%s 返回锁定语义事件" % work_choice["response"])
+		_expect_equal(work_result["snapshot"], work_snapshot, "%s 结果快照保持无奖励工作回声" % work_choice["response"])
+		_expect_equal(boat_first.snapshot(), work_snapshot, "%s 不修改旅程持久状态" % work_choice["response"])
+	var invalid_work_before: Dictionary = boat_first.snapshot()
+	_expect_equal(boat_first.complete_patrol_work_dialogue("boat", "steady_herb_tray")["events"], ["invalid_patrol_work_response"], "工作点与回应错配返回稳定错误")
+	_expect_equal(boat_first.complete_patrol_work_dialogue("kiln", "secure_boat_cloth")["events"], ["invalid_patrol_work_response"], "未知工作点返回稳定错误")
+	_expect_equal(boat_first.snapshot(), invalid_work_before, "非法工作点回应保持旅程原子不变")
+	_expect_equal(unavailable.complete_patrol_work_dialogue("boat", "secure_boat_cloth")["events"], ["patrol_worksite_unavailable"], "未选路线不能远程完成工作点回应")
+	_expect_equal(unavailable.snapshot(), unavailable_before, "未选路线工作点回应保持原子不变")
 	_expect_equal(boat_first.complete_patrol_dialogue("herbs_first")["events"], ["patrol_unavailable"], "巡路先后不能重复改选")
 	var restored_boat = JourneyStateScript.new()
 	var restored_herbs = JourneyStateScript.new()
@@ -1727,6 +2011,7 @@ func _test_patrol_side_story() -> void:
 	wrong_phase.choose("enter_spring")
 	var wrong_phase_before: Dictionary = wrong_phase.snapshot()
 	_expect_equal(wrong_phase.complete_patrol_dialogue("herbs_first")["events"], ["patrol_unavailable"], "离开渡口后不能远程决定巡路")
+	_expect_equal(wrong_phase.complete_patrol_work_dialogue("boat", "secure_boat_cloth")["events"], ["patrol_worksite_unavailable"], "离开渡口后不能远程完成工作点回应")
 	_expect_equal(wrong_phase.snapshot(), wrong_phase_before, "错阶段巡路选择保持原子性")
 
 
@@ -2649,7 +2934,7 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.get_node("%DialoguePortraitLabel").text, "陶小满 · 照禾渡口跑腿人", "巡路头像保留中文人物身份")
 	_expect_true(instance.get_node("%DialogueLabel").text.contains("补船缺两枚木楔"), "巡路对话呈现渡口生活委托")
 	var active_patrol_save: Dictionary = SaveGameScript.read(TEST_SCENE_SAVE_PATH)
-	_expect_true(active_patrol_save["ok"], "近距活动巡路对话可写入并通过 v15 跨状态校验")
+	_expect_true(active_patrol_save["ok"], "近距活动巡路对话可写入并通过当前版本跨状态校验")
 	instance.skip_dialogue_to_response()
 	await process_frame
 	_expect_equal(_dialogue_choice_count(instance), 2, "巡路委托提供两个可点击同等选择")
@@ -2666,6 +2951,70 @@ func _test_scene_smoke() -> void:
 	_expect_true(patrol_save["data"].has("patrol"), "场景存档包含独立顶层巡路快照")
 	var saved_patrol = PatrolStateScript.new()
 	_expect_true(saved_patrol.restore(patrol_save["data"]["patrol"]), "场景写出的巡路快照可严格恢复")
+	var boat_work_snapshot := _patrol_endpoint_snapshot(PatrolStateScript.WORKSITE_BOAT)
+	boat_work_snapshot["yielding_to_player"] = true
+	_expect_true(instance.patrol.restore(boat_work_snapshot), "场景可把陶小满恢复到船架端点停留")
+	_expect_true(instance.exploration.restore({
+		"map_id": ExplorationStateScript.DEFAULT_MAP_ID,
+		"player_x": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT].x,
+		"player_y": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT].y,
+	}), "场景可让玩家在船架端点等候")
+	instance._render([])
+	var boat_work_visual: Dictionary = map_canvas.patrol_visual_contract()
+	_expect_equal(boat_work_visual["worksite_id"], PatrolStateScript.WORKSITE_BOAT, "船架到站视觉合同暴露稳定工作点")
+	_expect_true(boat_work_visual["worksite_marker_visible"], "船架停留显示非权威工作点标记")
+	_expect_equal(boat_work_visual["motion"], Vector2.LEFT, "船架端点闲置时陶小满朝向工作物")
+	_expect_false(boat_work_visual["collision_authority"], "工作点标记不取得碰撞权威")
+	_expect_false(boat_work_visual["quest_authority"], "工作点标记不取得任务权威")
+	map_canvas.set_patrol_state(
+		PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT],
+		Vector2.ZERO,
+		false,
+		true,
+		PatrolStateScript.WORKSITE_HERBS
+	)
+	var herbs_work_visual: Dictionary = map_canvas.patrol_visual_contract()
+	_expect_equal(herbs_work_visual["worksite_id"], PatrolStateScript.WORKSITE_HERBS, "竹架到站视觉合同暴露稳定工作点")
+	_expect_true(herbs_work_visual["worksite_marker_visible"], "竹架停留显示非权威工作点标记")
+	_expect_equal(herbs_work_visual["motion"], Vector2.RIGHT, "竹架端点闲置时陶小满朝向工作物")
+	instance._render([])
+	_expect_equal(_first_action_button(instance).text, "问问船架这头", "玩家与陶小满同在船架端点时出现可点击中文行动")
+	var endpoint_decode_payload := {
+		"ok": true,
+		"data": {
+			"journey": instance.journey.snapshot(),
+			"exploration": instance.exploration.snapshot(),
+			"dialogue": {"active": true, "dialogue_id": "patrol_boat_priority", "line_index": 1},
+			"patrol": boat_work_snapshot,
+		},
+	}
+	_expect_true(instance._decode_save(endpoint_decode_payload)["ok"], "场景解码接受路线、端点、距离一致的船架工作对话")
+	var wrong_role_decode: Dictionary = endpoint_decode_payload.duplicate(true)
+	wrong_role_decode["data"]["dialogue"]["dialogue_id"] = "patrol_boat_followup"
+	_expect_false(instance._decode_save(wrong_role_decode)["ok"], "场景解码拒绝先后角色与路线错配的工作对话")
+	var far_work_decode: Dictionary = endpoint_decode_payload.duplicate(true)
+	far_work_decode["data"]["exploration"] = ExplorationStateScript.new().snapshot()
+	_expect_false(instance._decode_save(far_work_decode)["ok"], "场景解码拒绝玩家远离端点的工作对话")
+	var before_work_journey: Dictionary = instance.journey.snapshot()
+	_expect_true(instance.interact()["ok"], "船架端点近距交互开启工作对话")
+	_expect_equal(instance.dialogue.dialogue_id, DialogueStateScript.PATROL_BOAT_PRIORITY, "木楔优先路线在船架开启 priority 剧本")
+	_expect_true(SaveGameScript.read(TEST_SCENE_SAVE_PATH)["ok"], "活动船架对话可通过 v16 跨状态校验并自动保存")
+	instance.skip_dialogue_to_response()
+	await process_frame
+	_expect_equal(_dialogue_choice_count(instance), 2, "船架工作对话提供两个可点击回应")
+	_expect_equal(instance._dialogue_choice_event("secure_boat_cloth"), "patrol_boat_cloth_secured", "船架篷布回应与规则事件一致")
+	await _press_dialogue_choice(instance, "替她压稳篷布边角。")
+	_expect_false(instance.dialogue.active, "提交船架回应后关闭结构化对话")
+	_expect_equal(instance.journey.snapshot(), before_work_journey, "船架工作回应不暗中奖励或修改旅程")
+	_expect_equal(instance.patrol.dwell_remaining, 0.0, "船架回应原子结束当前端点停留")
+	_expect_true(instance.patrol.yielding_to_player, "船架回应保留玩家仍近的礼让状态")
+	_expect_false(instance.patrol.is_moving(), "船架回应后玩家仍近时保持 idle 表现")
+	_expect_true(instance.get_node("%EventLabel").text.contains("重新收紧系绳"), "船架回应显示独立中文回声")
+	_expect_false(map_canvas.patrol_visual_contract()["worksite_marker_visible"], "端点停留结束后工作标记立即隐藏")
+	var finished_work_save: Dictionary = SaveGameScript.read(TEST_SCENE_SAVE_PATH)
+	_expect_true(finished_work_save["ok"], "船架回应后的 v16 存档保持可恢复")
+	_expect_false(finished_work_save["data"]["dialogue"]["active"], "船架回应存档关闭活动对话")
+	_expect_equal(finished_work_save["data"]["patrol"]["dwell_remaining"], 0.0, "船架回应存档持久化已结束停留")
 	_expect_true(instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51}), "巡路选择后返回公开同行起点")
 	instance._render([])
 
@@ -3333,6 +3682,28 @@ func _image_region_has_opaque_pixel(image: Image, region: Rect2i) -> bool:
 			if image.get_pixel(x, y).a > 0.0:
 				return true
 	return false
+
+
+func _patrol_endpoint_snapshot(worksite_id: String, dwell: float = PatrolStateScript.ENDPOINT_DWELL_SECONDS) -> Dictionary:
+	if worksite_id == PatrolStateScript.WORKSITE_BOAT:
+		return {
+			"position_x": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT].x,
+			"position_y": PatrolStateScript.WAYPOINTS[PatrolStateScript.BOAT_WAYPOINT].y,
+			"target_index": PatrolStateScript.BOAT_WAYPOINT + 1,
+			"route_step": 1,
+			"dwell_remaining": dwell,
+			"yielding_to_player": false,
+		}
+	if worksite_id == PatrolStateScript.WORKSITE_HERBS:
+		return {
+			"position_x": PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT].x,
+			"position_y": PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT].y,
+			"target_index": PatrolStateScript.HERBS_WAYPOINT - 1,
+			"route_step": -1,
+			"dwell_remaining": dwell,
+			"yielding_to_player": false,
+		}
+	return {}
 
 
 func _write_test_file(path: String, contents: String) -> void:

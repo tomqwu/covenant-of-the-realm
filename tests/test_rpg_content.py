@@ -217,6 +217,95 @@ def test_first_breath_story_locks_patrol_runner_contract() -> None:
     )
 
 
+def test_first_breath_story_locks_patrol_worksite_reactions() -> None:
+    data = story()
+    boat_action = next(
+        action
+        for action in data["nodes"]["riverbank"]["actions"]
+        if action["id"] == "talk_at_boat_worksite"
+    )
+    boat_action["label"] = "领取船架奖励"
+    data["nodes"]["riverbank"]["actions"] = [
+        action
+        for action in data["nodes"]["riverbank"]["actions"]
+        if action["id"] != "talk_at_herbs_worksite"
+    ]
+    data["dialogues"]["patrol_boat_priority"]["lines"][0]["text"] = (
+        "一段被意外改写的船架回声。"
+    )
+    data["dialogues"]["patrol_boat_followup"]["choices"][1]["event_id"] = (
+        "patrol_boat_cloth_secured"
+    )
+    data["dialogues"]["patrol_herbs_priority"]["choice_prompt"] = "领取关系奖励。"
+    data["dialogues"].pop("patrol_herbs_followup")
+    data["messages"]["patrol_boat_cloth_secured"] = "你获得一件奖励。"
+    data["messages"].pop("patrol_herbs_light_checked")
+    data["messages"]["patrol_worksite_unavailable"] = "这里可以随时领取奖励。"
+    data["messages"].pop("invalid_patrol_work_response")
+
+    failures = validate_story(data)
+
+    assert any(
+        failure.startswith(
+            "story.nodes.riverbank.actions.talk_at_boat_worksite must be "
+        )
+        for failure in failures
+    )
+    assert (
+        "story.nodes.riverbank.actions is missing patrol worksite action "
+        "'talk_at_herbs_worksite'" in failures
+    )
+    for dialogue_id in (
+        "patrol_boat_priority",
+        "patrol_boat_followup",
+        "patrol_herbs_priority",
+        "patrol_herbs_followup",
+    ):
+        assert (
+            f"story.dialogues.{dialogue_id} must match the exact patrol worksite script"
+            in failures
+        )
+    assert any(
+        failure.startswith("story.messages.patrol_boat_cloth_secured must be ")
+        for failure in failures
+    )
+    assert any(
+        failure.startswith("story.messages.patrol_herbs_light_checked must be ")
+        for failure in failures
+    )
+    assert any(
+        failure.startswith("story.messages.patrol_worksite_unavailable must be ")
+        for failure in failures
+    )
+    assert any(
+        failure.startswith("story.messages.invalid_patrol_work_response must be ")
+        for failure in failures
+    )
+
+
+def test_patrol_worksite_reactions_do_not_add_journal_results() -> None:
+    data = story()
+    worksite_events = {
+        choice["event_id"]
+        for dialogue_id in (
+            "patrol_boat_priority",
+            "patrol_boat_followup",
+            "patrol_herbs_priority",
+            "patrol_herbs_followup",
+        )
+        for choice in data["dialogues"][dialogue_id]["choices"]
+    }
+
+    assert worksite_events == {
+        "patrol_boat_cloth_secured",
+        "patrol_boat_measure_checked",
+        "patrol_herbs_tray_steadied",
+        "patrol_herbs_light_checked",
+    }
+    assert worksite_events.isdisjoint(data["journal_entries"])
+    assert worksite_events.isdisjoint(data["journal_side_entries"])
+
+
 def test_rejects_non_object_and_missing_contract() -> None:
     assert validate_story([]) == ["story must be an object"]
     failures = validate_story({"schema_version": 2})

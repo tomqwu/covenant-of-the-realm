@@ -7,12 +7,20 @@ const CHAPTER_EPILOGUE := "chapter_epilogue"
 const FERRYMAN_BRIEFING := "ferryman_briefing"
 const HERBKEEPER_BASKET := "herbkeeper_basket"
 const PATROL_RUNNER_BRIEFING := "patrol_runner_briefing"
+const PATROL_BOAT_PRIORITY := "patrol_boat_priority"
+const PATROL_BOAT_FOLLOWUP := "patrol_boat_followup"
+const PATROL_HERBS_PRIORITY := "patrol_herbs_priority"
+const PATROL_HERBS_FOLLOWUP := "patrol_herbs_followup"
 const SUPPORTED_DIALOGUES := [
 	COMPANION_BRIEFING,
 	CHAPTER_EPILOGUE,
 	FERRYMAN_BRIEFING,
 	HERBKEEPER_BASKET,
 	PATROL_RUNNER_BRIEFING,
+	PATROL_BOAT_PRIORITY,
+	PATROL_BOAT_FOLLOWUP,
+	PATROL_HERBS_PRIORITY,
+	PATROL_HERBS_FOLLOWUP,
 ]
 const MAX_SAVED_LINE_INDEX := 64
 
@@ -89,6 +97,48 @@ func restore(snapshot_data: Dictionary) -> bool:
 
 static func default_snapshot() -> Dictionary:
 	return {"active": false, "dialogue_id": NONE, "line_index": 0}
+
+
+static func patrol_work_dialogue_id(worksite_id: String, patrol_response: String) -> String:
+	match worksite_id:
+		"boat":
+			if patrol_response == "boat_first":
+				return PATROL_BOAT_PRIORITY
+			if patrol_response == "herbs_first":
+				return PATROL_BOAT_FOLLOWUP
+		"herbs":
+			if patrol_response == "herbs_first":
+				return PATROL_HERBS_PRIORITY
+			if patrol_response == "boat_first":
+				return PATROL_HERBS_FOLLOWUP
+	return NONE
+
+
+static func patrol_work_context(next_dialogue_id: String) -> Dictionary:
+	match next_dialogue_id:
+		PATROL_BOAT_PRIORITY:
+			return _patrol_work_context("boat", "boat_first", "priority", "talk_at_boat_worksite")
+		PATROL_BOAT_FOLLOWUP:
+			return _patrol_work_context("boat", "herbs_first", "followup", "talk_at_boat_worksite")
+		PATROL_HERBS_PRIORITY:
+			return _patrol_work_context("herbs", "herbs_first", "priority", "talk_at_herbs_worksite")
+		PATROL_HERBS_FOLLOWUP:
+			return _patrol_work_context("herbs", "boat_first", "followup", "talk_at_herbs_worksite")
+	return {}
+
+
+static func _patrol_work_context(
+	worksite_id: String,
+	patrol_response: String,
+	route_role: String,
+	action_id: String
+) -> Dictionary:
+	return {
+		"worksite_id": worksite_id,
+		"patrol_response": patrol_response,
+		"route_role": route_role,
+		"action_id": action_id,
+	}
 
 
 func _valid_integer(value: Variant) -> bool:

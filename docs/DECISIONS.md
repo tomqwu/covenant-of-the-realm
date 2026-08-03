@@ -69,6 +69,30 @@ The wrapper has isolated fake-runner tests for argument/output forwarding, genui
 zero-status fatal diagnostics, unrelated engine warnings, and Make/package wiring. A real malformed
 GDScript reproduction confirms the engine returns zero while the checked gate returns one.
 
+### 2026-08-03 — Ferry-runner worksite reactions are spatial payoff, not progression
+
+陶小满 now has one original repeatable reaction at each end of her route for each delivery order:
+boat priority, boat follow-up, herbs priority, and herbs follow-up. The corresponding action exists
+only while her feet are exactly at the authored endpoint, endpoint dwell remains positive, and the
+player is inside the normal interaction radius. A waiting player never stops her one step short:
+endpoint arrival resolves before courtesy yielding. Dialogue then freezes the complete patrol
+snapshot. Finishing either response immediately clears the current endpoint dwell while preserving
+the existing courtesy-yield state. If the player remains nearby, yielding continues; the route
+resumes only after the player leaves the exit hysteresis radius.
+
+Each reaction contains two ordinary-work responses. Securing the boat cloth, checking the wedge
+measure, steadying the herb tray, or checking the light produces authored event prose only. The
+four reactions are repeatable and add no item, statistic, relationship value, journal entry,
+chapter echo, route mutation, reward, or mainline gate. The Journey snapshot remains field-for-field unchanged;
+`PatrolState` remains the sole owner of endpoint, dwell, and courtesy eligibility, while the
+dialogue layer owns only resumable presentation progress.
+
+Save v16 changes no payload field. It is an explicit schema boundary because the set of valid
+serialized active dialogue IDs now includes the four worksite reactions. V1–v15 files migrate
+conservatively through the existing validated state, without inventing a reaction or response.
+An older runtime sees v16 as a future-version barrier and therefore cannot silently accept or
+overwrite an active worksite dialogue whose enum value it does not understand.
+
 ### 2026-08-03 — The ferry runner patrol is deterministic, saved, and socially consequential
 
 陶小满 is an original ferry runner who appears only after the player completes 砚青's risk

@@ -2,6 +2,10 @@ extends RefCounted
 class_name PatrolState
 
 const TALK_TO_PATROL_RUNNER := "talk_to_patrol_runner"
+const WORKSITE_BOAT := "boat"
+const WORKSITE_HERBS := "herbs"
+const TALK_AT_BOAT_WORKSITE := "talk_at_boat_worksite"
+const TALK_AT_HERBS_WORKSITE := "talk_at_herbs_worksite"
 const RESPONSE_UNANSWERED := "unanswered"
 const RESPONSE_BOAT_FIRST := "boat_first"
 const RESPONSE_HERBS_FIRST := "herbs_first"
@@ -42,17 +46,24 @@ var dwell_remaining := START_DWELL_SECONDS
 var yielding_to_player := false
 
 
-func advance(delta: float, player_position := Vector2(-1.0, -1.0)) -> Vector2:
+func advance(
+	delta: float,
+	player_position := Vector2(-1.0, -1.0),
+	response_id: String = RESPONSE_UNANSWERED
+) -> Vector2:
 	if delta <= 0.0:
-		return position
-	_update_yielding(player_position)
-	if yielding_to_player:
 		return position
 	var remaining := delta
 	while remaining > 0.0:
 		var step_seconds := minf(remaining, MAX_STEP_SECONDS)
+		_update_yielding(player_position, response_id)
+		if yielding_to_player:
+			break
 		_advance_step(step_seconds)
 		remaining -= step_seconds
+		_update_yielding(player_position, response_id)
+		if yielding_to_player:
+			break
 	return position
 
 
@@ -85,9 +96,49 @@ func apply_priority(response_id: String) -> bool:
 
 
 func interaction_action(player_position: Vector2, response_id: String, active: bool = true) -> String:
-	if not active or response_id != RESPONSE_UNANSWERED:
+	var distance := player_position.distance_to(position)
+	if not active or not is_finite(distance) or distance > INTERACTION_RADIUS:
 		return ""
-	return TALK_TO_PATROL_RUNNER if player_position.distance_to(position) <= INTERACTION_RADIUS else ""
+	if response_id == RESPONSE_UNANSWERED:
+		return TALK_TO_PATROL_RUNNER
+	return String(worksite_context(response_id).get("action_id", ""))
+
+
+func worksite_context(response_id: String) -> Dictionary:
+	if dwell_remaining <= 0.0 or response_id not in [RESPONSE_BOAT_FIRST, RESPONSE_HERBS_FIRST]:
+		return {}
+	var waypoint_index := _waypoint_index(position)
+	var worksite_id := ""
+	var action_id := ""
+	if waypoint_index == BOAT_WAYPOINT:
+		worksite_id = WORKSITE_BOAT
+		action_id = TALK_AT_BOAT_WORKSITE
+	elif waypoint_index == HERBS_WAYPOINT:
+		worksite_id = WORKSITE_HERBS
+		action_id = TALK_AT_HERBS_WORKSITE
+	else:
+		return {}
+	var priority_worksite := WORKSITE_BOAT if response_id == RESPONSE_BOAT_FIRST else WORKSITE_HERBS
+	return {
+		"worksite_id": worksite_id,
+		"action_id": action_id,
+		"route_role": "priority" if worksite_id == priority_worksite else "followup",
+	}
+
+
+func finish_worksite(worksite_id: String) -> bool:
+	if dwell_remaining <= 0.0:
+		return false
+	var expected_worksite := ""
+	match _waypoint_index(position):
+		BOAT_WAYPOINT:
+			expected_worksite = WORKSITE_BOAT
+		HERBS_WAYPOINT:
+			expected_worksite = WORKSITE_HERBS
+	if expected_worksite.is_empty() or worksite_id != expected_worksite:
+		return false
+	dwell_remaining = 0.0
+	return true
 
 
 func motion_direction() -> Vector2:
@@ -98,7 +149,11 @@ func motion_direction() -> Vector2:
 
 
 func is_moving() -> bool:
-	return dwell_remaining <= 0.0 and position.distance_to(WAYPOINTS[target_index]) > POSITION_EPSILON
+	return (
+		not yielding_to_player
+		and dwell_remaining <= 0.0
+		and position.distance_to(WAYPOINTS[target_index]) > POSITION_EPSILON
+	)
 
 
 func snapshot() -> Dictionary:
@@ -220,14 +275,29 @@ func _segment_for_position(candidate: Vector2) -> int:
 	return -1
 
 
-func _update_yielding(player_position: Vector2) -> void:
+func _update_yielding(player_position: Vector2, response_id: String) -> void:
 	if player_position.x < 0.0 or player_position.y < 0.0:
+		yielding_to_player = false
+		return
+	if _player_waits_at_target_endpoint(player_position, response_id):
+		yielding_to_player = false
 		return
 	var distance := position.distance_to(player_position)
 	if yielding_to_player:
 		yielding_to_player = distance <= YIELD_EXIT_RADIUS
 	else:
 		yielding_to_player = distance <= YIELD_ENTER_RADIUS
+
+
+func _player_waits_at_target_endpoint(player_position: Vector2, response_id: String) -> bool:
+	if response_id not in [RESPONSE_BOAT_FIRST, RESPONSE_HERBS_FIRST]:
+		return false
+	if dwell_remaining > 0.0 or target_index not in [BOAT_WAYPOINT, HERBS_WAYPOINT]:
+		return false
+	var target := WAYPOINTS[target_index]
+	if position.distance_to(target) <= POSITION_EPSILON:
+		return false
+	return player_position.distance_to(target) <= INTERACTION_RADIUS
 
 
 func _valid_runtime_state(candidate: Vector2, next_target: int, next_route_step: int, next_dwell: float) -> bool:

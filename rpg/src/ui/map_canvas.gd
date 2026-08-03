@@ -3,6 +3,7 @@ extends Control
 const MapOccluderScript := preload("res://src/ui/map_occluder.gd")
 const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
+const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
 const LANDMARK_ATLAS := preload("res://assets/pixel/zhaohe_landmarks.png")
 const ACTOR_HEIGHT := 56.0
 const WORLD_SIZE := Vector2(1536.0, 864.0)
@@ -111,6 +112,7 @@ var patrol_position := Vector2(0.55, 0.66)
 var patrol_motion := Vector2.UP
 var patrol_moving := false
 var patrol_active := false
+var patrol_worksite_id := ""
 
 
 func set_story_state(
@@ -158,11 +160,23 @@ func set_exploration_state(next_position: Vector2, next_nearby_action: String) -
 	queue_redraw()
 
 
-func set_patrol_state(next_position: Vector2, next_motion: Vector2, moving: bool, active: bool) -> void:
+func set_patrol_state(
+	next_position: Vector2,
+	next_motion: Vector2,
+	moving: bool,
+	active: bool,
+	next_worksite_id: String = ""
+) -> void:
 	patrol_position = next_position
 	patrol_motion = next_motion
 	patrol_moving = moving
 	patrol_active = active
+	patrol_worksite_id = next_worksite_id
+	if not patrol_moving and patrol_motion.is_zero_approx():
+		if patrol_worksite_id == PatrolStateScript.WORKSITE_BOAT:
+			patrol_motion = Vector2.LEFT
+		elif patrol_worksite_id == PatrolStateScript.WORKSITE_HERBS:
+			patrol_motion = Vector2.RIGHT
 	_sync_actor_visuals()
 	queue_redraw()
 
@@ -417,6 +431,8 @@ func patrol_visual_contract() -> Dictionary:
 		"motion": patrol_motion,
 		"moving": patrol_moving,
 		"active": patrol_active,
+		"worksite_id": patrol_worksite_id,
+		"worksite_marker_visible": patrol_active and not patrol_worksite_id.is_empty(),
 		"collision_authority": false,
 		"quest_authority": false,
 	}
@@ -693,8 +709,15 @@ func _draw_riverbank() -> void:
 		_draw_interaction_marker(Vector2(size.x * 0.41, size.y * 0.66), nearby_action == "talk_to_ferryman")
 	if discoveries.has("abandoned_basket") and basket_response == "unanswered":
 		_draw_interaction_marker(Vector2(size.x * 0.75, size.y * 0.66), nearby_action == "talk_to_herbkeeper")
-	if patrol_active and patrol_response == "unanswered":
-		_draw_interaction_marker(patrol_position * size, nearby_action == "talk_to_patrol_runner")
+	if patrol_active and (patrol_response == "unanswered" or not patrol_worksite_id.is_empty()):
+		_draw_interaction_marker(
+			patrol_position * size,
+			nearby_action in [
+				PatrolStateScript.TALK_TO_PATROL_RUNNER,
+				PatrolStateScript.TALK_AT_BOAT_WORKSITE,
+				PatrolStateScript.TALK_AT_HERBS_WORKSITE,
+			]
+		)
 	if not gathered_moonleaf:
 		_draw_interaction_marker(Vector2(size.x * 0.69, size.y * 0.62), nearby_action == "gather_moonleaf")
 	_draw_interaction_marker(ExplorationStateScript.BOAT_REPAIR_POSITION * size, nearby_action == "inspect_boat_repair")

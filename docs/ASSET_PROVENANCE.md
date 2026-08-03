@@ -73,11 +73,12 @@ the three life landmarks in the ferry, mountain-path, and battle views. Houses a
 foreground nodes; other landmarks are fixed map-canvas regions. These sprites own no collision,
 navigation, story, reward, or save authority. The life landmarks provide repeatable original
 spatial prose through the same keyboard, mouse, and controller action path while leaving the
-Journey snapshot unchanged and add no fields to the current save v15. The adjacent mountain-return bridge is ground data generated
+Journey snapshot unchanged and add no fields to the current save v16. The adjacent mountain-return bridge is ground data generated
 from the existing original tile atlas, not an imported asset.
 
-`asset_contract.json` schema v4 fixes the file name, atlas/frame dimensions, foot anchor, profile
-order, occluding subset, nearest filtering, integer snapping, and non-authoritative role.
+The landmark fields introduced in `asset_contract.json` schema v4 remain enforced by the current
+schema v5: file name, atlas/frame dimensions, foot anchor, profile order, occluding subset, nearest
+filtering, integer snapping, and non-authoritative role.
 MapCanvas visual contract v2 additionally binds each life-landmark profile to one phase,
 interaction anchor, and action ID without creating a second gameplay authority.
 `scripts/check_rpg_asset_reproducibility` invokes the pinned Godot generator into two isolated
