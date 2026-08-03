@@ -1910,21 +1910,40 @@ func _test_dialogue_portraits() -> void:
 	var protagonist: Dictionary = portrait.visual_contract()
 	_expect_equal(protagonist["portrait_id"], "protagonist", "主角头像合同回显稳定标识")
 	_expect_equal(protagonist["medium"], "painted_paper", "叙事头像使用已确认的纸绘媒介")
+	_expect_equal(protagonist["style_revision"], 2, "纸绘头像公开明亮矿物色 v2 合同")
+	_expect_equal(protagonist["rendering"], "deterministic_runtime_primitives", "头像只使用确定性运行时绘制")
+	_expect_true(protagonist["deterministic"], "纸绘头像不读取时间或随机状态")
+	_expect_false(protagonist["external_assets"], "纸绘头像不把概念图或外部位图带入运行时")
+	_expect_equal(protagonist["asset_dependencies"], [], "纸绘头像没有隐藏资产依赖")
 	_expect_equal(protagonist["palette"]["protagonist"], Color("58738f"), "主角肖像使用晴靛识别色")
+	_expect_equal(protagonist["palette"]["morning_peach"], Color("e7a76f"), "明亮头像只以合同晨桃作低频暖色")
+	_expect_equal(protagonist["profile"], {
+		"expression": "curious",
+		"silhouette": "high_tie_straw_cape",
+		"accent": "indigo_ribbon",
+	}, "主角 v2 合同公开警觉中带好奇的蓑衣轮廓")
 	_expect_true(protagonist["motion_free"], "纸绘头像不依赖动态效果")
 	_expect_false(protagonist["rule_authority"], "头像表现不成为规则权威")
+	_expect_false(protagonist["save_authority"], "头像表现不新增存档权威")
 	_expect_true(portrait.set_portrait("yanqing"), "纸绘头像接受稳定砚青标识")
 	_expect_equal(portrait.visual_contract()["portrait_id"], "yanqing", "砚青头像与主角拥有不同表现标识")
+	_expect_equal(portrait.visual_contract()["profile"]["accent"], "medicine_case", "砚青 v2 以药匣而非单靠衣色识别")
 	_expect_true(portrait.set_portrait("liangshu"), "纸绘头像接受稳定梁叔标识")
 	_expect_equal(portrait.visual_contract()["palette"]["liangshu"], Color("355e63"), "梁叔头像使用守堤冷青识别色")
+	_expect_equal(portrait.visual_contract()["profile"]["expression"], "steady", "梁叔 v2 保持稳重而不统一笑脸")
 	_expect_true(portrait.set_portrait("huishen"), "纸绘头像接受稳定蕙婶标识")
 	_expect_equal(portrait.visual_contract()["palette"]["huishen"], Color("8ebb83").darkened(0.12), "蕙婶头像使用明快药圃青识别色")
+	_expect_equal(portrait.visual_contract()["profile"]["silhouette"], "head_wrap_low_bun", "蕙婶 v2 以头巾低髻建立轮廓")
 	_expect_true(portrait.set_portrait("tao_xiaoman"), "纸绘头像接受稳定陶小满标识")
 	_expect_equal(portrait.visual_contract()["portrait_id"], "tao_xiaoman", "陶小满拥有独立巡路人头像标识")
 	_expect_equal(portrait.visual_contract()["palette"]["tao_xiaoman"], Color("e4c36e").darkened(0.08), "陶小满头像使用明亮日金识别色")
+	_expect_equal(portrait.visual_contract()["profile"]["expression"], "bright", "陶小满 v2 保留年轻跑腿人的松弛神情")
 	_expect_false(portrait.set_portrait("licensed_character"), "未知或外部人物标识不会直接进入头像表现")
 	_expect_equal(portrait.visual_contract()["portrait_id"], "journal", "未知头像安全回退为无人物的行旅札记")
-	_expect_equal(portrait.visual_contract()["supported_ids"].size(), 6, "切片只声明六个有限头像表现标识")
+	_expect_equal(portrait.visual_contract()["profile"]["accent"], "morning_seal", "无人物札记 v2 保留独立晨桃印记")
+	_expect_equal(portrait.visual_contract()["supported_ids"], [
+		"protagonist", "yanqing", "liangshu", "huishen", "tao_xiaoman", "journal",
+	], "切片只按稳定顺序声明六个有限头像表现标识")
 	portrait.free()
 
 

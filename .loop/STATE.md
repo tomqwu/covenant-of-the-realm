@@ -5,32 +5,29 @@
 - Repository: `/Users/tomwu/Projects/covenant-of-the-realm`
 - Branch: `codex/rpg-foundation`
 - Draft PR: <https://github.com/tomqwu/covenant-of-the-realm/pull/7>
-- Green implementation head: `f9841f08923fd4162dfbab4977f04a3133d85de8` (`fix(ci): isolate
-  lifecycle persistence probe`). It preserves the 20-cycle, 7-second, 114-static, 124-peak,
-  map/camera, and zero-leak contracts and gives only an otherwise-clean timing overage one complete
-  confirmation.
-- The docs-only closeout run
-  [30854940370](https://github.com/tomqwu/covenant-of-the-realm/actions/runs/30854940370) passed MUD,
-  Multiplayer E2E, and Journey quality but reported one RPG lifecycle timing failure: 7,210.19 ms
-  against the existing 7,000 ms ceiling. Its RPG code, scene, budget, Makefile, and workflow blobs
-  are identical to the preceding 5,997.67 ms green run; all 2,703 rule/scene, 330 E2E, and 169 input
-  assertions completed before the time-only failure.
-- Its hosted run
-  [30856454063](https://github.com/tomqwu/covenant-of-the-realm/actions/runs/30856454063) passed MUD,
-  Multiplayer E2E, and Journey quality. RPG completed every assertion and then correctly reported
-  two clean but slow lifecycle samples (`7,812.553` and `7,563.640` ms), 40 total cycles, 114/124
-  nodes, and zero leaks. Pure workloads on the same host were also 25–35% slower than recent green
-  hosts, confirming shared-VM slowdown rather than a structural failure.
-- The workload refinement keeps all 20 cycles and all 13 states, including dialogue start,
-  line completion/advance, autosave, response save, patrol, worksite dialogue, battle, journal,
-  spring ritual, completion, map/camera checks, and cleanup. Each complete sample's first cycle runs
-  the full reveal profile with four real settings writes; cycles 2–20 no longer multiply settings
-  flush/verification/backup rotation and full label-theme refresh by 20.
-- Raw elapsed time remains authoritative across the exact boundary. Reports display rounded timing,
-  retain every sample, total cycle count, actual probe/write counts, merge structural maxima across
-  both samples, and print complete results plus every failure before returning nonzero.
+- Clean head: `87e5e5d297ac5b14318deeb0bd4f3ac675555d1b` (`docs(loop): close
+  lifecycle stability cycle`), pushed to the feature branch. Draft PR #7 remains OPEN, Draft,
+  MERGEABLE/CLEAN, and unmerged; remote `main` remains
+  `7256ade54792ff481ffc30517ca2c693f78be198`.
+- The implementation and docs-only closeout runs are both green across all four jobs:
+  [30857633042](https://github.com/tomqwu/covenant-of-the-realm/actions/runs/30857633042) and
+  [30858287644](https://github.com/tomqwu/covenant-of-the-realm/actions/runs/30858287644). Their Linux
+  lifecycle samples pass once at `5,878.46` and `6,159.13` ms with 20 cycles, one probe, four verified
+  settings writes, 114 static / 124 peak nodes, and zero leaks.
+- The active portrait loop is presentation-only. It must keep the stable six-ID order
+  `protagonist`, `yanqing`, `liangshu`, `huishen`, `tao_xiaoman`, `journal`; unknown IDs still fall
+  back to `journal`. No external asset, runtime node, input surface, save field, content ID, or rule
+  authority may be added.
+- Portrait visual contract revision 2, all six silhouette/expression/prop profiles, and the
+  capture-only 3×2 Chinese comparison board are implemented. `make test-rpg` passes 2,716 assertions.
+  Two complete 41-PNG capture passes are byte-identical at aggregate SHA-256
+  `6e1c0f5b3bca174f25726bfec6de61c86bb9962e57641ca29de90717dc68f4b7`.
+- The dirty-tree package gate passes two exports, manifest verification, content probing, and boot
+  smoke: 697,160 bytes, SHA-256
+  `2f1c122199227f9c9a02537a4b9311c44f8ed03285c8b87267c995b6e45cf5a5`, 22 required resources,
+  and nine development resources excluded. Refresh the ignored manifest from the final clean head.
 
-## Verified this loop
+## Verified baseline
 
 - Six deterministic in-run policy checks cover first-sample success, raw just-over-boundary
   confirmation, prior-failure rejection, recovered confirmation, sustained overage, and accepted
@@ -43,28 +40,18 @@
   `1,057.52` ms sample with 20 cycles, one probe, and four writes; the result remains nonzero.
 - Both temporary budget edits were restored. `rpg/tests/performance_budget.json` has no diff and
   remains at 2,500 ms pure-workload / 7,000 ms lifecycle limits.
-- `make check-rpg` passes: 2,703 Godot rule/scene assertions, 330 chapter E2E checks, 169 physical
-  input/focus checks, one `1,155.47` ms lifecycle sample, deterministic assets, captures, and
-  reproducible package/content/boot gates. PCK remains 681,960 bytes with SHA-256
-  `7fbbf9d9d6c634cc7643fc0b9c7b54539e9af5e55bf97ce6f3a114d230aee888`.
-- Repository-wide `make check` passes with another `1,065.80` ms lifecycle sample, 136 Python tests
+- `make check-rpg` passes the portrait candidate: 2,716 Godot rule/scene assertions, 330 chapter E2E
+  checks, 169 physical input/focus checks, one `1,037.19` ms lifecycle sample, deterministic assets,
+  and reproducible package/content/boot gates. PCK is 697,160 bytes with SHA-256
+  `2f1c122199227f9c9a02537a4b9311c44f8ed03285c8b87267c995b6e45cf5a5`.
+- Repository-wide `make check` passes with another `1,049.49` ms lifecycle sample, 136 Python tests
   at 100% statement/branch coverage, the real two-client MUD journey, all Godot gates, 122 browser
   unit tests at 100% coverage, 53 Playwright executions, badges, and a reproducible browser build.
-- GitHub Actions run
-  [30857633042](https://github.com/tomqwu/covenant-of-the-realm/actions/runs/30857633042) is green
-  across MUD quality, Multiplayer E2E, Journey prototype, and RPG quality. Its slower Linux host
-  passes the lifecycle gate in one `5,878.46` ms sample with 20 cycles, one probe, four verified
-  settings writes, 114 static / 124 peak nodes, and zero leaks.
-- The ignored local playable package was refreshed from clean implementation head `f9841f0`:
-  681,960-byte PCK, SHA-256
-  `7fbbf9d9d6c634cc7643fc0b9c7b54539e9af5e55bf97ce6f3a114d230aee888`, 22 required resources,
-  nine development resources excluded, and `source_tree_state: clean`.
 
 ## Next action
 
-Commit and push this docs-only closeout, verify its hosted run stays green, refresh the ignored
-playable package from the resulting clean revision, then resume the painted-paper portrait
-refinement loop.
+Review the intentional PNG/code/docs diff, then commit, push, monitor Draft PR #7, and refresh the
+ignored playable-package manifest from the clean head.
 
 ## Blockers
 
@@ -77,4 +64,6 @@ recorded in `.loop/PLAN.md` and `docs/PROJECT_CONTEXT.md`.
 make test-rpg-performance
 make check-rpg
 make check
+make capture-rpg-ui
+shasum -a 256 docs/concepts/gameplay-ui-v1/*.png | shasum -a 256
 ```

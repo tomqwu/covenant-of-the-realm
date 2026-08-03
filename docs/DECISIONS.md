@@ -4,6 +4,25 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — Painted-paper portrait v2 is deterministic presentation, not a second character model
+
+The exact stable order remains `protagonist`, `yanqing`, `liangshu`, `huishen`, `tao_xiaoman`,
+and `journal`; unknown IDs still fall back to the journal. Revision 2 keeps the approved warm-paper,
+mineral-pigment palette while adding a restrained Morning Peach dawn wash, integer-centered faces,
+single expression paths, and profile-specific silhouette, expression, and carried-object cues. The
+traveller has a high tie and straw cape, 砚青 a herb pin and medicine case, 梁叔 a reed hat and water
+gauge, 蕙婶 a head wrap and woven apron, 陶小满 a cropped scarf and wedge satchel, and the journal a
+mountain line and morning seal. These cues improve identity at the real 134×154 dialogue size without
+making every face share an exaggerated smile.
+
+All six remain code-native `CanvasItem` primitives at fixed coordinates. They use no imported image,
+model output, random value, animation, timer, additional runtime scene node, input handler, content ID,
+save field, or gameplay rule. The runtime visual contract explicitly reports revision, rendering
+method, deterministic status, empty asset dependencies, profile cue, motion-free behavior, and zero
+rule/save authority. A
+capture-only 3×2 Chinese comparison board instantiates the same runtime control at its real size; it is
+development evidence, not a packaged scene or alternate portrait implementation.
+
 ### 2026-08-03 — Hosted-runner lifecycle timing confirms a clean overage before failing
 
 The lifecycle benchmark still requires one complete 20-cycle sample under 7 seconds. Every cycle

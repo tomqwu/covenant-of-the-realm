@@ -6,6 +6,7 @@ const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
+const DialoguePortraitScript := preload("res://src/ui/dialogue_portrait.gd")
 const CAPTURE_SETTINGS_PATH := "user://capture-ui-settings.json"
 
 
@@ -21,6 +22,7 @@ func _capture_flow() -> void:
 	await _save_frame("00-actor-scale-test.png")
 	scale_instance.queue_free()
 	await process_frame
+	await _capture_portrait_gallery()
 
 	var scene: PackedScene = load("res://src/ui/main.tscn")
 	var instance := scene.instantiate()
@@ -273,6 +275,128 @@ func _settle() -> void:
 	await process_frame
 	RenderingServer.force_draw(false)
 	await process_frame
+
+
+func _capture_portrait_gallery() -> void:
+	var gallery := Control.new()
+	gallery.name = "PortraitGallery"
+	gallery.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(gallery)
+	gallery.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var background := ColorRect.new()
+	background.color = Color("f2e6cb")
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gallery.add_child(background)
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var dawn_wash := Polygon2D.new()
+	dawn_wash.polygon = PackedVector2Array([
+		Vector2(720, 0), Vector2(1152, 0), Vector2(1152, 214), Vector2(898, 151),
+	])
+	dawn_wash.color = Color(0.91, 0.65, 0.44, 0.22)
+	gallery.add_child(dawn_wash)
+
+	var title := _make_gallery_label(
+		"照禾人物纸绘谱 · v2",
+		Rect2(48, 19, 680, 42),
+		29,
+		Color("27312e")
+	)
+	gallery.add_child(title)
+	var subtitle := _make_gallery_label(
+		"同一尺寸下校准轮廓、神情与随身物件 · 无外部贴图",
+		Rect2(50, 61, 720, 30),
+		15,
+		Color("58738f")
+	)
+	gallery.add_child(subtitle)
+
+	var profiles := [
+		{"id": "protagonist", "identity": "行旅者 · 初入山河", "cue": "高束发 · 蓑肩 · 靛青系带"},
+		{"id": "yanqing", "identity": "砚青 · 照禾药师", "cue": "低髻 · 草药簪 · 随身药匣"},
+		{"id": "liangshu", "identity": "梁叔 · 照禾守堤人", "cue": "斗笠 · 短须 · 水尺"},
+		{"id": "huishen", "identity": "蕙婶 · 照禾药圃守", "cue": "包巾 · 低髻 · 织纹围裙"},
+		{"id": "tao_xiaoman", "identity": "陶小满 · 渡口跑腿人", "cue": "短巾 · 挎包 · 补船木楔"},
+		{"id": "journal", "identity": "行旅札记 · 最近四句", "cue": "山纹 · 墨行 · 晨桃印"},
+	]
+	var card_size := Vector2(336, 232)
+	var portrait_size := Vector2(134, 154)
+	var viewport_rect := Rect2(Vector2.ZERO, Vector2(1152, 648))
+	for index in range(profiles.size()):
+		var column := index % 3
+		var row := index / 3
+		var card_position := Vector2(48 + column * 360, 104 + row * 248)
+		var card := Panel.new()
+		card.name = "PortraitCard%02d" % index
+		card.position = card_position
+		card.size = card_size
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var card_style := StyleBoxFlat.new()
+		card_style.bg_color = Color(0.97, 0.93, 0.84, 0.94)
+		card_style.border_color = Color(0.21, 0.37, 0.39, 0.42)
+		card_style.set_border_width_all(2)
+		card_style.corner_radius_top_left = 4
+		card_style.corner_radius_top_right = 4
+		card_style.corner_radius_bottom_left = 4
+		card_style.corner_radius_bottom_right = 4
+		card.add_theme_stylebox_override("panel", card_style)
+		gallery.add_child(card)
+
+		var portrait: Control = DialoguePortraitScript.new()
+		portrait.name = "Portrait%02d" % index
+		portrait.position = Vector2(14, 39)
+		portrait.size = portrait_size
+		card.add_child(portrait)
+		assert(portrait.set_portrait(profiles[index]["id"]), "肖像总览只能使用稳定角色 ID")
+
+		var identity := _make_gallery_label(
+			profiles[index]["identity"],
+			Rect2(160, 40, 162, 56),
+			18,
+			Color("27312e")
+		)
+		identity.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card.add_child(identity)
+		var cue := _make_gallery_label(
+			profiles[index]["cue"],
+			Rect2(160, 103, 158, 66),
+			14,
+			Color("58738f")
+		)
+		cue.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card.add_child(cue)
+		var stable_id := _make_gallery_label(
+			profiles[index]["id"],
+			Rect2(160, 183, 158, 27),
+			12,
+			Color(0.48, 0.29, 0.18, 0.82)
+		)
+		card.add_child(stable_id)
+
+		var contract: Dictionary = portrait.visual_contract()
+		assert(contract["portrait_id"] == profiles[index]["id"], "肖像总览 ID 必须与纸绘契约一致")
+		assert(contract["style_revision"] == 2 and contract["deterministic"], "肖像总览必须使用确定性 v2 纸绘")
+		assert(not contract["external_assets"] and contract["asset_dependencies"].is_empty(), "肖像总览不得依赖外部贴图")
+		assert(contract["motion_free"] and not contract["rule_authority"] and not contract["save_authority"], "肖像总览只能承担无动画表现职责")
+		assert(portrait.size == portrait_size and portrait.mouse_filter == Control.MOUSE_FILTER_IGNORE, "六张肖像必须使用真实对话框尺寸且不拦截输入")
+		assert(viewport_rect.encloses(Rect2(card_position, card_size)), "肖像总览卡片必须完整落在最小窗口内")
+
+	await _settle()
+	await _save_frame("01-portrait-gallery.png")
+	gallery.queue_free()
+	await process_frame
+
+
+func _make_gallery_label(text_value: String, rect: Rect2, font_size: int, color: Color) -> Label:
+	var label := Label.new()
+	label.text = text_value
+	label.position = rect.position
+	label.size = rect.size
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", color)
+	return label
 
 
 func _capture_worksite_reactions(

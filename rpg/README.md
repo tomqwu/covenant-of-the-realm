@@ -27,8 +27,8 @@ nearest Git revision, clean/dirty source state, required runtime resources, and 
 resources. `make play-rpg-package` launches that pack with the pinned Godot entrypoint. The package
 gate exports the PCK and manifest twice, requires byte-identical results, verifies the manifest,
 probes the packed namespace for 22 runtime resources and nine excluded `tests/`/`tools/` files,
-then boots the pack headlessly. The current reproducible PCK is 681,960 bytes with SHA-256
-`7fbbf9d9d6c634cc7643fc0b9c7b54539e9af5e55bf97ce6f3a114d230aee888`.
+then boots the pack headlessly. The current reproducible PCK is 697,160 bytes with SHA-256
+`2f1c122199227f9c9a02537a4b9311c44f8ed03285c8b87267c995b6e45cf5a5`.
 A native `.app`/`.exe` is intentionally deferred until platform export templates,
 signing identity, product icon, and distribution target are confirmed.
 

@@ -1,25 +1,21 @@
 # Loop Plan
 
-## Current loop — stable hosted-runner lifecycle evidence
+## Current loop — bright painted-paper portrait v2
 
-- [x] Prove the docs-only closeout failure is hosted-runner wall-clock variance by comparing exact
-  blobs, logs, tools, and recent samples; preserve the 20-cycle, 7-second, 114-static, 124-peak, and
-  zero-leak contracts.
-- [x] Confirm only an otherwise-clean time overage with one second complete 20-cycle sample in the
-  same process. Never retry correctness, structure, node, map/camera, or leak failures; fail when
-  both complete samples exceed the unchanged ceiling and report all timings plus merged maxima.
-- [x] Exercise the normal one-sample path, six synthetic policy branches, and a deliberate 1 ms
-  negative budget proving two sustained slow samples still fail; restore the checked-in budget.
-- [x] Use the first hosted confirmation to prove both complete samples can inherit shared-runner
-  slowdown, then remove 19-fold duplicate settings persistence without changing the 20-cycle,
-  13-state, dialogue-save, node, map/camera, or zero-leak workload.
-- [x] Re-exercise the normal one-sample, deliberate two-sample, and prior-failure/no-confirmation
-  paths with explicit probe-cycle and settings-write evidence; restore both temporary budgets.
-- [x] Run both complete gates, review the verified diff, commit, push, and monitor Draft PR #7
-  without merging it.
+- [x] Version the six-profile portrait contract while preserving exact stable IDs, fallback,
+  tooltips, palette identities, motion-free behavior, and zero rule/save authority.
+- [x] Refine every profile with deterministic runtime primitives toward the approved bright morning
+  paper/mineral-pigment direction, stronger silhouette/costume cues, and relaxed readable expressions.
+- [x] Add one capture-only 3×2 Chinese portrait gallery without adding runtime scenes, assets, nodes,
+  package resources, or input surfaces; regenerate the full capture set twice and prove byte identity.
+- [x] Re-run unit/scene, E2E, input, lifecycle, package, capture, and repository gates; refresh exact
+  counts, hashes, provenance, decisions, and handoff documentation.
+- [ ] Review, commit, push, and monitor Draft PR #7 without merging it.
 
 ## Recently completed
 
+- [x] Stabilize hosted-runner lifecycle evidence with one bounded confirmation and a representative
+  four-write dialogue persistence probe while preserving 20 complete 13-state cycles and 7 seconds.
 - [x] Add independent standard/fast/instant dialogue reveal settings, paired title/pause controls,
   migration and crash-consistent persistence while keeping Dialogue and save v16 authoritative.
 - [x] Add route-aware, repeatable ferry-runner worksite echoes at both exact patrol endpoints while
