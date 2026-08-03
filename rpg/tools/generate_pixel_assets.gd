@@ -4,7 +4,7 @@ const OUTPUT_DIR := "res://assets/pixel"
 const FRAME_SIZE := Vector2i(32, 56)
 const ATLAS_SIZE := Vector2i(128, 224)
 const ENEMY_FRAME_SIZE := Vector2i(64, 64)
-const ENEMY_ATLAS_SIZE := Vector2i(128, 256)
+const ENEMY_ATLAS_SIZE := Vector2i(384, 256)
 const LANDMARK_FRAME_SIZE := Vector2i(192, 128)
 const LANDMARK_ATLAS_SIZE := Vector2i(2112, 128)
 const LANDMARK_PROFILES := [
@@ -90,17 +90,9 @@ func _generate_enemy_atlas() -> void:
 	var image := Image.create(ENEMY_ATLAS_SIZE.x, ENEMY_ATLAS_SIZE.y, false, Image.FORMAT_RGBA8)
 	image.fill(TRANSPARENT)
 	for row in range(4):
-		for column in range(2):
+		for column in range(6):
 			var origin := Vector2i(column * ENEMY_FRAME_SIZE.x, row * ENEMY_FRAME_SIZE.y)
-			match row:
-				0:
-					_draw_rock_armor_young(image, origin, column)
-				1:
-					_draw_spring_moss_shell(image, origin, column)
-				2:
-					_draw_stone_puppet(image, origin, column)
-				_:
-					_draw_rock_armor_warden(image, origin, column)
+			_draw_enemy_pose(image, origin, row, floori(float(column) / 2.0), column % 2)
 	var output_path := _asset_output_path("enemy_profiles.png")
 	var error := image.save_png(output_path)
 	if error != OK:
@@ -308,6 +300,44 @@ func _draw_enemy_shadow(image: Image, origin: Vector2i, width: int) -> void:
 	var center_x := origin.x + 32
 	_fill(image, Rect2i(center_x - width / 2, origin.y + 54, width, 4), Color(0.15, 0.19, 0.18, 0.42))
 	_fill(image, Rect2i(center_x - width / 2 + 5, origin.y + 58, width - 10, 2), Color(0.15, 0.19, 0.18, 0.22))
+
+
+func _draw_enemy_pose(image: Image, origin: Vector2i, profile_row: int, pose: int, frame: int) -> void:
+	var pose_origin := origin
+	if pose == 1:
+		pose_origin += Vector2i(-1 if frame == 0 else -2, 1 if frame == 0 else 0)
+	elif pose == 2:
+		pose_origin += Vector2i(2 if frame == 0 else -2, 1)
+	match profile_row:
+		0:
+			_draw_rock_armor_young(image, pose_origin, frame)
+		1:
+			_draw_spring_moss_shell(image, pose_origin, frame)
+		2:
+			_draw_stone_puppet(image, pose_origin, frame)
+		_:
+			_draw_rock_armor_warden(image, pose_origin, frame)
+	if pose == 1:
+		_draw_enemy_attack_marks(image, origin, frame)
+	elif pose == 2:
+		_draw_enemy_reaction_marks(image, origin, frame)
+
+
+func _draw_enemy_attack_marks(image: Image, origin: Vector2i, frame: int) -> void:
+	var trail_x := origin.x + (54 if frame == 0 else 57)
+	_fill(image, Rect2i(trail_x, origin.y + 24, 6, 2), GOLD)
+	_fill(image, Rect2i(trail_x - 4, origin.y + 32, 8, 2), Color("e7a76f"))
+	_fill(image, Rect2i(trail_x + 1, origin.y + 40, 4, 2), Color("a7d7cc"))
+	_fill(image, Rect2i(origin.x + 4, origin.y + 50 - frame * 2, 5, 2), Color("d7cba5"))
+
+
+func _draw_enemy_reaction_marks(image: Image, origin: Vector2i, frame: int) -> void:
+	var spark_shift := 2 if frame == 1 else 0
+	_fill(image, Rect2i(origin.x + 5 + spark_shift, origin.y + 18, 3, 3), GOLD)
+	_fill(image, Rect2i(origin.x + 56 - spark_shift, origin.y + 27, 3, 3), Color("e7a76f"))
+	_fill(image, Rect2i(origin.x + 9, origin.y + 39 + spark_shift, 4, 2), Color("c6764f"))
+	_fill(image, Rect2i(origin.x + 50, origin.y + 14 - spark_shift, 2, 5), Color("f2e6cb"))
+	_fill(image, Rect2i(origin.x + 31, origin.y + 12, 3, 6), Color("c6764f"))
 
 
 func _draw_rock_armor_young(image: Image, origin: Vector2i, frame: int) -> void:

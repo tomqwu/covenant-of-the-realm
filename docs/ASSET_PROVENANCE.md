@@ -45,13 +45,15 @@ grass, path pebbles, wildflowers, stone cracks, moss, fallen leaves, and water f
 physics or navigation layer. No model, external map, texture, pattern, photograph, or third-party
 tile-design input is used.
 
-The generator also creates `enemy_profiles.png`, an original 128×256 RGBA atlas with two 64×64
-idle frames for each of the four project-authored enemy profiles: 岩甲兽幼体、泉苔寄壳、
-失衡石傀 and 岩甲兽守巢者. The silhouettes are assembled only from project-authored pixel
+The generator also creates `enemy_profiles.png`, an original 384×256 RGBA atlas with six 64×64
+frames for each of the four project-authored enemy profiles: 岩甲兽幼体、泉苔寄壳、
+失衡石傀 and 岩甲兽守巢者. Each stable row contains two idle, two attack, and two reaction
+frames. The silhouettes, short motion marks, and impact sparks are assembled only from project-authored pixel
 rectangles and the recorded palette; no model, reference image, commercial sprite, external game
 asset, or third-party drawing code is used. `enemy_sprite.gd` maps the same stable IDs used by the
-deterministic battle domain to fixed atlas rows. The asset gate verifies dimensions, row order,
-frame rate, foot anchor, local file name, and exact profile list before package export.
+deterministic battle domain to fixed atlas rows and consumes semantic event IDs for presentation.
+The asset gate verifies dimensions, row order, animation columns, loop and frame-rate metadata,
+event groups, foot anchor, local file name, and exact profile list before package export.
 
 These are reproducible first-production placeholders intended to validate the `AnimatedSprite2D`
 pipeline. They may be regenerated with the pinned Godot runtime and should be replaced or refined

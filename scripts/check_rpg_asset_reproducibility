@@ -18,9 +18,9 @@ assets=(
   zhaohe_landmarks.png
 )
 
-"$repo_root/scripts/godot" --quiet --headless --path "$repo_root/rpg" \
+"$repo_root/scripts/godot_checked" --quiet --headless --path "$repo_root/rpg" \
   --script res://tools/generate_pixel_assets.gd -- "$first_dir"
-"$repo_root/scripts/godot" --quiet --headless --path "$repo_root/rpg" \
+"$repo_root/scripts/godot_checked" --quiet --headless --path "$repo_root/rpg" \
   --script res://tools/generate_pixel_assets.gd -- "$second_dir"
 
 for asset in "${assets[@]}"; do

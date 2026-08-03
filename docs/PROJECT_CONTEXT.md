@@ -134,7 +134,7 @@ Expand the executable RPG graybox into a complete 90-minute original chapter:
 2. resumable seven-line companion briefing, two attitude responses, dynamic quest-state presentation, and a resumable five-line chapter epilogue reflecting the played route (implemented);
 3. 月芽田两种不会锁死主线的采集方式、可见余留与结算回声（implemented）;
 4. 藏泉山道 free exploration, warning, optional stone-marker investigation, return/retreat, no-combat bypass, mid-map save, and companion rescue path (implemented);
-5. three regular enemy profiles plus a shared-resolver boss, stable intent-local counter windows, three optional spatial spoor investigations, a no-spoiler `灵物志`, material weaknesses, armor-break and focus states (implemented; intelligence changes disclosure only, never combat results);
+5. three regular enemy profiles plus a shared-resolver boss, stable intent-local counter windows, three optional spatial spoor investigations, a no-spoiler `灵物志`, material weaknesses, armor-break and focus states, and semantic attack/reaction animation for all four profiles (implemented; animation and intelligence change presentation only, never combat results);
 6. an active chapter companion and a visible two-turn tactical deployable (implemented);
 7. side-story-, patrol-route-, discovery-, harvest-, battle-status-, enemy-intelligence-, dialogue-, first-breath-stage-, and map-aware save v15, title/continue, two-step new-game protection, crash-consistent temporary/backup recovery with anti-downgrade validation, chapter replay, and an input-safe no-spoiler journey journal (implemented; v1–v14 migrate explicitly, phase/map/dialogue/patrol combinations are validated strictly, and replay clears the ritual and patrol state);
 8. mouse, keyboard, and controller parity with physical-event/focus acceptance coverage, including selectable journal pages, proximity investigations, the route-order dialogue, and all three repeatable life-landmark actions (implemented);
@@ -142,8 +142,8 @@ Expand the executable RPG graybox into a complete 90-minute original chapter:
 10. a third `cangquan_spring` micro-map and the ordered spatial ritual “听泉辨脉 → 月芽温脉 → 静坐引息” (implemented; wrong-order actions reject atomically, every successful step autosaves, and restoration preserves the exact ritual stage and coordinate);
 11. new-game-to-ending-to-save-resume-to-replay automated Godot acceptance path (implemented).
 
-The next production milestone is a 15–20 minute asset-backed sample chapter, prioritizing semantic
-enemy animation, painted portrait refinement, denser NPC schedules, and longer original
+The next production milestone is a 15–20 minute asset-backed sample chapter, prioritizing the
+ferry-runner endpoint payoff, a dialogue-speed preference, painted portrait refinement, denser NPC schedules, and longer original
 side-story content before expanding to the full 90-minute target. The ordered implementation and decision boundaries are recorded in
 [Next Production Plan v0.1](design/NEXT_PRODUCTION_PLAN_v0.1.md).
 

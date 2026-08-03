@@ -181,6 +181,8 @@ func set_player_motion(direction: Vector2) -> void:
 
 
 func show_battle_feedback(event_ids: Array, fast_mode: bool, reduced_motion: bool) -> void:
+	if is_instance_valid(battle_enemy_sprite):
+		battle_enemy_sprite.consume_battle_events(event_ids, fast_mode, reduced_motion)
 	var labels := {
 		"enemy_hit": "受到冲击",
 		"enemy_glanced": "化开冲势",

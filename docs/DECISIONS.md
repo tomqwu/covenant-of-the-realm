@@ -4,6 +4,31 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — Enemy action animation consumes semantic events without gameplay authority
+
+The four stable enemy profiles now share one original 384×256 RGBA atlas. Every 64×64 profile
+row has two idle frames, two attack frames, and two reaction frames. The committed generator and
+asset-contract schema v5 fix those six columns, frame rates, loop behavior, nearest filtering,
+integer placement, foot anchor, profile order, and battle-event groups. The three mountain-path
+warning sprites continue to use only their idle animation; only the existing battle sprite consumes
+combat events, so the feature adds no scene node, timer, tween, collision shape, or save field.
+
+`weakness_exposed`, `art_hit`, and `talisman_hit` select the reaction pose in that fixed priority;
+`enemy_hit` and `enemy_glanced` select the attack pose. The latter names mean that the enemy hit or
+glanced the player, not that the enemy was struck. One resolved action selects at most one pose,
+and a newer action replaces it from frame zero without blocking input. Regular-enemy victory plus
+warden arrival, final victory, retreat, and companion rescue suppress transient poses and reset the
+already-synchronized profile to idle. This prevents the incoming warden from acting out the
+departed regular enemy's hit reaction after the resolver has replaced the profile.
+
+The standard 0.70-second and fast 0.18-second cue lifetimes are presentation-only clocks. Reduced
+motion freezes a readable semantic first frame; invalid deltas and unknown events reject atomically,
+and expiration returns to the profile's idle animation. No animation callback decides or delays
+damage, intent, round progression, input, phase transition, persistence, or available actions.
+Journey and save remain v15, and loading derives an idle pose solely from the saved stable enemy ID.
+Intent-specific attacks and visible outgoing-enemy death sequences remain deferred because current
+semantic event IDs intentionally do not carry the resolved intent or replaced enemy profile.
+
 ### 2026-08-03 — Expanded maps use one deterministic bounded world camera
 
 照禾渡口 and 藏泉山道 now use 48×27 32 px ground grids, giving each explored world a

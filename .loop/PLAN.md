@@ -1,28 +1,35 @@
 # Loop Plan
 
-## Current loop — 48×27 bounded rolling camera
+## Current loop — four-profile semantic enemy animation
 
-- [x] Expand ferry and mountain ground/detail layouts from 36×20 to 48×27 without changing normalized
-  save coordinates or gameplay authority.
-- [x] Put every world-space visual under one `WorldRoot`; keep HUD, dialogue, journal, pause, title,
-  transition, and other modal layers outside it.
-- [x] Add an integer-pixel camera policy with four-edge clamping, safe-frame reporting, invalid-input
-  rejection, oversized-viewport handling, and immediate reframe on every restore/transition path.
-- [x] Cover the policy through scene/unit, physical-input, complete-chapter E2E, lifecycle, asset,
-  deterministic screenshot, package-content, and boot checks.
-- [x] Run the repository-wide `make check` with all requested checks passing.
-- [x] Review the complete diff, commit, push, and monitor Draft PR #7 without merging it.
+- [x] Expand the generated enemy atlas from two to six columns without changing the four stable
+  profile rows, 64×64 frame size, foot anchor, nearest filtering, or integer placement.
+- [x] Add deterministic idle, attack, and reaction animations; consume one fixed-priority battle
+  event per action while terminal/profile-transition events safely reset to idle.
+- [x] Keep damage, intent, round timing, input, collision, phase, and save v15 authority outside the
+  animation adapter; keep all three mountain-path warning sprites idle-only.
+- [x] Cover all profiles, event-order priority, unknown inputs, invalid/oversized presentation deltas,
+  fast/reduced motion, terminal suppression, input parity, save restore, lifecycle, assets, captures,
+  package contents, and boot behavior.
+- [ ] Run the repository-wide `make check`, review the complete diff, commit, push, and monitor Draft
+  PR #7 without merging it.
+
+## Recently completed — 48×27 bounded rolling camera
+
+- [x] Expand both exploration maps to 48×27 under one bounded integer-pixel `WorldRoot` transform.
+- [x] Keep HUD/modal layers fixed, preserve normalized save coordinates, and cover every edge,
+  transition, restore, capture, package, and lifecycle boundary.
 
 ## Next unblocked loops
 
-1. Give all four enemy profiles deterministic semantic action animations that consume battle events
-   without deciding damage, intent, timing, or save state.
-2. Pay off the ferry-runner route choice at both work endpoints with original, reward-free spatial
+1. Pay off the ferry-runner route choice at both work endpoints with original, reward-free spatial
    reactions and resumable prose.
-3. Add an accessibility dialogue-speed preference with conservative settings migration and physical
+2. Add an accessibility dialogue-speed preference with conservative settings migration and physical
    input coverage.
-4. Continue painted-paper portrait refinement and denser original NPC schedules after the semantic
+3. Continue painted-paper portrait refinement and denser original NPC schedules after the semantic
    animation pipeline is stable.
+4. Add intent-specific telegraphs or visible outgoing-enemy defeat only after structured presentation
+   context can identify the resolved intent and replaced profile without entering the domain save.
 
 ## Blocked production boundary
 

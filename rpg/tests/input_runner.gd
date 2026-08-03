@@ -308,6 +308,7 @@ func _run() -> void:
 	_expect(moved_focus is Button and moved_focus != first_focus, "方向动作在战斗网格中移动焦点")
 	await _trigger_action("ui_accept")
 	_expect(game.journey.round_number == 2, "确认动作执行当前战斗焦点")
+	_expect(game.get_node("%BattleEnemySprite").presentation_contract()["state"] == "react", "真实方向与确认输入触发同一敌人受击语义")
 	game.return_to_title()
 	await _settle()
 	var battle_save_text := FileAccess.get_file_as_string(SAVE_PATH)

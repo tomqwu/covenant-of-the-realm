@@ -2246,12 +2246,110 @@ func _test_scene_smoke() -> void:
 	var enemy_sprite_contract: Dictionary = enemy_sprite.animation_contract()
 	_expect_equal(enemy_sprite_contract["frame_size"], Vector2(64, 64), "敌人图集使用 64×64 像素帧")
 	_expect_equal(enemy_sprite_contract["foot_anchor"], Vector2(32, 56), "四类敌人共享固定脚底锚点")
-	_expect_equal(enemy_sprite_contract["frames_per_profile"], 2, "每类敌人有两帧可循环待机动画")
+	_expect_equal(enemy_sprite_contract["frames_per_state"], 2, "每类敌人的待机、攻击与受击姿态各使用两帧")
+	_expect_equal(enemy_sprite_contract["animations_per_profile"], 3, "每类敌人提供三种稳定语义姿态")
 	_expect_equal(enemy_sprite_contract["filter"], CanvasItem.TEXTURE_FILTER_NEAREST, "敌人纹理使用最近邻过滤")
-	_expect_equal(enemy_sprite.sprite_frames.get_animation_names().size(), 4, "图集为四个稳定敌人标识提供动画")
+	_expect_false(enemy_sprite_contract["damage_authority"], "敌人动画不决定伤害")
+	_expect_false(enemy_sprite_contract["intent_authority"], "敌人动画不决定意图")
+	_expect_false(enemy_sprite_contract["gameplay_timing_authority"], "敌人动画不推进规则时间")
+	_expect_false(enemy_sprite_contract["save_authority"], "敌人动画不写入存档")
+	_expect_equal(enemy_sprite.sprite_frames.get_animation_names().size(), 12, "四个稳定敌人标识各提供三种动画")
 	_expect_equal(enemy_sprite.sprite_frames.get_frame_count("idle_rock_armor_warden"), 2, "首领使用独立双帧图集行")
+	var enemy_rows := {
+		"rock_armor_young": 0,
+		"spring_moss_shell": 1,
+		"unbalanced_stone_puppet": 2,
+		"rock_armor_warden": 3,
+	}
+	var enemy_state_columns := {"idle": 0, "attack": 2, "react": 4}
+	var enemy_state_fps := {"idle": 2.5, "attack": 8.0, "react": 7.0}
+	var enemy_atlas_image: Image = enemy_sprite.atlas_texture.get_image()
+	_expect_equal(enemy_atlas_image.get_size(), Vector2i(384, 256), "敌人源图集严格使用六列四行")
+	for profile_row in range(4):
+		for atlas_column in range(6):
+			var opaque_pixels := 0
+			var opaque_border_pixels := 0
+			for frame_y in range(64):
+				for frame_x in range(64):
+					var pixel := enemy_atlas_image.get_pixel(atlas_column * 64 + frame_x, profile_row * 64 + frame_y)
+					if pixel.a > 0.0:
+						opaque_pixels += 1
+						if frame_x in [0, 63] or frame_y in [0, 63]:
+							opaque_border_pixels += 1
+			_expect_true(opaque_pixels > 0, "敌人图集第 %d 行第 %d 列不是透明空帧" % [profile_row, atlas_column])
+			_expect_equal(opaque_border_pixels, 0, "敌人图集第 %d 行第 %d 列保留透明防串色边界" % [profile_row, atlas_column])
+	for profile_id in enemy_rows:
+		for state_id in enemy_state_columns:
+			var semantic_animation := "%s_%s" % [state_id, profile_id]
+			_expect_true(enemy_sprite.sprite_frames.has_animation(semantic_animation), "%s 存在" % semantic_animation)
+			_expect_equal(enemy_sprite.sprite_frames.get_frame_count(semantic_animation), 2, "%s 使用双帧" % semantic_animation)
+			_expect_equal(enemy_sprite.sprite_frames.get_animation_loop(semantic_animation), state_id == "idle", "%s 循环合同正确" % semantic_animation)
+			_expect_equal(enemy_sprite.sprite_frames.get_animation_speed(semantic_animation), enemy_state_fps[state_id], "%s 使用固定表现帧率" % semantic_animation)
+			for semantic_frame_index in range(2):
+				var semantic_frame: AtlasTexture = enemy_sprite.sprite_frames.get_frame_texture(semantic_animation, semantic_frame_index)
+				_expect_equal(semantic_frame.region, Rect2(float(enemy_state_columns[state_id] + semantic_frame_index) * 64.0, float(enemy_rows[profile_id]) * 64.0, 64.0, 64.0), "%s 第 %d 帧读取固定图集区域" % [semantic_animation, semantic_frame_index])
+	var journey_before_enemy_presentation: Dictionary = instance.journey.snapshot()
+	for profile_id in enemy_rows:
+		_expect_true(enemy_sprite.set_enemy_id(profile_id), "%s 可选择固定表现行" % profile_id)
+		var stable_enemy_position := enemy_sprite.position
+		_expect_true(enemy_sprite.consume_battle_events(["enemy_hit"], false, false), "%s 消费敌方反击语义" % profile_id)
+		var attack_contract: Dictionary = enemy_sprite.presentation_contract()
+		_expect_equal(attack_contract["state"], "attack", "%s 反击选择攻击姿态" % profile_id)
+		_expect_equal(attack_contract["event_id"], "enemy_hit", "%s 记录实际消费事件" % profile_id)
+		_expect_equal(attack_contract["animation"], "attack_%s" % profile_id, "%s 播放自身攻击帧" % profile_id)
+		_expect_equal(attack_contract["duration"], 0.70, "%s 标准反馈使用固定表现时长" % profile_id)
+		_expect_true(attack_contract["motion_enabled"], "%s 标准反馈启用双帧动作" % profile_id)
+		_expect_false(attack_contract["rule_authority"], "%s 表现姿态不拥有规则权威" % profile_id)
+		_expect_false(attack_contract["timing_authority"], "%s 表现时长不拥有回合权威" % profile_id)
+		_expect_false(attack_contract["save_authority"], "%s 表现姿态不拥有存档权威" % profile_id)
+		_expect_false(attack_contract["blocks_input"], "%s 一次性姿态不阻断下一次输入" % profile_id)
+		_expect_equal(enemy_sprite.position, stable_enemy_position, "%s 语义动画不移动规则脚点" % profile_id)
+		enemy_sprite.frame = 1
+		_expect_true(enemy_sprite.consume_battle_events(["enemy_hit"], false, false), "%s 可被同一新事件替换" % profile_id)
+		_expect_equal(enemy_sprite.frame, 0, "%s 重复事件从第一帧重启" % profile_id)
+		_expect_true(enemy_sprite.consume_battle_events(["art_hit", "enemy_hit"], false, false), "%s 消费玩家命中语义" % profile_id)
+		var reaction_contract: Dictionary = enemy_sprite.presentation_contract()
+		_expect_equal(reaction_contract["state"], "react", "%s 命中优先于同批敌方反击" % profile_id)
+		_expect_equal(reaction_contract["event_id"], "art_hit", "%s 固定优先级不依赖事件排列" % profile_id)
+		_expect_true(enemy_sprite.consume_battle_events(["enemy_glanced", "weakness_exposed"], false, false), "%s 消费破绽语义" % profile_id)
+		_expect_equal(enemy_sprite.presentation_contract()["event_id"], "weakness_exposed", "%s 破绽优先于格挡反馈" % profile_id)
+		var stable_reaction: Dictionary = enemy_sprite.presentation_contract()
+		_expect_false(enemy_sprite.consume_battle_events(["unknown_event", 7], false, false), "%s 原子忽略未知事件" % profile_id)
+		_expect_equal(enemy_sprite.presentation_contract(), stable_reaction, "%s 未知事件不污染当前表现" % profile_id)
+		_expect_false(enemy_sprite.advance_presentation(0.0), "%s 拒绝零表现步长" % profile_id)
+		_expect_false(enemy_sprite.advance_presentation(-0.1), "%s 拒绝负表现步长" % profile_id)
+		_expect_false(enemy_sprite.advance_presentation(NAN), "%s 拒绝非有限表现步长" % profile_id)
+		_expect_equal(enemy_sprite.presentation_contract(), stable_reaction, "%s 非法步长不污染当前表现" % profile_id)
+		_expect_true(enemy_sprite.advance_presentation(0.70), "%s 精确边界结束一次性姿态" % profile_id)
+		_expect_equal(enemy_sprite.presentation_contract()["state"], "idle", "%s 到时恢复自身待机" % profile_id)
+		_expect_true(enemy_sprite.consume_battle_events(["enemy_glanced"], true, true), "%s 消费快速简化动态事件" % profile_id)
+		var reduced_contract: Dictionary = enemy_sprite.presentation_contract()
+		_expect_equal(reduced_contract["duration"], 0.18, "%s 快速模式只缩短表现时长" % profile_id)
+		_expect_false(reduced_contract["motion_enabled"], "%s 简化动态冻结语义首帧" % profile_id)
+		_expect_true(reduced_contract["motion_skipped"], "%s 合同标记已跳过运动" % profile_id)
+		_expect_equal(enemy_sprite.frame, 0, "%s 简化动态保留可读静态姿态" % profile_id)
+		_expect_true(enemy_sprite.advance_presentation(1.0), "%s 过大合法步长安全收束" % profile_id)
+		_expect_equal(enemy_sprite.presentation_contract()["state"], "idle", "%s 过大步长无残留姿态" % profile_id)
+	_expect_true(enemy_sprite.set_enemy_id("rock_armor_young"), "表现偏好四象限测试使用稳定敌人")
+	_expect_true(enemy_sprite.consume_battle_events(["enemy_hit"], true, false), "快速完整动态消费攻击事件")
+	_expect_equal(enemy_sprite.presentation_contract()["duration"], 0.18, "快速完整动态只缩短表现时长")
+	_expect_true(enemy_sprite.presentation_contract()["motion_enabled"], "快速模式不会擅自关闭动作")
+	_expect_true(enemy_sprite.consume_battle_events(["enemy_hit"], false, true), "标准简化动态消费攻击事件")
+	_expect_equal(enemy_sprite.presentation_contract()["duration"], 0.70, "简化动态不会擅自缩短标准时长")
+	_expect_false(enemy_sprite.presentation_contract()["motion_enabled"], "标准简化动态只冻结动作")
+	for suppressed_event in ["battle_won", "retreated", "companion_rescue"]:
+		_expect_true(enemy_sprite.consume_battle_events(["enemy_hit"], false, false), "%s 抑制前建立活动姿态" % suppressed_event)
+		_expect_false(enemy_sprite.consume_battle_events([suppressed_event], false, false), "%s 不播放不属于当前档案的瞬时姿态" % suppressed_event)
+		_expect_equal(enemy_sprite.presentation_contract()["state"], "idle", "%s 重置到待机" % suppressed_event)
+		_expect_equal(enemy_sprite.animation, &"idle_rock_armor_young", "%s 保留当前档案行" % suppressed_event)
+	_expect_true(enemy_sprite.set_enemy_id("rock_armor_warden"), "终局抑制测试先同步到首领行")
+	_expect_false(enemy_sprite.consume_battle_events(["art_hit", "regular_enemy_won", "boss_arrived"], false, false), "普通敌人退场与首领入场抑制错误受击动画")
+	_expect_equal(enemy_sprite.animation, &"idle_rock_armor_warden", "首领不会替已退场普通敌人播放受击")
+	var stable_warden_contract: Dictionary = enemy_sprite.presentation_contract()
 	_expect_false(enemy_sprite.set_enemy_id("unknown_enemy"), "敌人表现节点拒绝未知配置而不伪造动画")
-	_expect_equal(enemy_sprite.enemy_id, "rock_armor_young", "非法表现标识不会覆盖当前敌人")
+	_expect_equal(enemy_sprite.presentation_contract(), stable_warden_contract, "非法表现标识原子保留当前首领状态")
+	_expect_equal(instance.journey.snapshot(), journey_before_enemy_presentation, "敌人表现测试不会改变领域快照")
+	_expect_true(enemy_sprite.set_enemy_id("rock_armor_young"), "后续场景测试恢复默认敌人表现行")
 	var map_canvas = instance.get_node("%MapCanvas")
 	var world_root: Node2D = instance.get_node("%WorldRoot")
 	var map_frame: Control = instance.get_node("%MapFrame")
@@ -2871,12 +2969,20 @@ func _test_scene_smoke() -> void:
 	_expect_equal(fast_feedback["text"], "石灯护阵", "战斗语义事件触发对应画面反馈")
 	_expect_equal(fast_feedback["duration"], 0.18, "快速模式缩短反馈持续时间")
 	_expect_false(fast_feedback["motion_enabled"], "简化动态关闭反馈脉冲")
+	var fast_enemy_cue: Dictionary = enemy_sprite.presentation_contract()
+	_expect_equal(fast_enemy_cue["state"], "attack", "石灯结算后的敌方反击触发攻击姿态")
+	_expect_equal(fast_enemy_cue["event_id"], "enemy_glanced", "攻击姿态消费实际格挡后的敌方事件")
+	_expect_equal(fast_enemy_cue["duration"], 0.18, "敌人姿态与快速反馈共享非权威表现时长")
+	_expect_false(fast_enemy_cue["motion_enabled"], "简化动态将攻击姿态冻结为可读首帧")
 
 	await _press_action(instance, "请砚青援护")
 	_expect_true(instance.get_node("%EventLabel").text.contains("护脉药雾"), "场景呈现主动同伴援护")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("援护 0"), "战斗状态显示援护资源用尽")
+	_expect_equal(enemy_sprite.presentation_contract()["state"], "attack", "同伴援护后的敌方回应继续使用攻击姿态")
 	await _press_action(instance, "镇岩符")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("回合 4"), "战斗状态呈现回合信息")
+	_expect_equal(enemy_sprite.presentation_contract()["state"], "react", "镇岩符命中触发敌人受击姿态")
+	_expect_equal(enemy_sprite.presentation_contract()["event_id"], "talisman_hit", "受击姿态记录符箓命中语义")
 	await _press_action(instance, "引气术")
 	await _press_action(instance, "引气术")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("岩甲兽守巢者 14/14"), "普通敌人后无缝进入首领配置")
@@ -2890,9 +2996,12 @@ func _test_scene_smoke() -> void:
 	_expect_false(instance.get_node("%ObjectiveLabel").text.contains("后一势") or instance.get_node("%ObjectiveLabel").text.contains("破绽窗口"), "未调查岩甲痕迹时首领目标不显示后续或反制")
 	await _press_action(instance, "守势调息")
 	_expect_false(instance.get_node("%StatusLabel").text.contains("破甲"), "压阵肩撞期间守势不会提前破甲")
+	_expect_equal(enemy_sprite.presentation_contract()["state"], "attack", "首领压阵回应触发自身攻击姿态")
 	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("崩石重击"), "首领第二回合明示真正重击窗口")
 	await _press_action(instance, "守势调息")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("破甲 2"), "守住崩石重击后状态栏显示破甲")
+	_expect_equal(enemy_sprite.presentation_contract()["state"], "react", "首领破绽事件优先触发受击姿态")
+	_expect_equal(enemy_sprite.presentation_contract()["event_id"], "weakness_exposed", "首领受击姿态保留破绽语义")
 	await _press_action(instance, "引气术")
 	await _press_action(instance, "请砚青援护")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("凝息 2"), "同伴援护后状态栏显示凝息")

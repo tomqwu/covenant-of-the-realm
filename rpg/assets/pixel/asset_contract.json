@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "origin": "original",
   "tile_grid_px": 32,
   "actor_frame_px": [32, 56],
@@ -38,9 +38,27 @@
     "file": "enemy_profiles.png",
     "frame_size_px": [64, 64],
     "foot_anchor_px": [32, 56],
-    "columns": 2,
+    "columns": 6,
     "rows": 4,
-    "animation": {"columns": [0, 1], "fps": 2.5},
+    "animations": {
+      "idle": {"columns": [0, 1], "fps": 2.5, "loop": true},
+      "attack": {"columns": [2, 3], "fps": 8.0, "loop": false},
+      "react": {"columns": [4, 5], "fps": 7.0, "loop": false}
+    },
+    "semantic_events": {
+      "react": ["weakness_exposed", "art_hit", "talisman_hit"],
+      "attack": ["enemy_hit", "enemy_glanced"]
+    },
+    "terminal_suppression": [
+      "regular_enemy_won",
+      "boss_arrived",
+      "battle_won",
+      "retreated",
+      "companion_rescue"
+    ],
+    "texture_filter": "nearest",
+    "pixel_snap": true,
+    "gameplay_authority": false,
     "profiles": [
       "rock_armor_young",
       "spring_moss_shell",

@@ -26,9 +26,9 @@ false-green imports, tests, captures, exports, content probes, or packaged boot 
 nearest Git revision, clean/dirty source state, required runtime resources, and excluded development
 resources. `make play-rpg-package` launches that pack with the pinned Godot entrypoint. The package
 gate exports the PCK and manifest twice, requires byte-identical results, verifies the manifest,
-probes the packed namespace for 18 runtime resources and nine excluded `tests/`/`tools/` files,
-then boots the pack headlessly. The current reproducible PCK is 630,040 bytes with SHA-256
-`c67c77cfd32219a48803b67326705c21bf0b1739118b766c71f8924db7202e50`.
+probes the packed namespace for 20 runtime resources and nine excluded `tests/`/`tools/` files,
+then boots the pack headlessly. The current reproducible PCK is 642,328 bytes with SHA-256
+`c12fbb5088b92c4107c78d2be544a7b67974ed00381d98279284c1da75ca4340`.
 A native `.app`/`.exe` is intentionally deferred until platform export templates,
 signing identity, product icon, and distribution target are confirmed.
 
@@ -65,8 +65,9 @@ reports measured times but does not treat one development machine as a release h
 由项目 GDScript 在运行时合成，不下载或嵌入第三方音频；偏好独立保存在本机，
 损坏设置会安全回落为静音与 60% 音量，不影响旅程存档。
 
-settings v2 还保存“标准/快速”战斗表现和“完整/简化”动态效果。快速只把语义事件
-反馈从 0.70 秒缩短到 0.18 秒；简化动态保留静态文字与边框，但关闭脉冲。两项设置
+settings v2 还保存“标准/快速”战斗表现和“完整/简化”动态效果。快速把语义文字与
+敌人姿态反馈从 0.70 秒缩短到 0.18 秒；简化动态保留静态文字、边框和可读的敌人
+语义首帧，但关闭脉冲与双帧运动。两项设置
 不会进入旅程 domain，也不会改变伤害、回合、意图或存档结果。v1 音频设置自动
 迁移为标准速度与完整动态，键盘、鼠标和手柄均可在标题或暂停页切换。
 
@@ -78,8 +79,9 @@ settings v3 增加“标准/大字”文字大小和“关闭/开启”高对比
 当前功能性美术灰盒采用明亮的有界滚动 RPG 镜头。第一套原创、确定性生成的人物图集
 已经锁定 32×56 px 帧、固定脚底锚点、16×20 px 碰撞基准、四方向待机/行走动画、
 最近邻过滤与整数像素对齐，并通过 `AnimatedSprite2D` 驱动主角、砚青、守堤人梁叔、药圃守蕙婶和渡口跑腿人陶小满。四类敌人
-共用另一张 128×256 RGBA 图集，每类占一行 64×64 双帧待机动画；稳定敌人标识
-直接选择图集行，最近邻、脚底锚点和未知标识拒绝行为均由场景测试锁定。在照禾渡口
+共用另一张 384×256 RGBA 图集，每类占一行，并各有双帧待机、攻击与受击姿态；
+战斗节点按固定优先级消费命中、破绽与敌方回应事件，山道预警节点仍只待机。稳定敌人标识
+直接选择图集行，最近邻、脚底锚点、终局抑制和未知标识原子拒绝均由场景测试锁定。在照禾渡口
 使用 `WASD` 或方向键移动，靠近金色交互圈后按 `E`、空格或
 手柄 A；也可以点击右侧出现的行动。河水、地图边缘和房屋具有确定性碰撞，必须
 亲自走到月芽田采集，再沿路抵达藏泉山门。战斗阶段使用鼠标点击，或用方向键

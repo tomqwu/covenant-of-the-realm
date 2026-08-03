@@ -51,6 +51,17 @@ LANDMARK_PROFILES = [
     "ferry_drying_rack",
     "path_rain_shelter",
 ]
+ENEMY_PROFILES = [
+    "rock_armor_young",
+    "spring_moss_shell",
+    "unbalanced_stone_puppet",
+    "rock_armor_warden",
+]
+ENEMY_ANIMATIONS = {
+    "idle": {"columns": [0, 1], "fps": 2.5, "loop": True},
+    "attack": {"columns": [2, 3], "fps": 8.0, "loop": False},
+    "react": {"columns": [4, 5], "fps": 7.0, "loop": False},
+}
 
 
 def _png_chunk(chunk_type: bytes, data: bytes) -> bytes:
@@ -107,10 +118,10 @@ def test_map_atlas_accepts_exact_two_row_contract(valid_contract: dict[str, Any]
     assert check_rpg_assets.validate_contract(valid_contract) == []
 
 
-def test_schema_four_accepts_five_actor_atlases_and_tao_xiaoman(
+def test_schema_five_accepts_five_actor_atlases_and_tao_xiaoman(
     valid_contract: dict[str, Any],
 ) -> None:
-    assert valid_contract["schema_version"] == 4
+    assert valid_contract["schema_version"] == 5
     assert valid_contract["atlases"] == ACTOR_ATLASES
     assert check_rpg_assets._png_size(
         check_rpg_assets.ASSET_DIR / "tao_xiaoman.png"
@@ -121,12 +132,12 @@ def test_schema_four_accepts_five_actor_atlases_and_tao_xiaoman(
 def test_actor_atlas_contract_rejects_old_schema_and_changed_roster(
     valid_contract: dict[str, Any],
 ) -> None:
-    valid_contract["schema_version"] = 3
+    valid_contract["schema_version"] = 4
     valid_contract["atlases"] = ACTOR_ATLASES[:-1]
 
     failures = check_rpg_assets.validate_contract(valid_contract)
 
-    assert "schema_version must be 4" in failures
+    assert "schema_version must be 5" in failures
     assert "atlases must match the five stable actor IDs" in failures
 
 
@@ -138,6 +149,106 @@ def test_actor_atlas_contract_rejects_wrong_tao_xiaoman_dimensions(
     failures = check_rpg_assets.validate_contract(valid_contract)
 
     assert "tao_xiaoman.png: expected (128, 224), got (127, 224)" in failures
+
+
+def test_enemy_atlas_accepts_semantic_animation_contract(
+    valid_contract: dict[str, Any],
+) -> None:
+    enemy_atlas = valid_contract["enemy_atlas"]
+
+    assert enemy_atlas["profiles"] == ENEMY_PROFILES
+    assert enemy_atlas["animations"] == ENEMY_ANIMATIONS
+    assert check_rpg_assets._png_size(
+        check_rpg_assets.ASSET_DIR / "enemy_profiles.png"
+    ) == (384, 256)
+    assert check_rpg_assets.validate_contract(valid_contract) == []
+
+
+def test_enemy_atlas_requires_an_object(valid_contract: dict[str, Any]) -> None:
+    valid_contract["enemy_atlas"] = []
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "enemy_atlas must be an object" in failures
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "expected_message"),
+    [
+        ("frame_size_px", [32, 64], "enemy_atlas.frame_size_px must be [64, 64]"),
+        ("foot_anchor_px", [31, 56], "enemy_atlas.foot_anchor_px must be [32, 56]"),
+        ("columns", 5, "enemy_atlas.columns must be 6"),
+        ("rows", 3, "enemy_atlas.rows must be 4"),
+        (
+            "animations",
+            {"idle": ENEMY_ANIMATIONS["idle"]},
+            "enemy_atlas.animations must match idle, attack, and react slots",
+        ),
+        (
+            "semantic_events",
+            {"react": ["enemy_hit"]},
+            "enemy_atlas.semantic_events must match battle event priority groups",
+        ),
+        (
+            "terminal_suppression",
+            ["battle_won"],
+            "enemy_atlas.terminal_suppression must match battle transitions",
+        ),
+        ("texture_filter", "linear", "enemy_atlas.texture_filter must be nearest"),
+        ("pixel_snap", False, "enemy_atlas.pixel_snap must be true"),
+        ("gameplay_authority", True, "enemy_atlas.gameplay_authority must be false"),
+        (
+            "profiles",
+            list(reversed(ENEMY_PROFILES)),
+            "enemy_atlas.profiles must match the four stable enemy IDs",
+        ),
+    ],
+)
+def test_enemy_atlas_rejects_changed_metadata(
+    valid_contract: dict[str, Any],
+    field: str,
+    value: Any,
+    expected_message: str,
+) -> None:
+    valid_contract["enemy_atlas"][field] = value
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert expected_message in failures
+
+
+@pytest.mark.parametrize("file_name", [None, "../enemy_profiles.png"])
+def test_enemy_atlas_rejects_nonlocal_file_names(
+    valid_contract: dict[str, Any], file_name: Any
+) -> None:
+    valid_contract["enemy_atlas"]["file"] = file_name
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "enemy_atlas.file must be a local file name" in failures
+
+
+def test_enemy_atlas_rejects_a_missing_file(valid_contract: dict[str, Any]) -> None:
+    valid_contract["enemy_atlas"]["file"] = "missing_enemy.png"
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "missing enemy atlas: missing_enemy.png" in failures
+
+
+@pytest.mark.parametrize(("width", "height"), [(383, 256), (384, 255)])
+def test_enemy_atlas_rejects_wrong_png_dimensions(
+    valid_contract: dict[str, Any], width: int, height: int
+) -> None:
+    _write_png(
+        check_rpg_assets.ASSET_DIR / "enemy_profiles.png",
+        width,
+        height,
+    )
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert f"enemy_profiles.png: expected (384, 256), got {(width, height)}" in failures
 
 
 def test_map_atlas_rejects_wrong_row_layout(valid_contract: dict[str, Any]) -> None:

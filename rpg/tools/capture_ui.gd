@@ -181,8 +181,13 @@ func _capture_flow() -> void:
 	instance._on_action("approach_enemy")
 	instance._on_action("deploy_spring_lamp")
 	instance.get_node("%SceneTransition").finish()
-	await _settle()
+	assert(instance.get_node("%BattleEnemySprite").presentation_contract()["state"] == "attack",
+		"攻击参考图必须在真实时间推进前锁定语义姿态")
 	await _save_frame("02-cangquan-battle.png")
+	instance._on_action("use_art")
+	assert(instance.get_node("%BattleEnemySprite").presentation_contract()["state"] == "react",
+		"受击参考图必须在真实时间推进前锁定语义姿态")
+	await _save_frame("02-cangquan-battle-react.png")
 	instance._on_action("retreat")
 	instance._on_action("approach_moss_shell")
 	instance.get_node("%SceneTransition").finish()
@@ -297,12 +302,13 @@ func _normalize_capture_state() -> void:
 		var patrol_state = game.get("patrol")
 		var journey_state = game.get("journey")
 		patrol_state.reset()
-		game.get_node("%MapCanvas").set_patrol_state(
-			patrol_state.position,
-			patrol_state.motion_direction(),
-			patrol_state.is_moving(),
-			journey_state.talked_to_companion
-		)
+		if journey_state.phase_id() == "riverbank":
+			game.get_node("%MapCanvas").set_patrol_state(
+				patrol_state.position,
+				patrol_state.motion_direction(),
+				patrol_state.is_moving(),
+				journey_state.talked_to_companion
+			)
 	var map_canvas := root.find_child("MapCanvas", true, false)
 	if map_canvas != null and map_canvas.feedback_remaining > 0.0:
 		map_canvas.feedback_remaining = map_canvas.feedback_duration * 0.5

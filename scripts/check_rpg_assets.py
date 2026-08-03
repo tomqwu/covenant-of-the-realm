@@ -20,6 +20,10 @@ LANDMARK_ATLAS_COLUMNS = 11
 LANDMARK_ATLAS_ROWS = 1
 LANDMARK_FRAME_SIZE_PX = (192, 128)
 LANDMARK_ATLAS_SIZE_PX = (2112, 128)
+ENEMY_ATLAS_COLUMNS = 6
+ENEMY_ATLAS_ROWS = 4
+ENEMY_FRAME_SIZE_PX = (64, 64)
+ENEMY_ATLAS_SIZE_PX = (384, 256)
 MAP_BASE_TILE_NAMES = [
     "grass",
     "water",
@@ -142,7 +146,7 @@ def validate_contract(data: Any) -> list[str]:
     if not isinstance(data, dict):
         return ["asset contract must be an object"]
     expected = {
-        "schema_version": 4,
+        "schema_version": 5,
         "origin": "original",
         "tile_grid_px": 32,
         "actor_frame_px": [32, 56],
@@ -213,10 +217,38 @@ def validate_contract(data: Any) -> list[str]:
             failures.append("enemy_atlas.frame_size_px must be [64, 64]")
         if enemy_atlas.get("foot_anchor_px") != [32, 56]:
             failures.append("enemy_atlas.foot_anchor_px must be [32, 56]")
-        if enemy_atlas.get("columns") != 2 or enemy_atlas.get("rows") != 4:
-            failures.append("enemy_atlas must use two columns and four rows")
-        if enemy_atlas.get("animation") != {"columns": [0, 1], "fps": 2.5}:
-            failures.append("enemy_atlas.animation must use columns 0-1 at 2.5 fps")
+        if enemy_atlas.get("columns") != ENEMY_ATLAS_COLUMNS:
+            failures.append("enemy_atlas.columns must be 6")
+        if enemy_atlas.get("rows") != ENEMY_ATLAS_ROWS:
+            failures.append("enemy_atlas.rows must be 4")
+        expected_enemy_animations = {
+            "idle": {"columns": [0, 1], "fps": 2.5, "loop": True},
+            "attack": {"columns": [2, 3], "fps": 8.0, "loop": False},
+            "react": {"columns": [4, 5], "fps": 7.0, "loop": False},
+        }
+        if enemy_atlas.get("animations") != expected_enemy_animations:
+            failures.append("enemy_atlas.animations must match idle, attack, and react slots")
+        expected_semantic_events = {
+            "react": ["weakness_exposed", "art_hit", "talisman_hit"],
+            "attack": ["enemy_hit", "enemy_glanced"],
+        }
+        if enemy_atlas.get("semantic_events") != expected_semantic_events:
+            failures.append("enemy_atlas.semantic_events must match battle event priority groups")
+        expected_terminal_events = [
+            "regular_enemy_won",
+            "boss_arrived",
+            "battle_won",
+            "retreated",
+            "companion_rescue",
+        ]
+        if enemy_atlas.get("terminal_suppression") != expected_terminal_events:
+            failures.append("enemy_atlas.terminal_suppression must match battle transitions")
+        if enemy_atlas.get("texture_filter") != "nearest":
+            failures.append("enemy_atlas.texture_filter must be nearest")
+        if enemy_atlas.get("pixel_snap") is not True:
+            failures.append("enemy_atlas.pixel_snap must be true")
+        if enemy_atlas.get("gameplay_authority") is not False:
+            failures.append("enemy_atlas.gameplay_authority must be false")
         if enemy_atlas.get("profiles") != expected_enemy_profiles:
             failures.append("enemy_atlas.profiles must match the four stable enemy IDs")
         enemy_file = enemy_atlas.get("file")
@@ -229,9 +261,9 @@ def validate_contract(data: Any) -> list[str]:
             else:
                 try:
                     actual = _png_size(path)
-                    if actual != (128, 256):
+                    if actual != ENEMY_ATLAS_SIZE_PX:
                         failures.append(
-                            f"{enemy_file}: expected (128, 256), got {actual}"
+                            f"{enemy_file}: expected {ENEMY_ATLAS_SIZE_PX}, got {actual}"
                         )
                 except ValueError as error:
                     failures.append(f"{enemy_file}: {error}")
