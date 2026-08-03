@@ -5,8 +5,9 @@
 - Repository: `/Users/tomwu/Projects/covenant-of-the-realm`
 - Branch: `codex/rpg-foundation`
 - Draft PR: <https://github.com/tomqwu/covenant-of-the-realm/pull/7>
-- Base before this loop: `a897aeb feat(rpg): add saved ferry runner patrol`
-- The uncommitted loop expands ferry/path maps to 48×27 (1536×864), adds a shared deterministic
+- Previous loop head: `a897aeb feat(rpg): add saved ferry runner patrol`
+- Feature commit: `40abdc8 feat(rpg): add bounded rolling world camera`, pushed to the Draft PR.
+- The completed loop expands ferry/path maps to 48×27 (1536×864), adds a shared deterministic
   `WorldRoot` camera, keeps screen-space UI fixed, and leaves save v15 unchanged.
 - Two consecutive 36-image captures match aggregate SHA-256
   `5b173b47176d3db8b8fcc2ebafa8807003a46e45d20b7d037b31bd6455a48b66`.
@@ -26,11 +27,13 @@
 - `make check` — all requested repository gates pass, including Python coverage, Evennia integration,
   live two-client flow, all Godot gates, 122 browser-prototype unit tests, 53 Playwright executions,
   badge verification, and reproducible browser build.
+- GitHub Actions run 30844420218 — MUD quality, Multiplayer E2E, RPG quality, and Journey prototype
+  all pass on feature commit `40abdc8`; Draft PR #7 remains open, mergeable, and unmerged.
 
 ## Next action
 
-Review the final diff and staged scope, then commit and push this loop to Draft PR #7. Monitor CI
-without merging. After CI is green, begin the enemy semantic-animation loop.
+Begin the enemy semantic-animation loop: let all four profiles consume deterministic battle events
+for presentation without gaining damage, intent, timing, collision, or save authority.
 
 ## Blockers
 

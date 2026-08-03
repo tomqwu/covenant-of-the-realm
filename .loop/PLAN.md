@@ -11,7 +11,7 @@
 - [x] Cover the policy through scene/unit, physical-input, complete-chapter E2E, lifecycle, asset,
   deterministic screenshot, package-content, and boot checks.
 - [x] Run the repository-wide `make check` with all requested checks passing.
-- [ ] Review the complete diff, commit, push, and monitor Draft PR #7 without merging it.
+- [x] Review the complete diff, commit, push, and monitor Draft PR #7 without merging it.
 
 ## Next unblocked loops
 
