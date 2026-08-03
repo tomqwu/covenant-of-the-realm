@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+godot_runner="${COVENANT_GODOT_RUNNER:-$repo_root/scripts/godot}"
+godot_log="$(mktemp "${TMPDIR:-/tmp}/covenant-godot.XXXXXX")"
+trap 'rm -f -- "$godot_log"' EXIT
+
+set +e
+"$godot_runner" "$@" 2>&1 | tee "$godot_log"
+pipeline_codes=("${PIPESTATUS[@]}")
+set -e
+godot_code="${pipeline_codes[0]}"
+tee_code="${pipeline_codes[1]}"
+
+if (( godot_code != 0 )); then
+  exit "$godot_code"
+fi
+
+if (( tee_code != 0 )); then
+  exit "$tee_code"
+fi
+
+if LC_ALL=C grep -Eq 'SCRIPT ERROR:|Failed to load script|Parse Error:' "$godot_log"; then
+  printf '%s\n' \
+    'Godot gate failed: fatal script diagnostics were emitted despite a zero process exit code.' \
+    >&2
+  exit 1
+fi
+
+exit 0

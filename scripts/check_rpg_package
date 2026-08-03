@@ -23,9 +23,9 @@ uv run python scripts/rpg_package_manifest.py \
   --pack "$first_pack" \
   --manifest "$first_manifest" \
   --verify
-"$repo_root/scripts/godot" --headless --main-pack "$first_pack" \
+"$repo_root/scripts/godot_checked" --headless --main-pack "$first_pack" \
   --script "$repo_root/scripts/check_rpg_pack_contents.gd" -- "$first_manifest"
-"$repo_root/scripts/godot" --quiet --headless --main-pack "$first_pack" --quit-after 2
+"$repo_root/scripts/godot_checked" --quiet --headless --main-pack "$first_pack" --quit-after 2
 
 pack_size="$(wc -c < "$first_pack" | tr -d ' ')"
 pack_sha256="$(uv run python -c 'import hashlib, pathlib, sys; print(hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())' "$first_pack")"

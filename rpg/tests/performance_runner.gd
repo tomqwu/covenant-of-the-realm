@@ -2,13 +2,14 @@ extends SceneTree
 
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
+const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const BUDGET_PATH := "res://tests/performance_budget.json"
 const PERFORMANCE_SAVE_PATH := "user://performance-save.json"
 const PERFORMANCE_SETTINGS_PATH := "user://performance-settings.json"
-const EXPECTED_STATIC_MAIN_SCENE_NODES := 110
+const EXPECTED_STATIC_MAIN_SCENE_NODES := 111
 const DIRECTIONS := [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]
 const COMPLETE_BATTLE_ACTIONS := [
 	"talk_to_companion",
@@ -43,6 +44,7 @@ func _run() -> void:
 		return
 	var results := {
 		"movement": _benchmark_movement(budget),
+		"patrol": _benchmark_patrol(budget),
 		"trail": _benchmark_companion_trail(budget),
 		"battle": _benchmark_battle(budget),
 	}
@@ -63,6 +65,8 @@ func _load_budget() -> Dictionary:
 	var positive_fields := [
 		"movement_iterations",
 		"movement_budget_ms",
+		"patrol_iterations",
+		"patrol_budget_ms",
 		"trail_iterations",
 		"trail_budget_ms",
 		"battle_iterations",
@@ -97,6 +101,37 @@ func _benchmark_movement(budget: Dictionary) -> Dictionary:
 		"iterations": iterations,
 		"elapsed_ms": snappedf(elapsed_ms, 0.01),
 		"interaction_checksum": interaction_checksum,
+	}
+
+
+func _benchmark_patrol(budget: Dictionary) -> Dictionary:
+	var patrol = PatrolStateScript.new()
+	var exploration = ExplorationStateScript.new()
+	var iterations := int(budget["patrol_iterations"])
+	var started := Time.get_ticks_usec()
+	var interaction_checksum := 0
+	var far_player := Vector2(0.40, 0.16)
+	for index in range(iterations):
+		patrol.advance(0.016, far_player)
+		if index % 31 == 0:
+			interaction_checksum += patrol.interaction_action(
+				patrol.position,
+				PatrolStateScript.RESPONSE_UNANSWERED
+			).length()
+	var elapsed_ms := float(Time.get_ticks_usec() - started) / 1000.0
+	var contract: Dictionary = patrol.runtime_contract()
+	if elapsed_ms > float(budget["patrol_budget_ms"]):
+		failures.append("独立巡路预算超时：%.2f ms > %d ms" % [elapsed_ms, int(budget["patrol_budget_ms"])])
+	if not exploration.is_walkable(patrol.position):
+		failures.append("独立巡路性能循环产生了不可行走终点")
+	if contract["route_points"] != PatrolStateScript.WAYPOINTS or bool(contract["collision_authority"]) or bool(contract["quest_authority"]):
+		failures.append("独立巡路性能循环改变了固定路线或权威边界")
+	return {
+		"iterations": iterations,
+		"elapsed_ms": snappedf(elapsed_ms, 0.01),
+		"interaction_checksum": interaction_checksum,
+		"position": patrol.position,
+		"target_index": patrol.target_index,
 	}
 
 
@@ -162,6 +197,7 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		"title": 0,
 		"path": 0,
 		"dialogue": 0,
+		"patrol": 0,
 		"battle": 0,
 		"battle_action_immediate": 0,
 		"battle_action_stable": 0,
@@ -208,6 +244,10 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 			failures.append("同一渡口上下文的对话流程意外重建地图细节")
 
 		instance._choose_dialogue_response("careful")
+		state_peaks["patrol"] = maxi(int(state_peaks["patrol"]), _count_nodes(instance))
+		var patrol_visual: Dictionary = instance.get_node("%MapCanvas").patrol_visual_contract()
+		if not bool(patrol_visual["visible"]) or not bool(patrol_visual["active"]):
+			failures.append("完成同行简报后独立巡路角色必须进入渡口场景")
 		instance._on_action("gather_moonleaf")
 		instance._on_action("enter_spring")
 		instance.get_node("%SceneTransition").finish()

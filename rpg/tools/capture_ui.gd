@@ -73,6 +73,16 @@ func _capture_flow() -> void:
 	instance.toggle_dialogue_history()
 	instance.skip_dialogue_to_response()
 	instance._choose_dialogue_response("careful")
+	instance.patrol.reset()
+	instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.55, "player_y": 0.61})
+	instance._render([])
+	await _settle()
+	await _save_frame("01-patrol-runner.png")
+	instance._on_action("talk_to_patrol_runner")
+	instance.skip_dialogue_to_response()
+	await _settle()
+	await _save_frame("01-patrol-choice.png")
+	instance._choose_dialogue_response("boat_first")
 	instance.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.41, "player_y": 0.66})
 	instance._render([])
 	await _settle()
@@ -282,6 +292,17 @@ func _freeze_animated_sprites() -> void:
 
 
 func _normalize_capture_state() -> void:
+	var game := root.find_child("Main", true, false)
+	if game != null and game.get("patrol") != null:
+		var patrol_state = game.get("patrol")
+		var journey_state = game.get("journey")
+		patrol_state.reset()
+		game.get_node("%MapCanvas").set_patrol_state(
+			patrol_state.position,
+			patrol_state.motion_direction(),
+			patrol_state.is_moving(),
+			journey_state.talked_to_companion
+		)
 	var map_canvas := root.find_child("MapCanvas", true, false)
 	if map_canvas != null and map_canvas.feedback_remaining > 0.0:
 		map_canvas.feedback_remaining = map_canvas.feedback_duration * 0.5

@@ -7,7 +7,7 @@ pack_path="$output_dir/covenant-of-the-realm.pck"
 manifest_path="$output_dir/covenant-of-the-realm.manifest.json"
 
 mkdir -p "$output_dir"
-"$repo_root/scripts/godot" --quiet --headless --path "$repo_root/rpg" \
+"$repo_root/scripts/godot_checked" --quiet --headless --path "$repo_root/rpg" \
   --export-pack "Playable Pack" "$pack_path"
 
 source_revision="$(git -C "$repo_root" rev-parse HEAD)"

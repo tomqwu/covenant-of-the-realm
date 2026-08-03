@@ -18,7 +18,8 @@ by `scripts/setup_rpg`.
 
 ## 2026-08-02 · Deterministic character and ferry pixel atlases
 
-`rpg/assets/pixel/protagonist.png`, `yanqing.png`, `liangshu.png`, and `huishen.png` are original 128×224 RGBA atlases generated
+`rpg/assets/pixel/protagonist.png`, `yanqing.png`, `liangshu.png`, `huishen.png`, and
+`tao_xiaoman.png` are original 128×224 RGBA atlases generated
 by the project-authored `rpg/tools/generate_pixel_assets.gd`. No model, input image, stock asset,
 external palette, commercial sprite, font, or third-party art library is used. The generator draws
 two idle and two walking frames in four directions from rectangles and the confirmed project
@@ -29,6 +30,11 @@ each image as CRC-valid, non-interlaced RGBA8 PNG data.
 only by that deterministic project-local generator; no external character or image input was used.
 蕙婶's head wrap, low bun, leaf pin, woven apron, and carrying basket use the same deterministic
 rectangles-and-palette pipeline without an external character, costume, or image reference.
+陶小满's sunny short jacket, river-blue cropped scarf, wedge satchel, and quick working silhouette
+were authored directly in the same project-local rectangle generator. No external character,
+costume, game screenshot, stock sprite, model image, or third-party drawing code informed the
+atlas. Her matching bright painted-paper dialogue portrait is drawn at runtime by
+`dialogue_portrait.gd` from the recorded project palette and contains no embedded image asset.
 
 The same generator creates `ferry_tiles.png`, an original 256×64 RGBA atlas. Row zero preserves
 eight opaque 32 px ground tiles for grass, water, bank, road, moonleaf field, stone, deep grass,
@@ -65,10 +71,10 @@ the three life landmarks in the ferry, mountain-path, and battle views. Houses a
 foreground nodes; other landmarks are fixed map-canvas regions. These sprites own no collision,
 navigation, story, reward, or save authority. The life landmarks provide repeatable original
 spatial prose through the same keyboard, mouse, and controller action path while leaving the
-Journey snapshot and save schema v14 unchanged. The adjacent mountain-return bridge is ground data generated
+Journey snapshot unchanged and add no fields to the current save v15. The adjacent mountain-return bridge is ground data generated
 from the existing original tile atlas, not an imported asset.
 
-`asset_contract.json` schema v3 fixes the file name, atlas/frame dimensions, foot anchor, profile
+`asset_contract.json` schema v4 fixes the file name, atlas/frame dimensions, foot anchor, profile
 order, occluding subset, nearest filtering, integer snapping, and non-authoritative role.
 MapCanvas visual contract v2 additionally binds each life-landmark profile to one phase,
 interaction anchor, and action ID without creating a second gameplay authority.

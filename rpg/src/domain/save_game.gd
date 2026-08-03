@@ -5,8 +5,9 @@ const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
+const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
 
-const SAVE_VERSION := 14
+const SAVE_VERSION := 15
 const STORY_ID := "zhaohe_first_breath"
 const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 
@@ -16,15 +17,23 @@ static func write(
 	exploration_snapshot: Dictionary,
 	path: String = DEFAULT_SAVE_PATH,
 	dialogue_snapshot: Dictionary = {},
-	preserve_existing_backup: bool = false
+	preserve_existing_backup: bool = false,
+	patrol_snapshot: Dictionary = {}
 ) -> Dictionary:
 	var stored_dialogue := dialogue_snapshot if not dialogue_snapshot.is_empty() else DialogueStateScript.default_snapshot()
+	var missing_required_patrol := (
+		patrol_snapshot.is_empty()
+		and str(journey_snapshot.get("patrol_response", JourneyStateScript.PATROL_UNANSWERED))
+		!= JourneyStateScript.PATROL_UNANSWERED
+	)
+	var stored_patrol := patrol_snapshot if not patrol_snapshot.is_empty() else PatrolStateScript.default_snapshot()
 	var payload := {
 		"save_version": SAVE_VERSION,
 		"story_id": STORY_ID,
 		"journey": journey_snapshot,
 		"exploration": exploration_snapshot,
 		"dialogue": stored_dialogue,
+		"patrol": stored_patrol,
 	}
 	var temporary_path := path + ".tmp"
 	var repair_path := path + ".repair"
@@ -42,6 +51,8 @@ static func write(
 	for barrier in write_barriers:
 		if FileAccess.file_exists(barrier["path"]) and _blocks_fallback(barrier["result"]):
 			return _result(false, {}, barrier["reason"])
+	if missing_required_patrol:
+		return _result(false, {}, "missing_patrol")
 
 	# A normal save always replaces a stale temporary candidate before rotating the
 	# committed primary. The separate repair workspace is reserved for healing a
@@ -232,6 +243,10 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		migrated["save_version"] = SAVE_VERSION
 		_migrate_first_breath_snapshot(migrated["journey"])
 		return _validated_migration(migrated, 13)
+	if version_number == 14:
+		var migrated := payload.duplicate(true)
+		migrated["save_version"] = SAVE_VERSION
+		return _validated_migration(migrated, 14)
 	return _validate_current(payload)
 
 
@@ -242,6 +257,8 @@ static func _validate_current(payload: Dictionary) -> Dictionary:
 		return _result(false, {}, "invalid_enemy")
 	if typeof(payload.get("dialogue")) != TYPE_DICTIONARY:
 		return _result(false, {}, "invalid_dialogue")
+	if typeof(payload.get("patrol")) != TYPE_DICTIONARY:
+		return _result(false, {}, "invalid_patrol")
 	var restored_dialogue = DialogueStateScript.new()
 	if not restored_dialogue.restore(payload["dialogue"]):
 		return _result(false, {}, "invalid_dialogue")
@@ -251,14 +268,28 @@ static func _validate_current(payload: Dictionary) -> Dictionary:
 	var restored_exploration = ExplorationStateScript.new()
 	if not restored_exploration.restore(payload["exploration"]):
 		return _result(false, {}, "invalid_exploration")
+	var restored_patrol = PatrolStateScript.new()
+	if not restored_patrol.restore(payload["patrol"]):
+		return _result(false, {}, "invalid_patrol")
 	if not _exploration_matches_journey(restored_exploration, restored_journey):
 		return _result(false, {}, "invalid_map_phase")
 	if not _dialogue_matches_journey(restored_dialogue, restored_journey):
+		return _result(false, {}, "invalid_dialogue")
+	if (
+		restored_dialogue.active
+		and restored_dialogue.dialogue_id == DialogueStateScript.PATROL_RUNNER_BRIEFING
+		and restored_patrol.interaction_action(
+			restored_exploration.player_position,
+			restored_journey.patrol_response,
+			true
+		).is_empty()
+	):
 		return _result(false, {}, "invalid_dialogue")
 	return _result(true, payload, "")
 
 
 static func _validated_migration(payload: Dictionary, source_version: int) -> Dictionary:
+	_migrate_patrol_snapshot(payload)
 	_normalize_migrated_exploration(payload["journey"], payload["exploration"])
 	var result := _validate_current(payload)
 	if result["ok"]:
@@ -281,6 +312,12 @@ static func _dialogue_matches_journey(dialogue, journey) -> bool:
 				journey.phase_id() == "riverbank"
 				and journey.discoveries.has(JourneyStateScript.DISCOVERY_ABANDONED_BASKET)
 				and journey.basket_response == JourneyStateScript.BASKET_UNANSWERED
+				)
+		DialogueStateScript.PATROL_RUNNER_BRIEFING:
+			return (
+				journey.phase_id() == "riverbank"
+				and journey.talked_to_companion
+				and journey.patrol_response == JourneyStateScript.PATROL_UNANSWERED
 			)
 	return false
 
@@ -438,6 +475,13 @@ static func _migrate_first_breath_snapshot(journey_snapshot: Dictionary) -> void
 		if journey_snapshot.get("phase") == "complete"
 		else JourneyStateScript.FIRST_BREATH_UNSTARTED
 	)
+
+
+static func _migrate_patrol_snapshot(payload: Dictionary) -> void:
+	# Older saves never asked the player to set a ferry runner's delivery order.
+	# Migration therefore restores the neutral route without inventing a choice.
+	payload["journey"]["patrol_response"] = JourneyStateScript.PATROL_UNANSWERED
+	payload["patrol"] = PatrolStateScript.default_snapshot()
 
 
 static func _result(ok: bool, data: Dictionary, reason: String) -> Dictionary:

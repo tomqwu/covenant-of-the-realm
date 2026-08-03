@@ -14,6 +14,7 @@ const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
+const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
 
 @onready var map_canvas: Control = %MapCanvas
 @onready var chapter_label: Label = %ChapterLabel
@@ -67,6 +68,7 @@ var content: Dictionary = {}
 var journey = JourneyStateScript.new()
 var exploration = ExplorationStateScript.new()
 var dialogue = DialogueStateScript.new()
+var patrol = PatrolStateScript.new()
 var nearby_action_id := ""
 var save_path := SaveGameScript.DEFAULT_SAVE_PATH
 var settings_path := SettingsStoreScript.DEFAULT_PATH
@@ -162,17 +164,27 @@ func _process(delta: float) -> void:
 		return
 	if not is_playing or title_overlay.visible or pause_overlay.visible or not _is_exploration_phase():
 		return
+	var patrol_before: Dictionary = patrol.snapshot()
+	if journey.phase_id() == "riverbank" and journey.talked_to_companion:
+		patrol.advance(delta, exploration.player_position)
+	var patrol_changed := patrol.snapshot() != patrol_before
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	var player_moved := false
 	if not direction.is_zero_approx():
 		var before: Vector2 = exploration.player_position
 		move_player(direction, delta)
-		if not exploration.player_position.is_equal_approx(before):
-			autosave_elapsed += delta
-			if autosave_elapsed >= 1.0:
-				_save_game()
-				autosave_elapsed = 0.0
+		player_moved = not exploration.player_position.is_equal_approx(before)
 	else:
 		map_canvas.set_player_motion(Vector2.ZERO)
+	if patrol_changed:
+		_refresh_nearby_action()
+	# Patrol animation is durable at explicit checkpoints, but it must not turn
+	# presentation ticks into permanent once-per-second disk writes while idle.
+	if player_moved:
+		autosave_elapsed += delta
+		if autosave_elapsed >= 1.0:
+			_save_game()
+			autosave_elapsed = 0.0
 
 
 func _input(event: InputEvent) -> void:
@@ -267,11 +279,12 @@ func _render(event_ids: Array) -> void:
 		snapshot["discoveries"],
 		snapshot["ferryman_response"],
 		snapshot["basket_response"],
+		snapshot["patrol_response"],
 		snapshot.get("enemy_intel", []),
 		str(snapshot.get("first_breath_stage", "unstarted"))
 	)
-	nearby_action_id = exploration.interaction_action(snapshot["gathered_moonleaf"], snapshot["talked_to_companion"], snapshot["discoveries"], snapshot["ferryman_response"], snapshot["basket_response"], snapshot.get("enemy_intel", []))
-	nearby_action_id = _visible_nearby_action(nearby_action_id, snapshot)
+	map_canvas.set_patrol_state(patrol.position, patrol.motion_direction(), patrol.is_moving(), snapshot["talked_to_companion"])
+	nearby_action_id = _resolved_nearby_action(snapshot)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	map_canvas.show_battle_feedback(
 		event_ids,
@@ -431,7 +444,11 @@ func _chapter_summary(snapshot: Dictionary) -> String:
 		"return": "药篓归圃",
 		"trail": "药篓留山",
 	}.get(snapshot["basket_response"], "药篓未安置")
-	return "本节结算　%s · %s · %s · %s · %s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, discovery_text, intel_text, ferryman_text, basket_text, response_text]
+	var patrol_text: String = {
+		"boat_first": "先送船架",
+		"herbs_first": "先翻药叶",
+	}.get(snapshot["patrol_response"], "巡路未定")
+	return "本节结算　%s · %s · %s · %s · %s · %s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, discovery_text, intel_text, ferryman_text, basket_text, patrol_text, response_text]
 
 
 func _build_actions(node: Dictionary) -> void:
@@ -527,12 +544,17 @@ func _on_action(action_id: String) -> void:
 	if action_id == JourneyStateScript.TALK_TO_HERBKEEPER and journey.basket_response == JourneyStateScript.BASKET_UNANSWERED:
 		_start_herbkeeper_dialogue()
 		return
+	if action_id == JourneyStateScript.TALK_TO_PATROL_RUNNER and journey.patrol_response == JourneyStateScript.PATROL_UNANSWERED:
+		_start_patrol_dialogue()
+		return
 	if action_id == JourneyStateScript.REVIEW_JOURNEY and journey.phase_id() == "complete":
 		_start_chapter_epilogue()
 		return
 	var result: Dictionary = journey.choose(action_id)
 	if result["ok"]:
 		_sync_exploration_after_action(action_id, result["events"])
+		if action_id == JourneyStateScript.REPLAY_CHAPTER:
+			patrol.reset()
 	_render(result["events"])
 	if result["ok"]:
 		_save_game()
@@ -547,12 +569,48 @@ func move_player(direction: Vector2, delta: float) -> Vector2:
 	var previous_position: Vector2 = exploration.player_position
 	exploration.move(direction, delta)
 	map_canvas.set_player_motion(direction if not exploration.player_position.is_equal_approx(previous_position) else Vector2.ZERO)
-	nearby_action_id = exploration.interaction_action(journey.gathered_moonleaf, journey.talked_to_companion, journey.discoveries, journey.ferryman_response, journey.basket_response, journey.enemy_intel)
-	nearby_action_id = _visible_nearby_action(nearby_action_id, journey.snapshot())
+	nearby_action_id = _resolved_nearby_action(journey.snapshot())
+	map_canvas.set_patrol_state(patrol.position, patrol.motion_direction(), patrol.is_moving(), journey.talked_to_companion)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	if nearby_action_id != previous_action:
 		_build_actions(content["nodes"][journey.phase_id()])
 	return exploration.player_position
+
+
+func _refresh_nearby_action() -> void:
+	var previous_action := nearby_action_id
+	nearby_action_id = _resolved_nearby_action(journey.snapshot())
+	map_canvas.set_patrol_state(patrol.position, patrol.motion_direction(), patrol.is_moving(), journey.talked_to_companion)
+	map_canvas.set_nearby_action(nearby_action_id)
+	if nearby_action_id != previous_action:
+		_build_actions(content["nodes"][journey.phase_id()])
+
+
+func _resolved_nearby_action(snapshot: Dictionary) -> String:
+	# A yielding moving person must remain addressable when a public road crosses
+	# a static landmark radius. The one-shot patrol dialogue wins only while it is
+	# unanswered and nearby; after it resolves (or the runner leaves), the fixed
+	# landmark immediately becomes available again.
+	if snapshot["phase"] == "riverbank":
+		var patrol_action := patrol.interaction_action(
+			exploration.player_position,
+			str(snapshot["patrol_response"]),
+			bool(snapshot["talked_to_companion"])
+		)
+		if not patrol_action.is_empty():
+			return patrol_action
+	var fixed_action := exploration.interaction_action(
+		snapshot["gathered_moonleaf"],
+		snapshot["talked_to_companion"],
+		snapshot["discoveries"],
+		snapshot["ferryman_response"],
+		snapshot["basket_response"],
+		snapshot.get("enemy_intel", [])
+	)
+	fixed_action = _visible_nearby_action(fixed_action, snapshot)
+	if not fixed_action.is_empty():
+		return fixed_action
+	return ""
 
 
 func interact() -> Dictionary:
@@ -566,6 +624,8 @@ func interact() -> Dictionary:
 		return _start_ferryman_dialogue()
 	if nearby_action_id == JourneyStateScript.TALK_TO_HERBKEEPER and journey.basket_response == JourneyStateScript.BASKET_UNANSWERED:
 		return _start_herbkeeper_dialogue()
+	if nearby_action_id == JourneyStateScript.TALK_TO_PATROL_RUNNER and journey.patrol_response == JourneyStateScript.PATROL_UNANSWERED:
+		return _start_patrol_dialogue()
 	var result: Dictionary = journey.choose(nearby_action_id)
 	if result["ok"]:
 		_sync_exploration_after_action(nearby_action_id, result["events"])
@@ -782,6 +842,7 @@ func _begin_new_game() -> void:
 	journey = JourneyStateScript.new()
 	exploration = ExplorationStateScript.new()
 	dialogue = DialogueStateScript.new()
+	patrol = PatrolStateScript.new()
 	dialogue_history_visible = false
 	journal_page = 0
 	journal_tabs.current_tab = 0
@@ -817,6 +878,7 @@ func continue_game() -> bool:
 	journey = decoded["journey"]
 	exploration = decoded["exploration"]
 	dialogue = decoded["dialogue"]
+	patrol = decoded["patrol"]
 	save_recovery_pending = loaded["recovered_from_temporary"] or loaded["recovered_from_backup"]
 	is_playing = true
 	autosave_elapsed = 0.0
@@ -870,7 +932,14 @@ func _save_game(preserve_existing_backup: bool = false) -> bool:
 	if not is_playing:
 		return false
 	var protect_recovery := preserve_existing_backup or save_recovery_pending
-	var result: Dictionary = SaveGameScript.write(journey.snapshot(), exploration.snapshot(), save_path, dialogue.snapshot(), protect_recovery)
+	var result: Dictionary = SaveGameScript.write(
+		journey.snapshot(),
+		exploration.snapshot(),
+		save_path,
+		dialogue.snapshot(),
+		protect_recovery,
+		patrol.snapshot()
+	)
 	if not result["ok"]:
 		event_label.text = "自动存档失败（%s）。当前游戏仍可继续。" % result["reason"]
 	else:
@@ -965,6 +1034,11 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 	var restored_dialogue = DialogueStateScript.new()
 	if not restored_dialogue.restore(loaded["data"]["dialogue"]):
 		return {"ok": false, "reason": "存档中的对话状态无效"}
+	if typeof(loaded["data"].get("patrol")) != TYPE_DICTIONARY:
+		return {"ok": false, "reason": "存档中的巡路状态无效"}
+	var restored_patrol = PatrolStateScript.new()
+	if not restored_patrol.restore(loaded["data"]["patrol"]):
+		return {"ok": false, "reason": "存档中的巡路状态无效"}
 	if restored_dialogue.active:
 		match restored_dialogue.dialogue_id:
 			DialogueStateScript.COMPANION_BRIEFING:
@@ -979,6 +1053,11 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 			DialogueStateScript.HERBKEEPER_BASKET:
 				if restored_journey.phase_id() != "riverbank" or not restored_journey.discoveries.has(JourneyStateScript.DISCOVERY_ABANDONED_BASKET) or restored_journey.basket_response != JourneyStateScript.BASKET_UNANSWERED:
 					return {"ok": false, "reason": "存档中的对话与剧情进度不一致"}
+			DialogueStateScript.PATROL_RUNNER_BRIEFING:
+				if restored_journey.phase_id() != "riverbank" or not restored_journey.talked_to_companion or restored_journey.patrol_response != JourneyStateScript.PATROL_UNANSWERED:
+					return {"ok": false, "reason": "存档中的对话与剧情进度不一致"}
+				if restored_patrol.interaction_action(restored_exploration.player_position, restored_journey.patrol_response, true).is_empty():
+					return {"ok": false, "reason": "存档中的巡路对话位置无效"}
 		var dialogue_data: Dictionary = content.get("dialogues", {}).get(restored_dialogue.dialogue_id, {})
 		if dialogue_data.is_empty() or restored_dialogue.line_index > dialogue_data.get("lines", []).size():
 			return {"ok": false, "reason": "存档中的对话位置无效"}
@@ -988,6 +1067,7 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 		"journey": restored_journey,
 		"exploration": restored_exploration,
 		"dialogue": restored_dialogue,
+		"patrol": restored_patrol,
 	}
 
 
@@ -1046,6 +1126,21 @@ func _start_herbkeeper_dialogue() -> Dictionary:
 	return {"ok": true, "events": ["dialogue_started"], "snapshot": journey.snapshot()}
 
 
+func _start_patrol_dialogue() -> Dictionary:
+	if (
+		journey.phase_id() != "riverbank"
+		or not journey.talked_to_companion
+		or journey.patrol_response != JourneyStateScript.PATROL_UNANSWERED
+		or patrol.interaction_action(exploration.player_position, journey.patrol_response, true).is_empty()
+		or not dialogue.start(DialogueStateScript.PATROL_RUNNER_BRIEFING)
+	):
+		return {"ok": false, "events": ["patrol_unavailable"], "snapshot": journey.snapshot()}
+	dialogue_history_visible = false
+	_render_dialogue_overlay()
+	_save_game()
+	return {"ok": true, "events": ["dialogue_started"], "snapshot": journey.snapshot()}
+
+
 func advance_dialogue() -> void:
 	if not dialogue.active or _dialogue_at_choices():
 		return
@@ -1087,25 +1182,45 @@ func toggle_dialogue_history() -> void:
 func _choose_dialogue_response(response_id: String) -> void:
 	if not _dialogue_at_choices():
 		return
+	var expected_event_id := _dialogue_choice_event(response_id)
+	if expected_event_id.is_empty():
+		push_error("对话回应缺少内容事件：%s" % response_id)
+		return
+	var staged_journey = JourneyStateScript.new()
+	if not staged_journey.restore(journey.snapshot()):
+		push_error("无法暂存对话回应前的旅程状态")
+		return
+	var staged_patrol = null
+	if dialogue.dialogue_id == DialogueStateScript.PATROL_RUNNER_BRIEFING:
+		staged_patrol = PatrolStateScript.new()
+		if not staged_patrol.restore(patrol.snapshot()) or not staged_patrol.apply_priority(response_id):
+			push_error("巡路回应无法应用到确定性路线：%s" % response_id)
+			return
 	var result: Dictionary
 	match dialogue.dialogue_id:
 		DialogueStateScript.COMPANION_BRIEFING:
-			result = journey.complete_companion_briefing(response_id)
+			result = staged_journey.complete_companion_briefing(response_id)
 		DialogueStateScript.CHAPTER_EPILOGUE:
-			result = journey.complete_epilogue(response_id)
+			result = staged_journey.complete_epilogue(response_id)
 		DialogueStateScript.FERRYMAN_BRIEFING:
-			result = journey.complete_ferryman_dialogue(response_id)
+			result = staged_journey.complete_ferryman_dialogue(response_id)
 		DialogueStateScript.HERBKEEPER_BASKET:
-			result = journey.complete_basket_dialogue(response_id)
+			result = staged_journey.complete_basket_dialogue(response_id)
+		DialogueStateScript.PATROL_RUNNER_BRIEFING:
+			result = staged_journey.complete_patrol_dialogue(response_id)
 		_:
 			return
 	if not result["ok"]:
 		return
-	var expected_event_id := _dialogue_choice_event(response_id)
-	if expected_event_id.is_empty() or not result["events"].has(expected_event_id):
+	if not result["events"].has(expected_event_id):
 		push_error("对话回应与规则事件不一致：%s" % response_id)
 		return
-	dialogue.finish()
+	if not dialogue.finish():
+		push_error("活动对话无法提交回应：%s" % response_id)
+		return
+	journey = staged_journey
+	if staged_patrol != null:
+		patrol = staged_patrol
 	dialogue_history_visible = false
 	dialogue_overlay.hide()
 	_render(result["events"])
@@ -1157,7 +1272,7 @@ func _render_dialogue_overlay() -> void:
 	var line: Dictionary = lines[dialogue.line_index]
 	var speaker := str(line.get("speaker", ""))
 	dialogue_speaker_label.text = speaker
-	_set_dialogue_portrait("protagonist" if speaker == "你" else "yanqing" if speaker == "砚青" else "liangshu" if speaker == "梁叔" else "huishen" if speaker == "蕙婶" else "journal")
+	_set_dialogue_portrait("protagonist" if speaker == "你" else "yanqing" if speaker == "砚青" else "liangshu" if speaker == "梁叔" else "huishen" if speaker == "蕙婶" else "tao_xiaoman" if speaker == "陶小满" else "journal")
 	dialogue_label.text = _resolved_dialogue_text(str(line.get("text", "")))
 	dialogue_label.visible_characters = 0
 	dialogue_reveal_elapsed = 0.0
@@ -1223,6 +1338,7 @@ func _set_dialogue_portrait(portrait_id: String) -> void:
 		"yanqing": "砚青 · 照禾药师",
 		"liangshu": "梁叔 · 照禾守堤人",
 		"huishen": "蕙婶 · 照禾药圃守",
+		"tao_xiaoman": "陶小满 · 照禾渡口跑腿人",
 		"journal": "行旅札记 · 最近四句",
 	}.get(stable_id, "行旅札记 · 最近四句")
 
@@ -1247,6 +1363,10 @@ func _resolved_dialogue_text(source_text: String) -> String:
 		"return": "蕙婶已把公用药篓挂回圃门",
 		"trail": "补好提绳的药篓仍在山道等后来人",
 	}.get(snapshot["basket_response"], "那只山道药篓还没有找到下一处归宿")
+	var patrol_reflection: String = {
+		"boat_first": "陶小满先把怕潮的木楔送往补船架",
+		"herbs_first": "陶小满先赶在日头偏西前翻好了药叶",
+	}.get(snapshot["patrol_response"], "陶小满还在渡口中央等人替她看一眼风和日头")
 	var intel_count: int = snapshot.get("enemy_intel", []).size()
 	var intel_reflection := "尚未辨明的灵物痕迹"
 	if intel_count == ENEMY_NOTE_IDS.size():
@@ -1259,6 +1379,7 @@ func _resolved_dialogue_text(source_text: String) -> String:
 		.replace("{companion_reflection}", companion_reflection) \
 		.replace("{ferryman_reflection}", ferryman_reflection) \
 		.replace("{basket_reflection}", basket_reflection) \
+		.replace("{patrol_reflection}", patrol_reflection) \
 		.replace("{intel_reflection}", intel_reflection)
 
 
@@ -1361,6 +1482,10 @@ func _render_discovery_journal(snapshot: Dictionary) -> void:
 		var basket_side_id := "basket_%s" % snapshot["basket_response"]
 		var basket_entry: Dictionary = content.get("journal_side_entries", {}).get(basket_side_id, {})
 		lines.append("◆ %s\n%s" % [basket_entry.get("title", "药篓小记"), basket_entry.get("summary", "这段药篓去向暂时无法辨认。")])
+	if snapshot["patrol_response"] != JourneyStateScript.PATROL_UNANSWERED:
+		var patrol_side_id := "patrol_%s" % snapshot["patrol_response"]
+		var patrol_entry: Dictionary = content.get("journal_side_entries", {}).get(patrol_side_id, {})
+		lines.append("◆ %s\n%s" % [patrol_entry.get("title", "巡路小记"), patrol_entry.get("summary", "这段巡路先后暂时无法辨认。")])
 	journal_entries_label.text = "\n\n".join(lines)
 
 

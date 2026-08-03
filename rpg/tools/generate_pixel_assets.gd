@@ -39,6 +39,7 @@ func _initialize() -> void:
 	_generate_actor("yanqing.png", Color("c6764f"), Color("73533d"), "yanqing")
 	_generate_actor("liangshu.png", Color("526963"), Color("a88b57"), "liangshu")
 	_generate_actor("huishen.png", Color("82966a"), Color("a9784f"), "huishen")
+	_generate_actor("tao_xiaoman.png", Color("d6a24f"), Color("4e9da4"), "tao_xiaoman")
 	_generate_enemy_atlas()
 	_generate_ferry_tiles()
 	_generate_landmark_atlas()
@@ -493,6 +494,11 @@ func _draw_frame(image: Image, origin: Vector2i, direction: int, column: int, ro
 		# The levee keeper carries a measuring staff and a rain-dark shoulder cape.
 		_fill(image, Rect2i(center_x - 13, body_y + 5, 26, 8), accent.darkened(0.22))
 		_fill(image, Rect2i(center_x + 12, body_y + 1, 3, 35), accent.darkened(0.30))
+	elif role == "tao_xiaoman":
+		# The ferry runner wears a short sunny jacket and a blue wedge satchel.
+		_fill(image, Rect2i(center_x - 10, body_y + 16, 20, 5), PAPER.darkened(0.12))
+		_fill(image, Rect2i(center_x + 8, body_y + 8, 8, 16), accent.darkened(0.16))
+		_fill(image, Rect2i(center_x + 11, body_y + 10, 3, 12), GOLD.darkened(0.22))
 	else:
 		# The herb keeper wears a woven apron and keeps a seed basket at her hip.
 		_fill(image, Rect2i(center_x - 9, body_y + 11, 18, 16), PAPER.darkened(0.18))
@@ -513,6 +519,11 @@ func _draw_frame(image: Image, origin: Vector2i, direction: int, column: int, ro
 		_fill(image, Rect2i(center_x - 7, head_y - 5, 14, 5), INK.lightened(0.06))
 		_fill(image, Rect2i(center_x + 5, head_y - 8, 7, 6), INK)
 		_fill(image, Rect2i(center_x - 10, head_y + 1, 3, 10), Color("8ebb83"))
+	elif role == "tao_xiaoman":
+		# A cropped river-blue head scarf leaves a quick, youthful silhouette.
+		_fill(image, Rect2i(center_x - 8, head_y - 2, 16, 6), accent)
+		_fill(image, Rect2i(center_x - 10, head_y + 1, 4, 8), accent.darkened(0.18))
+		_fill(image, Rect2i(center_x + 7, head_y - 4, 7, 4), PAPER.darkened(0.12))
 	else:
 		_fill(image, Rect2i(center_x - 7, head_y, 14, 4), INK)
 		_fill(image, Rect2i(center_x - 4, head_y - 3, 8, 4), INK)

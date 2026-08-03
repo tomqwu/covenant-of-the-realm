@@ -11,6 +11,7 @@ const ENTER_SPRING := "enter_spring"
 const TALK_TO_COMPANION := "talk_to_companion"
 const TALK_TO_FERRYMAN := "talk_to_ferryman"
 const TALK_TO_HERBKEEPER := "talk_to_herbkeeper"
+const TALK_TO_PATROL_RUNNER := "talk_to_patrol_runner"
 const INSPECT_BOAT_REPAIR := "inspect_boat_repair"
 const INSPECT_DRYING_RACK := "inspect_drying_rack"
 const INSPECT_RAIN_SHELTER := "inspect_rain_shelter"
@@ -53,6 +54,10 @@ const BASKET_UNANSWERED := "unanswered"
 const BASKET_RETURN := "return"
 const BASKET_TRAIL := "trail"
 const BASKET_RESPONSES := [BASKET_UNANSWERED, BASKET_RETURN, BASKET_TRAIL]
+const PATROL_UNANSWERED := "unanswered"
+const PATROL_BOAT_FIRST := "boat_first"
+const PATROL_HERBS_FIRST := "herbs_first"
+const PATROL_RESPONSES := [PATROL_UNANSWERED, PATROL_BOAT_FIRST, PATROL_HERBS_FIRST]
 const MOONLEAF_UNSELECTED := "unselected"
 const MOONLEAF_WHOLE_PLANT := "whole_plant"
 const MOONLEAF_CUTTING := "cutting"
@@ -93,6 +98,7 @@ var focus_turns := 0
 var discoveries: Array[String] = []
 var ferryman_response := FERRYMAN_UNANSWERED
 var basket_response := BASKET_UNANSWERED
+var patrol_response := PATROL_UNANSWERED
 var enemy_intel: Array[String] = []
 var first_breath_stage := FIRST_BREATH_UNSTARTED
 
@@ -125,6 +131,8 @@ func available_actions() -> PackedStringArray:
 				actions.append(TALK_TO_FERRYMAN)
 			if discoveries.has(DISCOVERY_ABANDONED_BASKET) and basket_response == BASKET_UNANSWERED:
 				actions.append(TALK_TO_HERBKEEPER)
+			if talked_to_companion and patrol_response == PATROL_UNANSWERED:
+				actions.append(TALK_TO_PATROL_RUNNER)
 			if not gathered_moonleaf:
 				actions.append(GATHER_MOONLEAF)
 				actions.append(GATHER_MOONLEAF_CUTTING)
@@ -239,6 +247,7 @@ func snapshot() -> Dictionary:
 		"discoveries": discoveries.duplicate(),
 		"ferryman_response": ferryman_response,
 		"basket_response": basket_response,
+		"patrol_response": patrol_response,
 		"enemy_intel": enemy_intel.duplicate(),
 		"first_breath_stage": first_breath_stage,
 	}
@@ -266,6 +275,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		"discoveries",
 		"ferryman_response",
 		"basket_response",
+		"patrol_response",
 		"enemy_intel",
 		"first_breath_stage",
 	]
@@ -289,6 +299,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if typeof(snapshot_data["ferryman_response"]) != TYPE_STRING:
 		return false
 	if typeof(snapshot_data["basket_response"]) != TYPE_STRING:
+		return false
+	if typeof(snapshot_data["patrol_response"]) != TYPE_STRING:
 		return false
 	if not _valid_enemy_intel(snapshot_data["enemy_intel"]):
 		return false
@@ -353,6 +365,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_discoveries.append(discovery_id)
 	var next_ferryman_response: String = snapshot_data["ferryman_response"]
 	var next_basket_response: String = snapshot_data["basket_response"]
+	var next_patrol_response: String = snapshot_data["patrol_response"]
 	var next_enemy_intel: Array[String] = []
 	for intel_id in snapshot_data["enemy_intel"]:
 		next_enemy_intel.append(intel_id)
@@ -378,6 +391,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_discoveries,
 		next_ferryman_response,
 		next_basket_response,
+		next_patrol_response,
 		next_enemy_intel,
 		next_first_breath_stage
 	):
@@ -403,6 +417,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	discoveries = next_discoveries
 	ferryman_response = next_ferryman_response
 	basket_response = next_basket_response
+	patrol_response = next_patrol_response
 	enemy_intel = next_enemy_intel
 	first_breath_stage = next_first_breath_stage
 	return true
@@ -421,6 +436,8 @@ func _choose_riverbank(action_id: String) -> Dictionary:
 		return complete_ferryman_dialogue(FERRYMAN_REPAIR)
 	if action_id == TALK_TO_HERBKEEPER:
 		return complete_basket_dialogue(BASKET_RETURN)
+	if action_id == TALK_TO_PATROL_RUNNER:
+		return complete_patrol_dialogue(PATROL_BOAT_FIRST)
 	if action_id in [GATHER_MOONLEAF, GATHER_MOONLEAF_CUTTING]:
 		if gathered_moonleaf:
 			return _result(false, ["already_gathered"])
@@ -619,6 +636,15 @@ func complete_basket_dialogue(response_id: String) -> Dictionary:
 	return _result(true, ["basket_%s" % response_id])
 
 
+func complete_patrol_dialogue(response_id: String) -> Dictionary:
+	if phase != Phase.RIVERBANK or not talked_to_companion or patrol_response != PATROL_UNANSWERED:
+		return _result(false, ["patrol_unavailable"])
+	if response_id not in [PATROL_BOAT_FIRST, PATROL_HERBS_FIRST]:
+		return _result(false, ["invalid_patrol_response"])
+	patrol_response = response_id
+	return _result(true, ["patrol_%s" % response_id])
+
+
 func current_enemy_profile() -> Dictionary:
 	return EnemyCatalogScript.profile(enemy_id)
 
@@ -690,6 +716,7 @@ func _reset_chapter() -> void:
 	discoveries.clear()
 	ferryman_response = FERRYMAN_UNANSWERED
 	basket_response = BASKET_UNANSWERED
+	patrol_response = PATROL_UNANSWERED
 	enemy_intel.clear()
 	first_breath_stage = FIRST_BREATH_UNSTARTED
 
@@ -722,12 +749,17 @@ func _valid_phase_invariants(
 	next_discoveries: Array[String],
 	next_ferryman_response: String,
 	next_basket_response: String,
+	next_patrol_response: String,
 	next_enemy_intel: Array[String],
 	next_first_breath_stage: String
 ) -> bool:
 	if next_ferryman_response not in FERRYMAN_RESPONSES:
 		return false
 	if next_basket_response not in BASKET_RESPONSES:
+		return false
+	if next_patrol_response not in PATROL_RESPONSES:
+		return false
+	if next_patrol_response != PATROL_UNANSWERED and not next_talked:
 		return false
 	if not _valid_discoveries(next_discoveries):
 		return false

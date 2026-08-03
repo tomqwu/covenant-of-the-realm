@@ -4,6 +4,51 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — Automated Godot gates treat fatal script diagnostics as failures
+
+Godot 4.7.1 can return process status zero after a GDScript parse/load failure, which would make a
+plain shell invocation report a false-green test or package gate. Every automated Godot path now
+runs through `scripts/godot_checked`: it streams combined output, preserves a real nonzero engine
+or `tee` status, and converts `SCRIPT ERROR`, `Failed to load script`, or `Parse Error:` emitted with
+status zero into failure. Resource import, deterministic captures, all four test runners, export,
+packed-content probing, and packaged boot use the checked path. Interactive play continues to use
+the direct launcher so ordinary runtime diagnostics remain visible without changing play behavior.
+
+The wrapper has isolated fake-runner tests for argument/output forwarding, genuine nonzero status,
+zero-status fatal diagnostics, unrelated engine warnings, and Make/package wiring. A real malformed
+GDScript reproduction confirms the engine returns zero while the checked gate returns one.
+
+### 2026-08-03 — The ferry runner patrol is deterministic, saved, and socially consequential
+
+陶小满 is an original ferry runner who appears only after the player completes 砚青's risk
+briefing. She follows a six-waypoint, publicly walkable route between the boat frame and drying rack at 0.09
+normalized units per second; the player remains more than three times faster. A 0.080/0.100
+enter/exit courtesy radius freezes and releases the route with hysteresis so an interaction cannot
+vanish while the player reaches for keyboard, mouse, or controller input. Dialogue, journal,
+pause, title, transitions, and non-ferry phases also freeze the patrol clock.
+
+The route is owned by a dedicated deterministic `PatrolState`, not by `MapCanvas`, wall-clock time,
+randomness, `NavigationAgent2D`, or a second collision system. Its authored segments stay inside the
+existing ferry walkability contract. Its endpoints remain visibly beside, but outside the action
+radii of, the two destination landmarks. Where the public road crosses another static interaction
+radius, the nearby unanswered runner temporarily has priority so courtesy yielding cannot strand
+her behind a fixed action; after the one-shot conversation or her departure, the fixed action
+immediately returns. The UI only maps
+normalized feet to the generated actor atlas, animation, marker, and Y depth. Dynamic navigation is
+deferred until an NPC actually needs to avoid changing obstacles or choose among unbounded paths.
+
+The player may set today's delivery order once: protect the damp-sensitive boat wedges first, or
+turn the drying herbs before the sun shifts. Both choices are original, reward-free life-story
+decisions. They change 陶小满's next route direction plus the journal, chapter summary, and epilogue
+reflection, but never combat, inventory, cultivation, relationship numbers, or mainline access.
+Save v15 stores the stable journey response and the exact patrol position, adjacent target,
+direction, dwell time, and courtesy-pause state. Runtime restore rejects off-route coordinates,
+mid-segment dwell, inconsistent target/direction pairs, and oversized waypoint dwell. Idle patrol
+ticks do not rotate the disk save; established interaction, movement, pause, and title checkpoints
+persist the latest route. V1–v14 migration restores the neutral starting
+route and `unanswered` response rather than inventing a choice; malformed or future patrol states
+are rejected under the existing crash-consistent and anti-downgrade rules.
+
 ### 2026-08-03 — Repeatable Zhaohe life landmarks are spatial prose, not progression
 
 The ferry boat-repair rack, ferry drying rack, and mountain-path rain shelter are three original,

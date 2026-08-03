@@ -2,6 +2,7 @@ extends SceneTree
 
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
+const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const SAVE_PATH := "user://automated-input-save.json"
@@ -60,6 +61,61 @@ func _run() -> void:
 	_expect(response_focus is Button and response_focus.text == "先看退路，再进山。", "回应选择默认聚焦第一项")
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(game.journey.talked_to_companion and game.journey.briefing_response == "careful", "手柄 A 确认对话回应")
+	var patrol_visual: Dictionary = game.get_node("%MapCanvas").patrol_visual_contract()
+	_expect(patrol_visual["visible"] and patrol_visual["active"], "完成简报后陶小满巡路角色可见")
+	_expect(game.get_node("%PatrolSprite").animation_contract()["frame_size"] == Vector2(32, 56), "陶小满复用固定人物动画合同")
+
+	game.move_player(Vector2.DOWN, 0.50)
+	game.move_player(Vector2.RIGHT, 0.266667)
+	await _settle()
+	_expect(game.patrol.yielding_to_player, "公开移动进入礼让半径会暂停陶小满")
+	var yielded_patrol: Dictionary = game.patrol.snapshot()
+	await create_timer(0.12).timeout
+	_expect(game.patrol.snapshot() == yielded_patrol, "礼让暂停期间真实帧推进不移动陶小满")
+	game.move_player(Vector2.LEFT, 0.50)
+	await _settle()
+	var resumed_patrol: Dictionary = game.patrol.snapshot()
+	await create_timer(0.12).timeout
+	_expect(not game.patrol.yielding_to_player and game.patrol.snapshot() != resumed_patrol, "玩家离开迟滞半径后真实帧推进恢复巡路")
+
+	game.patrol.reset()
+	game._render([])
+	game.move_player(Vector2.RIGHT, 0.50)
+	await _settle()
+	var patrol_button := _find_action_button(game, "问问陶小满")
+	_expect(patrol_button != null, "公开路线可到达陶小满并显示中文行动")
+	if patrol_button != null:
+		await _trigger_mouse_click(patrol_button.get_global_rect().get_center())
+	_expect(game.dialogue.active and game.dialogue.dialogue_id == "patrol_runner_briefing", "真实鼠标点击开启巡路对话")
+	_expect(game.get_node("%DialoguePortrait").visual_contract()["portrait_id"] == "tao_xiaoman", "巡路对话显示陶小满纸绘头像")
+	game.skip_dialogue_to_response()
+	await _settle()
+	var patrol_focus := root.gui_get_focus_owner()
+	_expect(patrol_focus is Button and patrol_focus.text == "木楔怕潮，先送船架。", "巡路选择默认聚焦先送船架")
+	await _trigger_ui_key(KEY_TAB)
+	patrol_focus = root.gui_get_focus_owner()
+	_expect(patrol_focus is Button and patrol_focus.text == "药叶怕闷，先翻竹架。", "真实键盘 Tab 可选择另一巡路先后")
+	await _trigger_joy_button(JOY_BUTTON_A)
+	_expect(game.journey.patrol_response == "herbs_first", "手柄 A 确认先翻药叶选择")
+	_expect(game.patrol.target_index == 2 and game.patrol.route_step == 1, "巡路选择立即重定向确定性路线")
+	var patrol_disk: Dictionary = SaveGameScript.read(SAVE_PATH)
+	_expect(patrol_disk["data"]["save_version"] == 15, "巡路选择写入 save v15")
+	var stored_patrol: Dictionary = patrol_disk["data"]["patrol"]
+	_expect(
+		is_equal_approx(float(stored_patrol["position_x"]), game.patrol.position.x)
+		and is_equal_approx(float(stored_patrol["position_y"]), game.patrol.position.y)
+		and int(stored_patrol["target_index"]) == game.patrol.target_index
+		and int(stored_patrol["route_step"]) == game.patrol.route_step
+		and is_equal_approx(float(stored_patrol["dwell_remaining"]), game.patrol.dwell_remaining)
+		and bool(stored_patrol["yielding_to_player"]) == game.patrol.yielding_to_player,
+		"save v15 顶层原子保存巡路位置与目标"
+	)
+	var herbs_distance_before: float = game.patrol.position.distance_to(PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT])
+	game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51})
+	game.patrol.advance(0.25, game.exploration.player_position)
+	_expect(game.patrol.position.distance_to(PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT]) < herbs_distance_before, "真实输入选择后首次位移实际接近晾晒架")
+	_expect(game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51}), "巡路输入验收后返回同行起点")
+	game._render([])
 
 	game.move_player(Vector2.LEFT, 0.27)
 	game.move_player(Vector2.UP, 0.80)
@@ -116,9 +172,15 @@ func _run() -> void:
 	_expect(game.exploration.player_position.y > before_move.y, "键盘 S 持续驱动角色位置")
 	var follow_contract: Dictionary = game.get_node("%MapCanvas").companion_follow_contract()
 	_expect(follow_contract["active"] and follow_contract["point_count"] > 2, "真实持续输入为砚青留下可跟随脚印")
+	_expect(game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.40, "player_y": 0.16}), "暂停验收把玩家放到巡路礼让半径外")
+	game._render([])
+	await _settle()
 	await _trigger_joy_button(JOY_BUTTON_START)
 	_expect(game.get_node("%PauseOverlay").visible, "手柄 Start 打开暂停界面")
 	await _settle()
+	var paused_patrol: Dictionary = game.patrol.snapshot()
+	await create_timer(0.12).timeout
+	_expect(game.patrol.snapshot() == paused_patrol, "暂停界面冻结陶小满巡路时钟")
 	_expect(root.gui_get_focus_owner() == game.get_node("%ResumeButton"), "暂停焦点落在继续修行")
 	game.get_node("%PauseBattleSpeedButton").grab_focus()
 	await _trigger_joy_button(JOY_BUTTON_A)
@@ -141,6 +203,8 @@ func _run() -> void:
 	game.get_node("%ResumeButton").grab_focus()
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(not game.get_node("%PauseOverlay").visible, "手柄 A 从暂停恢复")
+	await create_timer(0.12).timeout
+	_expect(game.patrol.snapshot() != paused_patrol, "关闭暂停后陶小满继续巡路")
 
 	_expect(game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.69, "player_y": 0.62}), "输入验收移动到合法月芽田坐标")
 	game._render([])
@@ -264,7 +328,9 @@ func _run() -> void:
 	breath_journey.choose("bypass_enemy")
 	var breath_exploration = ExplorationStateScript.new()
 	_expect(breath_exploration.transition_to(ExplorationStateScript.CANGQUAN_SPRING_MAP_ID), "输入验收建立合法藏泉石室地图")
-	_expect(SaveGameScript.write(breath_journey.snapshot(), breath_exploration.snapshot(), SAVE_PATH)["ok"], "输入验收建立未开始的三步引息存档")
+	_expect(SaveGameScript.write(breath_journey.snapshot(), breath_exploration.snapshot(), SAVE_PATH)["ok"], "输入验收建立未开始的三步引息 save v15 存档")
+	var breath_disk: Dictionary = SaveGameScript.read(SAVE_PATH)
+	_expect(breath_disk["data"]["save_version"] == 15 and typeof(breath_disk["data"].get("patrol")) == TYPE_DICTIONARY, "输入夹具包含 save v15 顶层 patrol 快照")
 
 	game = scene.instantiate()
 	game.configure_save_path(SAVE_PATH)
@@ -287,7 +353,7 @@ func _run() -> void:
 	if listen_button != null:
 		await _trigger_mouse_click(listen_button.get_global_rect().get_center())
 	_expect(game.journey.first_breath_stage == "listened", "真实鼠标点击完成听泉辨脉")
-	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "listened", "鼠标步骤立即写入 v14 存档")
+	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "listened", "鼠标步骤立即写入 v15 存档")
 
 	_expect(game.exploration.restore({
 		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
@@ -298,7 +364,7 @@ func _run() -> void:
 	await _settle()
 	await _trigger_key(KEY_E)
 	_expect(game.journey.first_breath_stage == "warmed" and not game.journey.gathered_moonleaf, "真实键盘 E 完成月芽温脉并消耗灵草")
-	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "warmed", "键盘步骤立即写入 v14 存档")
+	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "warmed", "键盘步骤立即写入 v15 存档")
 
 	_expect(game.exploration.restore({
 		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
@@ -309,7 +375,7 @@ func _run() -> void:
 	await _settle()
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(game.journey.first_breath_stage == "completed" and game.journey.phase_id() == "complete", "真实手柄 A 完成静坐引息")
-	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "completed", "手柄步骤立即写入 v14 存档")
+	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "completed", "手柄步骤立即写入 v15 存档")
 
 	game.get_node("%AudioManager").set_audio_enabled(false)
 	game.queue_free()
@@ -365,6 +431,21 @@ func _trigger_key(keycode: Key) -> void:
 	Input.parse_input_event(pressed)
 	await process_frame
 	var released := InputEventKey.new()
+	released.physical_keycode = keycode
+	released.pressed = false
+	Input.parse_input_event(released)
+	await _settle()
+
+
+func _trigger_ui_key(keycode: Key) -> void:
+	var pressed := InputEventKey.new()
+	pressed.keycode = keycode
+	pressed.physical_keycode = keycode
+	pressed.pressed = true
+	Input.parse_input_event(pressed)
+	await process_frame
+	var released := InputEventKey.new()
+	released.keycode = keycode
 	released.physical_keycode = keycode
 	released.pressed = false
 	Input.parse_input_event(released)

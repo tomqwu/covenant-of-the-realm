@@ -38,6 +38,11 @@
           "possible_targets": ["riverbank"]
         },
         {
+          "id": "talk_to_patrol_runner",
+          "label": "问问陶小满",
+          "possible_targets": ["riverbank"]
+        },
+        {
           "id": "talk_to_ferryman",
           "label": "询问守堤人",
           "possible_targets": ["riverbank"]
@@ -236,7 +241,7 @@
         {"speaker": "你", "text": "第一次引息不像登上高处，倒像终于听见脚下的水往哪里去。"},
         {"speaker": "砚青", "text": "{setback_reflection}。能走到这里，说明路线与退路都没有白看。"},
         {"speaker": "你", "text": "下一次出门，我得先知道自己能失去什么，也得知道什么值得留下。"},
-        {"speaker": "砚青", "text": "{companion_reflection}。{ferryman_reflection}。{basket_reflection}。照禾的河明早还会涨，我们也还来得及再走一段。"}
+        {"speaker": "砚青", "text": "{companion_reflection}。{ferryman_reflection}。{basket_reflection}。{patrol_reflection}。照禾的河明早还会涨，我们也还来得及再走一段。"}
       ],
       "choices": [
         {"id": "record", "label": "先把所见写进札记。", "event_id": "epilogue_recorded"},
@@ -269,6 +274,19 @@
         {"id": "trail", "label": "补好提绳，留在山道。", "event_id": "basket_trail"}
       ],
       "choice_prompt": "药篓无论归圃还是留山都服务后来人，不改变战斗强度。"
+    },
+    "patrol_runner_briefing": {
+      "lines": [
+        {"speaker": "陶小满", "text": "借过。西头补船缺两枚木楔，东边药架又催着翻晒；这趟河风比人还会派活。"},
+        {"speaker": "你", "text": "你每天都这样绕着渡口跑？"},
+        {"speaker": "陶小满", "text": "河涨之前送绳，日头偏西前翻药。路走熟了，哪块石头打滑，脚先替我记着。"},
+        {"speaker": "陶小满", "text": "今天两头都不能落下，只是得定个先后。你替我看一眼风和日头。"}
+      ],
+      "choices": [
+        {"id": "boat_first", "label": "木楔怕潮，先送船架。", "event_id": "patrol_boat_first"},
+        {"id": "herbs_first", "label": "药叶怕闷，先翻竹架。", "event_id": "patrol_herbs_first"}
+      ],
+      "choice_prompt": "先后会改变陶小满下一段巡路与章节回声，但不改变战斗强度。"
     }
   },
   "journal_entries": {
@@ -301,6 +319,14 @@
     "basket_trail": {
       "title": "留在避雨石下的药篓",
       "summary": "你与蕙婶补紧提绳，再把药篓放回山道，供后来行旅收拢散落药材。"
+    },
+    "patrol_boat_first": {
+      "title": "先往补船架的脚步",
+      "summary": "你请陶小满先护住怕潮的木楔。她沿中央石路折向西头，送完仍会回来照看药架。"
+    },
+    "patrol_herbs_first": {
+      "title": "先往晾晒架的脚步",
+      "summary": "你请陶小满先赶在日头偏西前翻药。她转向东头竹架，回来再把木楔送去补船。"
     }
   },
   "enemy_notes": {
@@ -359,6 +385,10 @@
     "basket_trail": "你与蕙婶换好提绳，把药篓送回山道避雨石下，留给下一位行旅者。",
     "basket_unavailable": "你还没有带回能让蕙婶辨认的山道药篓，或它已经安置妥当。",
     "invalid_basket_response": "这不是此刻可以作出的药篓安排。",
+    "patrol_boat_first": "陶小满把木楔往怀里一拢，笑着沿中央石路折向补船架；送完还会回来照看药叶。",
+    "patrol_herbs_first": "陶小满抬头看了看日影，先往晾晒竹架快走两步；回来再把木楔送去补船。",
+    "patrol_unavailable": "陶小满还没有开始巡路，或今天的先后已经定下。",
+    "invalid_patrol_response": "这不是此刻可以作出的巡路安排。",
     "invalid_briefing_response": "此刻无法作出这项回应。",
     "already_briefed": "砚青已经说明了山道的风险与退路。",
     "need_briefing": "你还不知道山道异动的详情，先回渡碑旁与砚青商量。",

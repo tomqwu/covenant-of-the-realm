@@ -35,9 +35,11 @@ def test_manifest_round_trip_and_exact_contract(tmp_path: Path) -> None:
         "res://assets/pixel/liangshu.png",
         "res://assets/pixel/protagonist.png",
         "res://assets/pixel/yanqing.png",
+        "res://assets/pixel/tao_xiaoman.png",
         "res://content/prologue.json",
         "res://src/domain/exploration_state.gd",
         "res://src/domain/journey_state.gd",
+        "res://src/domain/patrol_state.gd",
         "res://src/domain/save_game.gd",
         "res://src/ui/dialogue_portrait.gd",
         "res://src/ui/main.tscn",
@@ -96,11 +98,13 @@ def test_verify_reports_unreadable_invalid_and_tampered_manifests(tmp_path: Path
 
     data = rpg_package_manifest.manifest_for(pack, REVISION, "dirty")
     data["sha256"] = "0" * 64
+    data["required_resources"] = []
     data["excluded_resources"] = []
     missing.write_text(json.dumps(data), encoding="utf-8")
     failures = rpg_package_manifest.verify_manifest(pack, missing)
     assert failures == [
         "manifest field 'sha256' does not match the resource pack",
+        "manifest field 'required_resources' does not match the resource pack",
         "manifest field 'excluded_resources' does not match the resource pack",
     ]
 

@@ -141,7 +141,7 @@ def validate_contract(data: Any) -> list[str]:
     if not isinstance(data, dict):
         return ["asset contract must be an object"]
     expected = {
-        "schema_version": 3,
+        "schema_version": 4,
         "origin": "original",
         "tile_grid_px": 32,
         "actor_frame_px": [32, 56],
@@ -176,9 +176,10 @@ def validate_contract(data: Any) -> list[str]:
         "yanqing.png",
         "liangshu.png",
         "huishen.png",
+        "tao_xiaoman.png",
     ]
     if not isinstance(atlases, list) or atlases != expected_actor_atlases:
-        failures.append("atlases must match the four stable actor IDs")
+        failures.append("atlases must match the five stable actor IDs")
         return failures
     width = data.get("actor_frame_px", [0, 0])[0] * data.get("atlas_columns", 0)
     height = data.get("actor_frame_px", [0, 0])[1] * data.get("atlas_rows", 0)

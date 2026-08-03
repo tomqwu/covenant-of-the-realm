@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://src/ui/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://src/ui/map_canvas.gd" id="2_map"]
@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" path="res://assets/pixel/yanqing.png" id="6_yanqing"]
 [ext_resource type="Texture2D" path="res://assets/pixel/liangshu.png" id="13_liangshu"]
 [ext_resource type="Texture2D" path="res://assets/pixel/huishen.png" id="14_huishen"]
+[ext_resource type="Texture2D" path="res://assets/pixel/tao_xiaoman.png" id="16_tao_xiaoman"]
 [ext_resource type="Script" path="res://src/ui/ferry_tile_layer.gd" id="7_ferry_layer"]
 [ext_resource type="Texture2D" path="res://assets/pixel/ferry_tiles.png" id="8_ferry_tiles"]
 [ext_resource type="Script" path="res://src/ui/enemy_sprite.gd" id="9_enemy"]
@@ -149,6 +150,15 @@ z_index = 9
 script = ExtResource("4_actor")
 atlas_texture = ExtResource("14_huishen")
 initial_facing = "left"
+
+[node name="PatrolSprite" type="AnimatedSprite2D" parent="MapFrame/MapCanvas"]
+unique_name_in_owner = true
+visible = false
+texture_filter = 1
+z_index = 9
+script = ExtResource("4_actor")
+atlas_texture = ExtResource("16_tao_xiaoman")
+initial_facing = "up"
 
 [node name="BattleEnemySprite" type="AnimatedSprite2D" parent="MapFrame/MapCanvas"]
 unique_name_in_owner = true

@@ -5,8 +5,9 @@ const PROTAGONIST := "protagonist"
 const YANQING := "yanqing"
 const LIANGSHU := "liangshu"
 const HUISHEN := "huishen"
+const TAO_XIAOMAN := "tao_xiaoman"
 const JOURNAL := "journal"
-const PORTRAIT_IDS := [PROTAGONIST, YANQING, LIANGSHU, HUISHEN, JOURNAL]
+const PORTRAIT_IDS := [PROTAGONIST, YANQING, LIANGSHU, HUISHEN, TAO_XIAOMAN, JOURNAL]
 
 const INK_ROOT := Color("27312e")
 const COOL_SHADOW := Color("355e63")
@@ -38,6 +39,7 @@ func set_portrait(next_id: String) -> bool:
 		YANQING: "砚青纸绘头像",
 		LIANGSHU: "梁叔纸绘头像",
 		HUISHEN: "蕙婶纸绘头像",
+		TAO_XIAOMAN: "陶小满纸绘头像",
 		JOURNAL: "行旅札记纸绘图",
 	}[portrait_id]
 	queue_redraw()
@@ -56,6 +58,7 @@ func visual_contract() -> Dictionary:
 			"yanqing": WARM_OCHRE,
 			"liangshu": COOL_SHADOW,
 			"huishen": FRESH_CELADON.darkened(0.12),
+			"tao_xiaoman": SPIRIT_GOLD.darkened(0.08),
 			"journal": FRESH_CELADON,
 		},
 		"motion_free": true,
@@ -77,6 +80,8 @@ func _draw() -> void:
 			_draw_liangshu(size)
 		HUISHEN:
 			_draw_huishen(size)
+		TAO_XIAOMAN:
+			_draw_tao_xiaoman(size)
 		_:
 			_draw_journal(size)
 	_draw_frame(size)
@@ -195,6 +200,29 @@ func _draw_huishen(size: Vector2) -> void:
 	for offset in [13.0, 28.0, 43.0]:
 		draw_line(apron.position + Vector2(0, offset), apron.position + Vector2(apron.size.x, offset), Color("826946"), 1.5)
 	draw_arc(center + Vector2(0, 29), 23.0, PI, TAU, 16, Color("826946"), 3.0)
+
+
+func _draw_tao_xiaoman(size: Vector2) -> void:
+	var center := Vector2(size.x * 0.50, size.y * 0.45)
+	var sunny_jacket := SPIRIT_GOLD.darkened(0.08)
+	_draw_person_shadow(center, size)
+	_draw_shoulders(center, size, sunny_jacket, Color("a46f3e"))
+	_draw_neck_and_face(center, Color("deb18b"), Color("bd8164"))
+	# A cropped river-blue scarf and wedge satchel keep the young runner distinct.
+	draw_colored_polygon(PackedVector2Array([
+		center + Vector2(-25, -14), center + Vector2(-18, -48),
+		center + Vector2(0, -58), center + Vector2(22, -43),
+		center + Vector2(27, -13), center + Vector2(9, -26),
+		center + Vector2(-11, -27),
+	]), INK_ROOT.lightened(0.03))
+	draw_line(center + Vector2(-20, -43), center + Vector2(22, -43), RIVER_JADE, 5.0)
+	draw_line(center + Vector2(-18, -40), center + Vector2(-30, -24), RIVER_JADE.darkened(0.14), 4.0)
+	_draw_face(center, COOL_SHADOW, Vector2(1, 0))
+	draw_arc(center + Vector2(0, 7), 7.0, 0.25, 2.65, 10, Color("945746"), 1.5)
+	draw_line(center + Vector2(-23, 23), center + Vector2(20, 45), RIVER_JADE.darkened(0.12), 5.0)
+	draw_rect(Rect2(center + Vector2(13, 36), Vector2(31, 35)), RIVER_JADE.darkened(0.18))
+	for offset in [0.0, 9.0, 18.0]:
+		draw_rect(Rect2(center + Vector2(19 + offset, 44), Vector2(5, 18)), WARM_PAPER.darkened(0.20))
 
 
 func _draw_journal(size: Vector2) -> void:

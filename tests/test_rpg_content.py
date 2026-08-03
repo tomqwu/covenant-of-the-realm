@@ -50,6 +50,22 @@ def test_first_breath_contract_does_not_constrain_other_story_ids() -> None:
     data["story_id"] = "another_original_story"
     data["nodes"]["spring"]["actions"][0]["label"] = "另一故事的行动"
     data["messages"].pop("first_breath_out_of_order")
+    data["nodes"]["riverbank"]["actions"] = [
+        action
+        for action in data["nodes"]["riverbank"]["actions"]
+        if action["id"] != "talk_to_patrol_runner"
+    ]
+    data["dialogues"].pop("patrol_runner_briefing")
+    for message_id in (
+        "invalid_patrol_response",
+        "patrol_boat_first",
+        "patrol_herbs_first",
+        "patrol_unavailable",
+    ):
+        data["messages"].pop(message_id)
+    epilogue_line = data["dialogues"]["chapter_epilogue"]["lines"][-1]
+    epilogue_line["text"] = epilogue_line["text"].replace("{patrol_reflection}。", "")
+    data["journal_side_entries"]["patrol_boat_first"]["title"] = "另一故事的选择"
     assert validate_story(data) == []
 
 
@@ -125,6 +141,78 @@ def test_first_breath_story_locks_repeatable_life_landmark_contract() -> None:
     data["nodes"]["riverbank"]["actions"] = {}
     assert (
         "story.nodes.riverbank.actions must be a non-empty list"
+        in validate_story(data)
+    )
+
+
+def test_first_breath_story_locks_patrol_runner_contract() -> None:
+    data = story()
+    patrol_action = next(
+        action
+        for action in data["nodes"]["riverbank"]["actions"]
+        if action["id"] == "talk_to_patrol_runner"
+    )
+    patrol_action["possible_targets"] = ["mountain_path"]
+    dialogue = data["dialogues"]["patrol_runner_briefing"]
+    dialogue["lines"][0]["text"] = "一段被意外改写的巡路开场。"
+    dialogue["choices"][1]["event_id"] = "patrol_boat_first"
+    dialogue["choice_prompt"] = "随意选择。"
+    data["messages"].pop("patrol_unavailable")
+    data["messages"]["patrol_boat_first"] = "一段被意外改写的巡路结果。"
+    data["journal_side_entries"]["patrol_boat_first"]["title"] = "被改写的木楔路线"
+    data["journal_side_entries"]["patrol_herbs_first"]["summary"] = "被改写的翻药路线。"
+    epilogue_line = data["dialogues"]["chapter_epilogue"]["lines"][-1]
+    epilogue_line["text"] = epilogue_line["text"].replace("{patrol_reflection}。", "")
+
+    failures = validate_story(data)
+
+    assert any(
+        failure.startswith(
+            "story.nodes.riverbank.actions.talk_to_patrol_runner must be "
+        )
+        for failure in failures
+    )
+    assert (
+        "story.dialogues.patrol_runner_briefing.lines must match the exact patrol script"
+        in failures
+    )
+    assert (
+        "story.dialogues.patrol_runner_briefing.choices must match the exact patrol script"
+        in failures
+    )
+    assert (
+        "story.dialogues.patrol_runner_briefing.choice_prompt must match the exact patrol script"
+        in failures
+    )
+    assert any(
+        failure.startswith("story.messages.patrol_boat_first must be ")
+        for failure in failures
+    )
+    assert any(
+        failure.startswith("story.messages.patrol_unavailable must be ")
+        for failure in failures
+    )
+    assert any(
+        failure.startswith("story.journal_side_entries.patrol_boat_first must be ")
+        for failure in failures
+    )
+    assert any(
+        failure.startswith("story.journal_side_entries.patrol_herbs_first must be ")
+        for failure in failures
+    )
+    assert (
+        "story.dialogues.chapter_epilogue.lines must contain exactly one "
+        "'{patrol_reflection}' token" in failures
+    )
+
+    data = story()
+    data["nodes"]["riverbank"]["actions"] = [
+        action
+        for action in data["nodes"]["riverbank"]["actions"]
+        if action["id"] != "talk_to_patrol_runner"
+    ]
+    assert (
+        "story.nodes.riverbank.actions is missing patrol action 'talk_to_patrol_runner'"
         in validate_story(data)
     )
 
@@ -256,6 +344,8 @@ def test_reachability_handles_converging_paths() -> None:
             "ferryman_record": {"title": "记时", "summary": "涨时入簿。"},
             "basket_return": {"title": "归圃", "summary": "药篓回到药圃。"},
             "basket_trail": {"title": "留山", "summary": "药篓留给行旅。"},
+            "patrol_boat_first": {"title": "先护船", "summary": "木楔先送船架。"},
+            "patrol_herbs_first": {"title": "先翻药", "summary": "药叶先上竹架。"},
         },
         "enemy_notes": {
             "rock_armor_young": {

@@ -12,7 +12,7 @@ setup-rpg: ## Resolve the pinned Godot 4.7.1 development runtime
 	@./scripts/setup_rpg
 
 rpg-import-assets: ## Import source textures through the pinned Godot editor pipeline
-	@./scripts/godot --quiet --editor --headless --path rpg --quit
+	@./scripts/godot_checked --quiet --editor --headless --path rpg --quit
 
 setup-prototype: ## Install the journey prototype dependencies and browsers
 	@cd prototypes/journey && npm ci && npx playwright install chromium firefox webkit
@@ -30,7 +30,7 @@ play-rpg-package: package-rpg ## Build and launch the same resource pack validat
 	@./scripts/godot --main-pack build/rpg/covenant-of-the-realm.pck
 
 capture-rpg-ui: ## Rebuild the RPG scale test and UI reference screenshots
-	@./scripts/godot --path rpg --script res://tools/capture_ui.gd
+	@./scripts/godot_checked --path rpg --script res://tools/capture_ui.gd
 
 stop: ## Stop the local multiplayer server
 	@cd mud && uv run --project .. evennia stop
@@ -62,16 +62,16 @@ test-unit: ## Run deterministic rules tests with the 99% branch/statement gate
 	@uv run coverage report
 
 test-rpg: rpg-import-assets ## Run the headless Godot domain and scene tests
-	@./scripts/godot --headless --path rpg --script res://tests/test_runner.gd
+	@./scripts/godot_checked --headless --path rpg --script res://tests/test_runner.gd
 
 test-rpg-e2e: rpg-import-assets ## Play the complete Godot chapter path headlessly, including save resume and replay
-	@./scripts/godot --headless --path rpg --script res://tests/e2e_runner.gd
+	@./scripts/godot_checked --headless --path rpg --script res://tests/e2e_runner.gd
 
 test-rpg-input: rpg-import-assets ## Exercise real semantic input events, focus navigation, movement, interaction, and pause
-	@./scripts/godot --headless --path rpg --script res://tests/input_runner.gd
+	@./scripts/godot_checked --headless --path rpg --script res://tests/input_runner.gd
 
 test-rpg-performance: rpg-import-assets ## Benchmark deterministic movement, battle resolution, and scene cleanup
-	@./scripts/godot --headless --disable-render-loop --fixed-fps 60 --path rpg --script res://tests/performance_runner.gd
+	@./scripts/godot_checked --headless --disable-render-loop --fixed-fps 60 --path rpg --script res://tests/performance_runner.gd
 
 check-rpg-package: ## Export the Godot pack twice, compare bytes, and boot it headlessly
 	@./scripts/check_rpg_package

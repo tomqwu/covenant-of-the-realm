@@ -31,6 +31,13 @@ DETAIL_TILE_NAMES = [
     "fallen_leaves",
     "water_foam",
 ]
+ACTOR_ATLASES = [
+    "protagonist.png",
+    "yanqing.png",
+    "liangshu.png",
+    "huishen.png",
+    "tao_xiaoman.png",
+]
 LANDMARK_PROFILES = [
     "tree_celadon",
     "ferry_house_rust",
@@ -98,6 +105,39 @@ def valid_contract(
 
 def test_map_atlas_accepts_exact_two_row_contract(valid_contract: dict[str, Any]) -> None:
     assert check_rpg_assets.validate_contract(valid_contract) == []
+
+
+def test_schema_four_accepts_five_actor_atlases_and_tao_xiaoman(
+    valid_contract: dict[str, Any],
+) -> None:
+    assert valid_contract["schema_version"] == 4
+    assert valid_contract["atlases"] == ACTOR_ATLASES
+    assert check_rpg_assets._png_size(
+        check_rpg_assets.ASSET_DIR / "tao_xiaoman.png"
+    ) == (128, 224)
+    assert check_rpg_assets.validate_contract(valid_contract) == []
+
+
+def test_actor_atlas_contract_rejects_old_schema_and_changed_roster(
+    valid_contract: dict[str, Any],
+) -> None:
+    valid_contract["schema_version"] = 3
+    valid_contract["atlases"] = ACTOR_ATLASES[:-1]
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "schema_version must be 4" in failures
+    assert "atlases must match the five stable actor IDs" in failures
+
+
+def test_actor_atlas_contract_rejects_wrong_tao_xiaoman_dimensions(
+    valid_contract: dict[str, Any],
+) -> None:
+    _write_png(check_rpg_assets.ASSET_DIR / "tao_xiaoman.png", 127, 224)
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "tao_xiaoman.png: expected (128, 224), got (127, 224)" in failures
 
 
 def test_map_atlas_rejects_wrong_row_layout(valid_contract: dict[str, Any]) -> None:
@@ -176,7 +216,6 @@ def test_map_atlas_rejects_wrong_png_dimensions(
 def test_landmark_atlas_accepts_exact_profile_contract(
     valid_contract: dict[str, Any],
 ) -> None:
-    assert valid_contract["schema_version"] == 3
     assert valid_contract["landmark_atlas"]["profiles"] == LANDMARK_PROFILES
     assert check_rpg_assets.validate_contract(valid_contract) == []
 

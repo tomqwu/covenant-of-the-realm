@@ -22,6 +22,8 @@ REQUIRED_JOURNAL_SIDE_IDS = {
     "basket_trail",
     "ferryman_record",
     "ferryman_repair",
+    "patrol_boat_first",
+    "patrol_herbs_first",
 }
 ENEMY_NOTE_REFERENCE_CONTRACT = {
     "rock_armor_young": {
@@ -57,6 +59,7 @@ ALLOWED_DIALOGUE_TOKENS = {
     "ferryman_reflection",
     "harvest_reflection",
     "intel_reflection",
+    "patrol_reflection",
     "setback_reflection",
 }
 TOKEN_PATTERN = re.compile(r"\{([^{}]+)\}")
@@ -119,6 +122,78 @@ LIFE_LANDMARK_MESSAGES = {
         "取一束，后来补一束。"
     ),
 }
+PATROL_ACTION = {
+    "id": "talk_to_patrol_runner",
+    "label": "问问陶小满",
+    "possible_targets": ["riverbank"],
+}
+PATROL_DIALOGUE = {
+    "lines": [
+        {
+            "speaker": "陶小满",
+            "text": (
+                "借过。西头补船缺两枚木楔，东边药架又催着翻晒；"
+                "这趟河风比人还会派活。"
+            ),
+        },
+        {
+            "speaker": "你",
+            "text": "你每天都这样绕着渡口跑？",
+        },
+        {
+            "speaker": "陶小满",
+            "text": (
+                "河涨之前送绳，日头偏西前翻药。路走熟了，"
+                "哪块石头打滑，脚先替我记着。"
+            ),
+        },
+        {
+            "speaker": "陶小满",
+            "text": "今天两头都不能落下，只是得定个先后。你替我看一眼风和日头。",
+        },
+    ],
+    "choices": [
+        {
+            "id": "boat_first",
+            "label": "木楔怕潮，先送船架。",
+            "event_id": "patrol_boat_first",
+        },
+        {
+            "id": "herbs_first",
+            "label": "药叶怕闷，先翻竹架。",
+            "event_id": "patrol_herbs_first",
+        },
+    ],
+    "choice_prompt": "先后会改变陶小满下一段巡路与章节回声，但不改变战斗强度。",
+}
+PATROL_MESSAGES = {
+    "patrol_boat_first": (
+        "陶小满把木楔往怀里一拢，笑着沿中央石路折向补船架；"
+        "送完还会回来照看药叶。"
+    ),
+    "patrol_herbs_first": (
+        "陶小满抬头看了看日影，先往晾晒竹架快走两步；回来再把木楔送去补船。"
+    ),
+    "patrol_unavailable": "陶小满还没有开始巡路，或今天的先后已经定下。",
+    "invalid_patrol_response": "这不是此刻可以作出的巡路安排。",
+}
+PATROL_JOURNAL_SIDE_ENTRIES = {
+    "patrol_boat_first": {
+        "title": "先往补船架的脚步",
+        "summary": (
+            "你请陶小满先护住怕潮的木楔。她沿中央石路折向西头，"
+            "送完仍会回来照看药架。"
+        ),
+    },
+    "patrol_herbs_first": {
+        "title": "先往晾晒架的脚步",
+        "summary": (
+            "你请陶小满先赶在日头偏西前翻药。她转向东头竹架，"
+            "回来再把木楔送去补船。"
+        ),
+    },
+}
+PATROL_REFLECTION_TOKEN = "{patrol_reflection}"
 
 
 def _mapping(value: Any, label: str, failures: list[str]) -> dict[str, Any]:
@@ -243,6 +318,72 @@ def _validate_life_landmark_contract(
             )
 
 
+def _validate_patrol_contract(
+    story: dict[str, Any],
+    nodes: dict[str, Any],
+    dialogues: dict[str, Any],
+    messages: dict[str, Any],
+    journal_side_entries: dict[str, Any],
+    source: str,
+    failures: list[str],
+) -> None:
+    """Lock Tao Xiaoman's shipped route choice and its chapter reflection."""
+    if story.get("story_id") != FIRST_BREATH_STORY_ID:
+        return
+
+    riverbank = nodes.get("riverbank")
+    raw_actions = riverbank.get("actions") if isinstance(riverbank, dict) else []
+    actions = raw_actions if isinstance(raw_actions, list) else []
+    patrol_actions = [
+        action
+        for action in actions
+        if isinstance(action, dict) and action.get("id") == PATROL_ACTION["id"]
+    ]
+    if not patrol_actions:
+        failures.append(
+            f"{source}.nodes.riverbank.actions is missing patrol action "
+            f"'{PATROL_ACTION['id']}'"
+        )
+    elif patrol_actions != [PATROL_ACTION]:
+        failures.append(
+            f"{source}.nodes.riverbank.actions.{PATROL_ACTION['id']} must be "
+            f"{PATROL_ACTION!r}"
+        )
+
+    dialogue = dialogues.get("patrol_runner_briefing")
+    dialogue = dialogue if isinstance(dialogue, dict) else {}
+    for field, expected_value in PATROL_DIALOGUE.items():
+        if dialogue.get(field) != expected_value:
+            failures.append(
+                f"{source}.dialogues.patrol_runner_briefing.{field} must match "
+                "the exact patrol script"
+            )
+
+    for message_id, expected_text in PATROL_MESSAGES.items():
+        if messages.get(message_id) != expected_text:
+            failures.append(f"{source}.messages.{message_id} must be {expected_text!r}")
+
+    for entry_id, expected_entry in PATROL_JOURNAL_SIDE_ENTRIES.items():
+        if journal_side_entries.get(entry_id) != expected_entry:
+            failures.append(
+                f"{source}.journal_side_entries.{entry_id} must be {expected_entry!r}"
+            )
+
+    epilogue = dialogues.get("chapter_epilogue")
+    raw_lines = epilogue.get("lines") if isinstance(epilogue, dict) else []
+    lines = raw_lines if isinstance(raw_lines, list) else []
+    token_count = sum(
+        line.get("text", "").count(PATROL_REFLECTION_TOKEN)
+        for line in lines
+        if isinstance(line, dict) and isinstance(line.get("text", ""), str)
+    )
+    if token_count != 1:
+        failures.append(
+            f"{source}.dialogues.chapter_epilogue.lines must contain exactly one "
+            f"{PATROL_REFLECTION_TOKEN!r} token"
+        )
+
+
 def validate_story(data: Any, source: str = "story") -> list[str]:
     failures: list[str] = []
     story = _mapping(data, source, failures)
@@ -326,6 +467,15 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
 
     _validate_first_breath_contract(story, nodes, messages, source, failures)
     _validate_life_landmark_contract(story, nodes, messages, source, failures)
+    _validate_patrol_contract(
+        story,
+        nodes,
+        dialogues,
+        messages,
+        journal_side_entries,
+        source,
+        failures,
+    )
 
     if not dialogues:
         failures.append(f"{source}.dialogues must not be empty")

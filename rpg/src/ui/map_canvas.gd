@@ -39,6 +39,7 @@ const RAIN_SHELTER_VISUAL_FEET := Vector2(0.575, 0.69)
 @onready var companion_sprite = %CompanionSprite
 @onready var ferryman_sprite = %FerrymanSprite
 @onready var herbkeeper_sprite = %HerbkeeperSprite
+@onready var patrol_sprite = %PatrolSprite
 @onready var ferry_ground: TileMapLayer = %FerryGround
 @onready var path_ground: TileMapLayer = %PathGround
 @onready var map_detail_layer: TileMapLayer = %MapDetailLayer
@@ -71,7 +72,12 @@ var discoveries: Array[String] = []
 var enemy_intel: Array[String] = []
 var ferryman_response := "unanswered"
 var basket_response := "unanswered"
+var patrol_response := "unanswered"
 var first_breath_stage := "unstarted"
+var patrol_position := Vector2(0.55, 0.66)
+var patrol_motion := Vector2.UP
+var patrol_moving := false
+var patrol_active := false
 
 
 func set_story_state(
@@ -84,6 +90,7 @@ func set_story_state(
 	next_discoveries: Array,
 	next_ferryman_response: String,
 	next_basket_response: String,
+	next_patrol_response: String,
 	next_enemy_intel: Array = [],
 	next_first_breath_stage: String = "unstarted"
 ) -> void:
@@ -103,6 +110,7 @@ func set_story_state(
 		enemy_intel.append(str(intel_id))
 	ferryman_response = next_ferryman_response
 	basket_response = next_basket_response
+	patrol_response = next_patrol_response
 	first_breath_stage = next_first_breath_stage
 	_sync_actor_visuals()
 	queue_redraw()
@@ -114,6 +122,20 @@ func set_exploration_state(next_position: Vector2, next_nearby_action: String) -
 	nearby_action = next_nearby_action
 	_sync_companion_trail()
 	_sync_actor_visuals()
+	queue_redraw()
+
+
+func set_patrol_state(next_position: Vector2, next_motion: Vector2, moving: bool, active: bool) -> void:
+	patrol_position = next_position
+	patrol_motion = next_motion
+	patrol_moving = moving
+	patrol_active = active
+	_sync_actor_visuals()
+	queue_redraw()
+
+
+func set_nearby_action(next_nearby_action: String) -> void:
+	nearby_action = next_nearby_action
 	queue_redraw()
 
 
@@ -182,6 +204,7 @@ func uses_animated_actor_sprites() -> bool:
 		and companion_sprite is AnimatedSprite2D
 		and ferryman_sprite is AnimatedSprite2D
 		and herbkeeper_sprite is AnimatedSprite2D
+		and patrol_sprite is AnimatedSprite2D
 	)
 
 
@@ -310,6 +333,21 @@ func basket_visual_contract() -> Dictionary:
 	}
 
 
+func patrol_visual_contract() -> Dictionary:
+	return {
+		"visible": patrol_sprite.visible,
+		"response": patrol_response,
+		"normalized_position": patrol_position,
+		"sprite_position": patrol_sprite.position,
+		"sprite_depth": patrol_sprite.z_index,
+		"motion": patrol_motion,
+		"moving": patrol_moving,
+		"active": patrol_active,
+		"collision_authority": false,
+		"quest_authority": false,
+	}
+
+
 func first_breath_visual_contract() -> Dictionary:
 	var completed := _completed_first_breath_actions()
 	return {
@@ -359,6 +397,7 @@ func occlusion_contract() -> Dictionary:
 		"companion_depth": companion_sprite.z_index,
 		"ferryman_depth": ferryman_sprite.z_index,
 		"herbkeeper_depth": herbkeeper_sprite.z_index,
+		"patrol_depth": patrol_sprite.z_index,
 		"map_depth_ceiling": 60,
 	}
 
@@ -385,6 +424,7 @@ func _sync_actor_visuals() -> void:
 		or not is_instance_valid(companion_sprite)
 		or not is_instance_valid(ferryman_sprite)
 		or not is_instance_valid(herbkeeper_sprite)
+		or not is_instance_valid(patrol_sprite)
 		or not is_instance_valid(map_detail_layer)
 	):
 		return
@@ -399,6 +439,7 @@ func _sync_actor_visuals() -> void:
 	path_puppet_enemy_sprite.visible = phase_id == "mountain_path"
 	ferryman_sprite.visible = phase_id == "riverbank"
 	herbkeeper_sprite.visible = phase_id == "riverbank"
+	patrol_sprite.visible = phase_id == "riverbank" and patrol_active
 	battle_enemy_sprite.set_enemy_id(enemy_id)
 	battle_enemy_sprite.position = Vector2(size.x * 0.66, size.y * 0.49).round()
 	path_rock_enemy_sprite.position = Vector2(size.x * 0.76, size.y * 0.36).round()
@@ -408,6 +449,8 @@ func _sync_actor_visuals() -> void:
 	ferryman_sprite.set_motion(Vector2.RIGHT, false)
 	herbkeeper_sprite.position = Vector2(size.x * 0.75, size.y * 0.66).round()
 	herbkeeper_sprite.set_motion(Vector2.LEFT, false)
+	patrol_sprite.position = Vector2(size.x * patrol_position.x, size.y * patrol_position.y).round()
+	patrol_sprite.set_motion(patrol_motion, patrol_moving)
 	player_sprite.visible = true
 	companion_sprite.visible = true
 	match phase_id:
@@ -462,6 +505,7 @@ func _apply_depth_sort() -> void:
 	path_puppet_enemy_sprite.z_index = depth_for_y(path_puppet_enemy_sprite.position.y)
 	ferryman_sprite.z_index = depth_for_y(ferryman_sprite.position.y)
 	herbkeeper_sprite.z_index = depth_for_y(herbkeeper_sprite.position.y)
+	patrol_sprite.z_index = depth_for_y(patrol_sprite.position.y)
 
 
 func _sync_occluders(size: Vector2) -> void:
@@ -575,6 +619,8 @@ func _draw_riverbank() -> void:
 		_draw_interaction_marker(Vector2(size.x * 0.41, size.y * 0.66), nearby_action == "talk_to_ferryman")
 	if discoveries.has("abandoned_basket") and basket_response == "unanswered":
 		_draw_interaction_marker(Vector2(size.x * 0.75, size.y * 0.66), nearby_action == "talk_to_herbkeeper")
+	if patrol_active and patrol_response == "unanswered":
+		_draw_interaction_marker(patrol_position * size, nearby_action == "talk_to_patrol_runner")
 	if not gathered_moonleaf:
 		_draw_interaction_marker(Vector2(size.x * 0.69, size.y * 0.62), nearby_action == "gather_moonleaf")
 	_draw_interaction_marker(ExplorationStateScript.BOAT_REPAIR_POSITION * size, nearby_action == "inspect_boat_repair")

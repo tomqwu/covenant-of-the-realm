@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "origin": "original",
   "tile_grid_px": 32,
   "actor_frame_px": [32, 56],
@@ -21,15 +21,18 @@
     "58738f",
     "8ebb83",
     "c6764f",
+    "d6a24f",
     "d9b895",
     "e4c36e",
-    "f2e6cb"
+    "f2e6cb",
+    "4e9da4"
   ],
   "atlases": [
     "protagonist.png",
     "yanqing.png",
     "liangshu.png",
-    "huishen.png"
+    "huishen.png",
+    "tao_xiaoman.png"
   ],
   "enemy_atlas": {
     "file": "enemy_profiles.png",

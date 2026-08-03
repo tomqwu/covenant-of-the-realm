@@ -16,15 +16,19 @@ make check-rpg-package
 make play-rpg-package
 ```
 
+Automated Godot commands use `scripts/godot_checked`. It preserves genuine engine exit codes and
+also fails when Godot returns zero after emitting a fatal GDScript parse/load diagnostic, preventing
+false-green imports, tests, captures, exports, content probes, or packaged boot smoke.
+
 `make package-rpg` writes the cross-platform game-data pack to the ignored path
 `build/rpg/covenant-of-the-realm.pck` plus
 `build/rpg/covenant-of-the-realm.manifest.json`. The manifest records size, SHA-256, Godot/preset,
 nearest Git revision, clean/dirty source state, required runtime resources, and excluded development
 resources. `make play-rpg-package` launches that pack with the pinned Godot entrypoint. The package
 gate exports the PCK and manifest twice, requires byte-identical results, verifies the manifest,
-probes the packed namespace for 15 runtime resources and nine excluded `tests/`/`tools/` files,
-then boots the pack headlessly. The current reproducible PCK is 559,676 bytes with SHA-256
-`482485ac5610f7d9157461b4d178fcac0712a23674980e131d6a2a9bfd3d4f1d`.
+probes the packed namespace for 17 runtime resources and nine excluded `tests/`/`tools/` files,
+then boots the pack headlessly. The current reproducible PCK is 611,028 bytes with SHA-256
+`fef624d49cf101337c516d0c026339102d9d92eed29cf5c889da2028c9534a0e`.
 A native `.app`/`.exe` is intentionally deferred until platform export templates,
 signing identity, product icon, and distribution target are confirmed.
 
@@ -32,19 +36,20 @@ The development window has a 1152×648 minimum because that is the validated rea
 Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, battle confirmation,
 and pause/resume are exercised as physical input events by `make test-rpg-input`.
 
-`make test-rpg-performance` executes 100,000 deterministic movement/collision steps, 50,000
+`make test-rpg-performance` executes 100,000 deterministic movement/collision steps, 100,000
+deterministic ferry-runner route steps, 50,000
 bounded companion-footprint updates, 2,000 complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. Lifecycle sampling covers title, path, dialogue choices, stable battle, the immediate post-action replacement frame, the scrollable journal, all three spring stages, and completion. The checked-in
-budget allows 2.5 seconds for each pure-domain workload and 7 seconds for the expanded 11-state lifecycle workload,
-caps the main scene at 120 nodes, and requires every cycle to return the root to its baseline child
-count. The static scene uses 110 nodes; the measured peak is 120, each of the three spring ritual
-stages uses 111, and the completed scene uses 113, with zero root-child leaks. Godot runs the
+budget allows 2.5 seconds for each pure-domain workload and 7 seconds for the expanded 12-state lifecycle workload,
+caps the main scene at 121 nodes, and requires every cycle to return the root to its baseline child
+count. The static scene uses 111 nodes; the measured peak is 121, the patrol state uses 119,
+each spring ritual stage uses 112, and the completed scene uses 114, with zero root-child leaks. Godot runs the
 lifecycle gate on a fixed 60 FPS clock, keeps required focus/deferred-tree settle frames, and
 disables automatic drawing because deterministic PNG captures own pixel verification. The runner
 reports measured times but does not treat one development machine as a release hardware promise.
 
-启动后可选择新游戏或继续本机的版本化存档。当前 save v14 同时记录稳定地图标识、
+启动后可选择新游戏或继续本机的版本化存档。当前 save v15 同时记录稳定地图标识、
 归一化坐标、首次引息阶段、对话行号、敌人标识、战斗状态、月芽采集方式、环境见闻、
-三项敌情、守堤与药篓选择；v1–v13 自动迁移，当前格式严格校验阶段与地图的组合，
+三项敌情、守堤/药篓/巡路选择和巡路者精确位置；v1–v14 自动迁移，当前格式严格校验阶段、地图、对话与巡路的组合，
 未知地图、无效对话、未知敌人、非法采集、见闻、敌情、首次引息或支线状态不会被
 静默放进错误场景。游戏会在成功交互、战斗行动和持续
 移动时自动保存；按 `Esc` 或手柄 Start 可暂停、保存并返回标题。损坏或未知版本
@@ -52,7 +57,7 @@ reports measured times but does not treat one development machine as a release h
 主文件损坏时依次校验完整的中断写入与备份，恢复后重新落盘。普通保存会先替换废弃的
 中断分支，再轮转已提交主文件；恢复专用 `.repair` 只作写入工作区，不会被当作可玩进度。
 主文件、临时写入、恢复工作区或备份中只要出现未来版本或不同剧情，就会阻止旧运行时
-降级和覆盖；v1–v13 迁移也必须通过当前规则、地图与对话校验。只要主文件、备份或
+降级和覆盖；v1–v14 迁移也必须通过当前规则、地图、对话与巡路校验。只要主文件、备份或
 中断写入文件仍在，第一次选择重新开始只会进入警告态；取消默认获得焦点，第二次
 明确确认后才删除旧进度并建立新旅程，异常文件也不会被一次点击覆盖。
 
@@ -72,7 +77,7 @@ settings v3 增加“标准/大字”文字大小和“关闭/开启”高对比
 
 当前功能性美术灰盒采用明亮的全屏 RPG 镜头。第一套原创、确定性生成的人物图集
 已经锁定 32×56 px 帧、固定脚底锚点、16×20 px 碰撞基准、四方向待机/行走动画、
-最近邻过滤与整数像素对齐，并通过 `AnimatedSprite2D` 驱动主角、砚青、守堤人梁叔和药圃守蕙婶。四类敌人
+最近邻过滤与整数像素对齐，并通过 `AnimatedSprite2D` 驱动主角、砚青、守堤人梁叔、药圃守蕙婶和渡口跑腿人陶小满。四类敌人
 共用另一张 128×256 RGBA 图集，每类占一行 64×64 双帧待机动画；稳定敌人标识
 直接选择图集行，最近邻、脚底锚点和未知标识拒绝行为均由场景测试锁定。在照禾渡口
 使用 `WASD` 或方向键移动，靠近金色交互圈后按 `E`、空格或
@@ -84,17 +89,17 @@ settings v3 增加“标准/大字”文字大小和“关闭/开启”高对比
 32 px 图块组成真正的 `TileMapLayer`；同一张 256×64 图集的第二行还提供芦苇、
 岸草、碎石、野花、石裂、苔痕、落叶与水沫，并由一个无物理/导航权威的稀疏
 细节层按地图确定性铺设。房屋、树木、码头、巨石、洞口、山门与三处生活地标已迁入一张原创
-2112×128 RGBA 地标图集；十一个固定 192×128 区域使用最近邻过滤和整数脚点，七张
-提交图集每次由项目生成器在两个临时目录重建并逐字节核对 Git。三处房屋和四处
+2112×128 RGBA 地标图集；十一个固定 192×128 区域使用最近邻过滤和整数脚点，五张人物、敌人、地表与地标共八项
+提交源图每次由项目生成器在两个临时目录重建并逐字节核对 Git。三处房屋和四处
 树木继续复用按脚底 Y 排序的既有前景节点；山道与战斗镜头分别复用五处和四处，
 没有增加场景节点或碰撞权威。角色走到物体后方会被遮挡，走到前方则覆盖前景，
 地图深度不会穿过对话或菜单模态层。山道返程山门另有固定 5×5 石桥，保证出生点、
-退路和所有交互锚点都落在非水地表，同时保持 save v14 坐标兼容。
+退路和所有交互锚点都落在非水地表，同时保持 save v15 坐标兼容。
 
 渡口的补船木架、晾晒竹架和山道的避雨石棚是三处可重复查看的空间叙事。每次靠近
 都可用键盘、鼠标或手柄触发同一条原创中文行动；它们不发资源、数值、札记或结算
 奖励，也不写入旅程快照。普通移动仍可按既有规则自动保存位置，但这三项行动本身
-不增加持久状态，因此 Journey snapshot 与 save schema v14 均保持不变。
+不增加持久状态，因此 Journey snapshot 不因查看动作而变化；当前 save v15 只保存其他明确的路线与剧情状态。
 
 渡口、山道、战斗、泉室和章节结算之间使用 0.48 秒的明亮纸墨转场。转场文字来自
 同一份已验证原创内容，活动期间由透明输入接收层临时接管鼠标、键盘和手柄焦点，
@@ -116,7 +121,7 @@ settings v3 增加“标准/大字”文字大小和“关闭/开启”高对比
 
 月芽田在近距离交互时提供两个明确按钮：“依旧规取一株”保留旧单键流程，
 “剪叶留根”取得同样足以护脉的成熟叶，但地图会留下可见新芽。两种方式都不会
-锁死主线；采集字段自 save v9 起保存，并由当前 v14 在章节结算中回显。键盘/手柄单键交互采用稳定的
+锁死主线；采集字段自 save v9 起保存，并由当前 v15 在章节结算中回显。键盘/手柄单键交互采用稳定的
 旧规默认项，鼠标或行动按钮可以选择任一方式。
 
 三类敌人共享同一战斗解析器，但生命、两回合意图循环和材质弱点不同。抬头目标
@@ -129,29 +134,38 @@ settings v3 增加“标准/大字”文字大小和“关闭/开启”高对比
 
 普通敌人退场后，岩甲兽守巢者会从泉室石门出现，但不会切换到另一套解析器。
 守住首领重击会产生两层破甲，后续攻击逐层获得额外伤害；砚青援护会产生两层
-凝息，强化后续术式或符箓。两种状态自 save v8 起明确记录，并由当前 v14 继续保存；完整 E2E 会在
+凝息，强化后续术式或符箓。两种状态自 save v8 起明确记录，并由当前 v15 继续保存；完整 E2E 会在
 首领战中断并恢复后继续结算；绕行路线仍可避开普通战与首领战。
 
 开场任务采用同一套近距离交互：先在渡碑旁与砚青交谈。七句原创风险简报支持
 逐字显示、整句显示、最近四句回顾、跳到回应、两项不会锁死主线的态度选择，以及
 关闭场景后的精确续读。玩家回应会在章节结算中获得对应回声；任务目标随后切换
 为采药，取得月芽草后再指向藏泉山门。砚青会在简报完成前原地等候，之后沿主角
-实际走过的脚印保持约 0.058 个地图单位的距离；拐角不斜切建筑，轨迹固定封顶 96 点。
+	实际走过的脚印保持约 0.058 个地图单位的距离；拐角不斜切建筑，轨迹固定封顶 96 点。
 换图、读档或远距离调试跳转会在主角近旁重建轨迹，同行位置不进入旅程存档，也不
-成为第二套碰撞或任务规则。
+	成为第二套碰撞或任务规则。
 
-对话正文、主角回应、梁叔/蕙婶台词与最近四句回顾分别使用砚青、行旅者、守堤人、药圃守和行旅札记五种明亮纸绘
+砚青简报完成后，渡口跑腿人陶小满会沿六个公开可走路点，在补船木架与晾晒竹架旁折返。她以 0.09
+归一化单位/秒行走，玩家速度约为其 3.3 倍；进入 0.080 的礼让范围后她会停步，离开
+0.100 后才继续，避免交互按钮在键盘、鼠标或手柄确认前滑走。路线由独立确定性
+`PatrolState` 驱动，不读取墙钟或随机数，也不引入第二套碰撞/任务规则；纯巡路帧
+只更新内存，暂停、选择、移动和场景行动等既有检查点才会写盘。玩家只能为
+今天定一次先后：“木楔怕潮，先送船架”或“药叶怕闷，先翻竹架”；选择改变下一次
+折返方向、札记、章节结算与余波对白，不改变战斗、资源或主线。save v15 保存稳定
+回应以及当前位置、相邻目标、方向、停顿和礼让状态；v1–v14 迁移为未回应的起始路线。
+
+对话正文、主角回应、梁叔/蕙婶/陶小满台词与最近四句回顾分别使用砚青、行旅者、守堤人、药圃守、渡口跑腿人与行旅札记六种明亮纸绘
 表现。头像由项目代码确定性绘制，不含外部图片或逐帧动态；身份文字始终可见，
 表现节点忽略指针输入，未知人物标识安全回退为札记，也不会进入规则或存档。
 
 第一次引息后的“回顾此行”会进入五句章节余波，而不是重复一条结算消息。余波从
 同一确定性快照回显整株/留根、见闻数、撤退/无伤和谨慎/信任同行；逐句位置仍由
-save v14 中沿用自 v10 的对话对象保存，中途返回标题后可精确续读。两个收束回应各有原创
+save v15 中沿用自 v10 的对话对象保存，中途返回标题后可精确续读。两个收束回应各有原创
 事件回声，但不发放资源或隐藏奖励；内容声明的事件必须与规则返回值一致。
 
 渡口旧水痕、山道石缝泉纹与弃置药篓是三处可选近距离见闻。调查只补充照禾的
 治水、药圃和行旅生活历史，不提供隐藏战斗数值；每处只记一次，读后保留明确地图
-余留并从行动列表隐藏。save v14 继续保存 v10 引入的稳定见闻标识，章节结算显示 `见闻 n/3`，重游
+余留并从行动列表隐藏。save v15 继续保存 v10 引入的稳定见闻标识，章节结算显示 `见闻 n/3`，重游
 才清空；v1–v9 保守迁移为空列表，不虚构旧版本从未记录的探索。
 
 点击地图左上“行旅札记”、按 `J` 或手柄 Y，可在探索、战斗、泉室和结算时查看
@@ -159,12 +173,12 @@ save v14 中沿用自 v10 的对话对象保存，中途返回标题后可精确
 泄露地点、敌名、招式或反制；已辨认的三处敌迹按发现结果显示行止循环和时机。
 札记打开
 期间移动和交互无法穿透纸面，关闭后恢复先前焦点。札记直接读取确定性见闻列表，
-灵物志直接读取 save v14 的三项稳定敌情 ID；当前页和滚动位置属于表现状态，不进入存档。
+灵物志直接读取 save v15 的三项稳定敌情 ID；当前页和滚动位置属于表现状态，不进入存档。
 
 渡口下游的守堤人梁叔提供一项有限支线：玩家只能选择扶正被涨水冲歪的水尺，或
 先把退水时刻与泥痕高度写进守堤簿。两项都不改变战斗、资源、关系数值或主线门槛，
 但会分别留下直立木尺或纸签地图余留，并进入行旅札记、章节结算与余波对白。
-save v11 引入稳定的 `repair`/`record` 结果，当前 v14 继续保存；v1–v10 统一迁移为未回应，不替旧玩家
+save v11 引入稳定的 `repair`/`record` 结果，当前 v15 继续保存；v1–v10 统一迁移为未回应，不替旧玩家
 作出选择。重游章节会清空该结果，键盘 E、鼠标行动与手柄 A 共享同一对话选择路径。
 
 发现山道弃置药篓的双叶公用印后，玩家可以带它返回渡口找药圃守蕙婶。四句原创
