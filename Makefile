@@ -50,8 +50,9 @@ docs-check: ## Check local Markdown links
 rpg-content-check: ## Validate original RPG story graphs and references
 	@uv run python scripts/check_rpg_content.py
 
-rpg-asset-check: ## Validate RPG pixel dimensions, animation layout, and provenance metadata
+rpg-asset-check: ## Validate RPG pixel dimensions, metadata, and deterministic regeneration
 	@uv run python scripts/check_rpg_assets.py
+	@./scripts/check_rpg_asset_reproducibility
 
 test: test-unit test-integration test-multiplayer-e2e ## Run multiplayer tests
 

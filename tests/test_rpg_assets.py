@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 import struct
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -30,14 +31,41 @@ DETAIL_TILE_NAMES = [
     "fallen_leaves",
     "water_foam",
 ]
+LANDMARK_PROFILES = [
+    "tree_celadon",
+    "ferry_house_rust",
+    "ferry_house_ochre",
+    "ferry_house_teal",
+    "ferry_dock",
+    "mountain_rock",
+    "spring_cave",
+    "spring_gate",
+]
 
 
-def _write_png_header(path: Path, width: int, height: int) -> None:
+def _png_chunk(chunk_type: bytes, data: bytes) -> bytes:
+    crc = zlib.crc32(data, zlib.crc32(chunk_type)) & 0xFFFFFFFF
+    return struct.pack(">I", len(data)) + chunk_type + data + struct.pack(">I", crc)
+
+
+def _write_png(
+    path: Path,
+    width: int,
+    height: int,
+    *,
+    color_type: int = 6,
+    compressed_data: bytes | None = None,
+) -> None:
+    channels = 4 if color_type == 6 else 3
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, color_type, 0, 0, 0)
+    if compressed_data is None:
+        rows = (b"\x00" + bytes(width * channels)) * height
+        compressed_data = zlib.compress(rows)
     path.write_bytes(
         check_rpg_assets.PNG_SIGNATURE
-        + struct.pack(">I", 13)
-        + b"IHDR"
-        + struct.pack(">II", width, height)
+        + _png_chunk(b"IHDR", ihdr)
+        + _png_chunk(b"IDAT", compressed_data)
+        + _png_chunk(b"IEND", b"")
     )
 
 
@@ -59,7 +87,8 @@ def valid_contract(
     enemy_file = data["enemy_atlas"]["file"]
     for file_name in [*actor_files, enemy_file]:
         shutil.copyfile(source_asset_dir / file_name, tmp_path / file_name)
-    _write_png_header(tmp_path / "ferry_tiles.png", 256, 64)
+    _write_png(tmp_path / "ferry_tiles.png", 256, 64)
+    _write_png(tmp_path / "zhaohe_landmarks.png", 1536, 128)
     monkeypatch.setattr(check_rpg_assets, "ASSET_DIR", tmp_path)
     return data
 
@@ -134,8 +163,144 @@ def test_map_atlas_rejects_reordered_names_within_each_row(
 def test_map_atlas_rejects_wrong_png_dimensions(
     valid_contract: dict[str, Any], width: int, height: int
 ) -> None:
-    _write_png_header(check_rpg_assets.ASSET_DIR / "ferry_tiles.png", width, height)
+    _write_png(check_rpg_assets.ASSET_DIR / "ferry_tiles.png", width, height)
 
     failures = check_rpg_assets.validate_contract(valid_contract)
 
     assert f"ferry_tiles.png: expected (256, 64), got {(width, height)}" in failures
+
+
+def test_landmark_atlas_accepts_exact_profile_contract(
+    valid_contract: dict[str, Any],
+) -> None:
+    assert valid_contract["schema_version"] == 2
+    assert valid_contract["landmark_atlas"]["profiles"] == LANDMARK_PROFILES
+    assert check_rpg_assets.validate_contract(valid_contract) == []
+
+
+def test_landmark_atlas_requires_an_object(valid_contract: dict[str, Any]) -> None:
+    valid_contract["landmark_atlas"] = []
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "landmark_atlas must be an object" in failures
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "expected_message"),
+    [
+        ("frame_size_px", [128, 128], "landmark_atlas.frame_size_px must be [192, 128]"),
+        ("foot_anchor_px", [95, 127], "landmark_atlas.foot_anchor_px must be [96, 127]"),
+        ("columns", 4, "landmark_atlas.columns must be 8"),
+        ("rows", 2, "landmark_atlas.rows must be 1"),
+        ("texture_filter", "linear", "landmark_atlas.texture_filter must be nearest"),
+        ("pixel_snap", False, "landmark_atlas.pixel_snap must be true"),
+        ("collision_authority", True, "landmark_atlas.collision_authority must be false"),
+        ("profiles", list(reversed(LANDMARK_PROFILES)), "landmark_atlas.profiles must match"),
+        (
+            "occluding_profiles",
+            LANDMARK_PROFILES,
+            "landmark_atlas.occluding_profiles must contain only tree and house IDs",
+        ),
+    ],
+)
+def test_landmark_atlas_rejects_changed_metadata(
+    valid_contract: dict[str, Any],
+    field: str,
+    value: Any,
+    expected_message: str,
+) -> None:
+    valid_contract["landmark_atlas"][field] = value
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert any(failure.startswith(expected_message) for failure in failures)
+
+
+@pytest.mark.parametrize("file_name", [None, "../zhaohe_landmarks.png"])
+def test_landmark_atlas_rejects_nonlocal_file_names(
+    valid_contract: dict[str, Any], file_name: Any
+) -> None:
+    valid_contract["landmark_atlas"]["file"] = file_name
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "landmark_atlas.file must be a local file name" in failures
+
+
+def test_landmark_atlas_rejects_a_missing_file(valid_contract: dict[str, Any]) -> None:
+    valid_contract["landmark_atlas"]["file"] = "missing_landmarks.png"
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "missing landmark atlas: missing_landmarks.png" in failures
+
+
+@pytest.mark.parametrize(("width", "height"), [(1536, 127), (1535, 128)])
+def test_landmark_atlas_rejects_wrong_png_dimensions(
+    valid_contract: dict[str, Any], width: int, height: int
+) -> None:
+    _write_png(check_rpg_assets.ASSET_DIR / "zhaohe_landmarks.png", width, height)
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert (
+        f"zhaohe_landmarks.png: expected (1536, 128), got {(width, height)}"
+        in failures
+    )
+
+
+def test_landmark_atlas_rejects_an_invalid_png(valid_contract: dict[str, Any]) -> None:
+    (check_rpg_assets.ASSET_DIR / "zhaohe_landmarks.png").write_bytes(b"not-png")
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "zhaohe_landmarks.png: not a valid PNG signature" in failures
+
+
+def test_landmark_atlas_rejects_a_truncated_png(valid_contract: dict[str, Any]) -> None:
+    path = check_rpg_assets.ASSET_DIR / "zhaohe_landmarks.png"
+    path.write_bytes(path.read_bytes()[:24])
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "zhaohe_landmarks.png: truncated PNG chunk" in failures
+
+
+def test_landmark_atlas_rejects_a_bad_chunk_crc(valid_contract: dict[str, Any]) -> None:
+    path = check_rpg_assets.ASSET_DIR / "zhaohe_landmarks.png"
+    data = bytearray(path.read_bytes())
+    data[-1] ^= 1
+    path.write_bytes(data)
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "zhaohe_landmarks.png: PNG chunk CRC mismatch: IEND" in failures
+
+
+def test_landmark_atlas_rejects_non_rgba8_pixels(valid_contract: dict[str, Any]) -> None:
+    _write_png(
+        check_rpg_assets.ASSET_DIR / "zhaohe_landmarks.png",
+        1536,
+        128,
+        color_type=2,
+    )
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "zhaohe_landmarks.png: PNG must use 8-bit RGBA pixels" in failures
+
+
+def test_landmark_atlas_rejects_invalid_compressed_pixels(
+    valid_contract: dict[str, Any],
+) -> None:
+    _write_png(
+        check_rpg_assets.ASSET_DIR / "zhaohe_landmarks.png",
+        1536,
+        128,
+        compressed_data=b"not-zlib",
+    )
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "zhaohe_landmarks.png: invalid PNG image data" in failures

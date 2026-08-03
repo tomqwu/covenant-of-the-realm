@@ -80,11 +80,12 @@ make check                   # RPG, MUD, and preserved PWA gates
 make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
-The repository pytest gate passes 77 tests at 100% statement and branch coverage (481 statements /
-230 branches). Godot behavior is covered by 1,408 headless rule/scene assertions plus an independent
-183-check chapter E2E and 91-check physical-input/focus path. The reproducible 550,840-byte PCK has
-SHA-256 `779bb5fbb0d8f6ee472d8e09480bce3b08bd2c2f064321107c1eedfc3922c605`; its probe requires
-11 runtime resources, excludes nine development resources, and two consecutive 34-PNG capture runs
+The repository pytest gate passes 98 tests at 100% statement and branch coverage (481 statements /
+230 branches). Godot behavior is covered by 1,474 headless rule/scene assertions plus an independent
+183-check chapter E2E and 91-check physical-input/focus path. Seven committed pixel atlases are
+regenerated twice and must match the Git index byte for byte. The reproducible 552,060-byte PCK has SHA-256
+`14ff2a2a2b239f7ffff92fff269e3325d54cde5d9fd4d3fc7b01b630ac6ebca9`; its probe requires
+15 runtime resources, excludes nine development resources, and two consecutive 34-PNG capture runs
 produce identical SHA-256 sets. The MUD adapter has
 isolated Evennia tests, and its release path
 is exercised through two real concurrent Telnet clients. The preserved browser prototype retains

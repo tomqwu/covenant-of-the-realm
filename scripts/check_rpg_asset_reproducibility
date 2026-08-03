@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+asset_tmp="$(mktemp -d)"
+trap 'rm -rf -- "$asset_tmp"' EXIT
+
+first_dir="$asset_tmp/first"
+second_dir="$asset_tmp/second"
+assets=(
+  protagonist.png
+  yanqing.png
+  liangshu.png
+  huishen.png
+  enemy_profiles.png
+  ferry_tiles.png
+  zhaohe_landmarks.png
+)
+
+"$repo_root/scripts/godot" --quiet --headless --path "$repo_root/rpg" \
+  --script res://tools/generate_pixel_assets.gd -- "$first_dir"
+"$repo_root/scripts/godot" --quiet --headless --path "$repo_root/rpg" \
+  --script res://tools/generate_pixel_assets.gd -- "$second_dir"
+
+for asset in "${assets[@]}"; do
+  relative_path="rpg/assets/pixel/$asset"
+  if ! git -C "$repo_root" ls-files --error-unmatch "$relative_path" >/dev/null 2>&1; then
+    printf 'RPG pixel asset is not tracked in the Git index: %s\n' "$relative_path" >&2
+    exit 1
+  fi
+
+  cmp "$first_dir/$asset" "$second_dir/$asset"
+  generated_hash="$(git -C "$repo_root" hash-object "$first_dir/$asset")"
+  worktree_hash="$(git -C "$repo_root" hash-object "$repo_root/$relative_path")"
+  index_hash="$(git -C "$repo_root" rev-parse --verify ":$relative_path")"
+  if [[ "$generated_hash" != "$worktree_hash" || "$generated_hash" != "$index_hash" ]]; then
+    printf 'RPG pixel asset differs between generated output, worktree, and Git index: %s\n' \
+      "$relative_path" >&2
+    exit 1
+  fi
+done
+
+printf 'RPG pixel asset reproducibility passed: %d atlases regenerated twice and match the Git index.\n' "${#assets[@]}"

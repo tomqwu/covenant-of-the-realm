@@ -3,7 +3,19 @@ extends Control
 const MapOccluderScript := preload("res://src/ui/map_occluder.gd")
 const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
+const LANDMARK_ATLAS := preload("res://assets/pixel/zhaohe_landmarks.png")
 const ACTOR_HEIGHT := 56.0
+const LANDMARK_FRAME_SIZE := Vector2i(192, 128)
+const LANDMARK_PROFILE_COLUMNS := {
+	"tree_celadon": 0,
+	"ferry_house_rust": 1,
+	"ferry_house_ochre": 2,
+	"ferry_house_teal": 3,
+	"ferry_dock": 4,
+	"mountain_rock": 5,
+	"spring_cave": 6,
+	"spring_gate": 7,
+}
 const INK_ROOT := Color("27312e")
 const COOL_SHADOW := Color("355e63")
 const RIVER_JADE := Color("4e9da4")
@@ -179,6 +191,19 @@ func uses_map_detail_layer() -> bool:
 	return map_detail_layer is TileMapLayer and map_detail_layer.tile_set != null
 
 
+func landmark_visual_contract() -> Dictionary:
+	return {
+		"schema_version": 1,
+		"atlas_path": LANDMARK_ATLAS.resource_path,
+		"atlas_size": LANDMARK_ATLAS.get_size(),
+		"frame_size": LANDMARK_FRAME_SIZE,
+		"profiles": LANDMARK_PROFILE_COLUMNS.keys(),
+		"filter": texture_filter,
+		"pixel_snap": true,
+		"collision_authority": false,
+	}
+
+
 func uses_animated_enemy_sprites() -> bool:
 	return (
 		battle_enemy_sprite is AnimatedSprite2D
@@ -285,16 +310,23 @@ func occlusion_contract() -> Dictionary:
 	var maximum_depth := 10
 	var ids: Array[String] = []
 	var depths := {}
+	var profiles := {}
+	var asset_backed_count := 0
 	for occluder in occluder_nodes:
 		var contract: Dictionary = occluder.visual_contract()
 		minimum_depth = mini(minimum_depth, int(contract["z_index"]))
 		maximum_depth = maxi(maximum_depth, int(contract["z_index"]))
 		ids.append(str(contract["id"]))
 		depths[contract["id"]] = contract["z_index"]
+		profiles[contract["id"]] = contract["profile_id"]
+		if bool(contract["asset_backed"]):
+			asset_backed_count += 1
 	return {
 		"count": occluder_nodes.size(),
 		"ids": ids,
 		"depths": depths,
+		"profiles": profiles,
+		"asset_backed_count": asset_backed_count,
 		"minimum_depth": minimum_depth,
 		"maximum_depth": maximum_depth,
 		"player_depth": player_sprite.z_index,
@@ -416,9 +448,9 @@ func _sync_occluders(size: Vector2) -> void:
 	occluder_nodes.clear()
 	match phase_id:
 		"riverbank":
-			_add_roof_occluder("ferry_roof_0", Vector2(size.x * 0.51, size.y * 0.20), Vector2(148, 92), WARM_RUST.darkened(0.25))
-			_add_roof_occluder("ferry_roof_1", Vector2(size.x * 0.72, size.y * 0.35), Vector2(156, 96), Color("9a835d"))
-			_add_roof_occluder("ferry_roof_2", Vector2(size.x * 0.82, size.y * 0.58), Vector2(164, 92), COOL_SHADOW.lightened(0.2))
+			_add_roof_occluder("ferry_roof_0", Vector2(size.x * 0.51, size.y * 0.20), Vector2(148, 92), "ferry_house_rust")
+			_add_roof_occluder("ferry_roof_1", Vector2(size.x * 0.72, size.y * 0.35), Vector2(156, 96), "ferry_house_ochre")
+			_add_roof_occluder("ferry_roof_2", Vector2(size.x * 0.82, size.y * 0.58), Vector2(164, 92), "ferry_house_teal")
 			for index in range(4):
 				_add_tree_occluder("ferry_tree_%d" % index, [Vector2(455, 115), Vector2(978, 130), Vector2(1030, 340), Vector2(468, 420)][index])
 		"mountain_path":
@@ -430,23 +462,26 @@ func _sync_occluders(size: Vector2) -> void:
 
 
 func _add_tree_occluder(occluder_id: String, center: Vector2) -> void:
-	_add_occluder(occluder_id, "tree", center, Vector2.ZERO, FRESH_CELADON, center.y + 46.0)
+	var feet := center + Vector2(0, 46)
+	_add_occluder(occluder_id, "tree", "tree_celadon", feet, feet.y)
 
 
-func _add_roof_occluder(occluder_id: String, top_left: Vector2, dimensions: Vector2, roof_color: Color) -> void:
-	_add_occluder(occluder_id, "roof", top_left, dimensions, roof_color, top_left.y + dimensions.y)
+func _add_roof_occluder(occluder_id: String, top_left: Vector2, dimensions: Vector2, profile_id: String) -> void:
+	var feet := top_left + Vector2(dimensions.x * 0.5, dimensions.y)
+	_add_occluder(occluder_id, "roof", profile_id, feet, feet.y)
 
 
 func _add_occluder(
 	occluder_id: String,
 	kind: String,
+	profile_id: String,
 	occluder_position: Vector2,
-	dimensions: Vector2,
-	accent: Color,
 	feet_y: float
 ) -> void:
 	var occluder = MapOccluderScript.new()
-	occluder.configure(occluder_id, kind, occluder_position, dimensions, accent, feet_y, depth_for_y(feet_y))
+	if not occluder.configure(occluder_id, kind, profile_id, occluder_position, feet_y, depth_for_y(feet_y)):
+		occluder.free()
+		return
 	add_child(occluder)
 	occluder_nodes.append(occluder)
 
@@ -493,16 +528,13 @@ func _draw_riverbank() -> void:
 			Vector2(size.x * 0.93, size.y * 0.67),
 		]), 48.0)
 
-	_draw_dock(Vector2(size.x * 0.21, size.y * 0.47))
-	_draw_building(Vector2(size.x * 0.51, size.y * 0.20), Vector2(148, 92), WARM_RUST.darkened(0.25))
-	_draw_building(Vector2(size.x * 0.72, size.y * 0.35), Vector2(156, 96), Color("9a835d"))
-	_draw_building(Vector2(size.x * 0.82, size.y * 0.58), Vector2(164, 92), COOL_SHADOW.lightened(0.2))
+	_draw_landmark("ferry_dock", Vector2(size.x * 0.21, size.y * 0.58))
 
 	for index in range(10):
 		var plant := Vector2(size.x * 0.63 + float(index % 5) * 28.0, size.y * 0.57 + float(index / 5) * 28.0)
 		_draw_plant(plant, not gathered_moonleaf, gathered_moonleaf and moonleaf_method == "cutting")
 
-	_draw_spring_gate(Vector2(size.x * 0.88, size.y * 0.18))
+	_draw_landmark("spring_gate", Vector2(size.x * 0.88, size.y * 0.18 + 25.0))
 	_draw_ferry_watermark(Vector2(size.x * 0.43, size.y * 0.42), discoveries.has("ferry_watermark"))
 	_draw_ferryman_water_gauge(Vector2(size.x * 0.385, size.y * 0.66), ferryman_response)
 	if basket_response == "return":
@@ -518,11 +550,6 @@ func _draw_riverbank() -> void:
 	if not gathered_moonleaf:
 		_draw_interaction_marker(Vector2(size.x * 0.69, size.y * 0.62), nearby_action == "gather_moonleaf")
 	_draw_interaction_marker(Vector2(size.x * 0.88, size.y * 0.18), nearby_action == "enter_spring")
-
-	for tree_position in [Vector2(455, 115), Vector2(978, 130), Vector2(1030, 340), Vector2(468, 420)]:
-		_draw_tree(tree_position)
-
-
 
 func _draw_battle_path() -> void:
 	var size := get_rect().size
@@ -545,11 +572,9 @@ func _draw_battle_path() -> void:
 	]), 54.0)
 
 	for rock_position in [Vector2(250, 125), Vector2(420, 90), Vector2(995, 165), Vector2(1035, 410), Vector2(310, 430)]:
-		_draw_rock(rock_position, 42.0)
-	for tree_position in [Vector2(130, 165), Vector2(338, 145), Vector2(915, 115), Vector2(1010, 300)]:
-		_draw_tree(tree_position)
+		_draw_landmark("mountain_rock", rock_position + Vector2(0, 42))
 
-	_draw_cave(Vector2(size.x * 0.86, size.y * 0.16), Vector2(126, 88))
+	_draw_landmark("spring_cave", Vector2(size.x * 0.86 + 63.0, size.y * 0.16 + 88.0))
 	if lamp_turns > 0:
 		_draw_spring_lamp(Vector2(size.x * 0.48, size.y * 0.62))
 	draw_line(Vector2(size.x * 0.40, size.y * 0.49), Vector2(size.x * 0.64, size.y * 0.40), SPIRIT_GOLD, 3.0)
@@ -559,11 +584,9 @@ func _draw_battle_path() -> void:
 func _draw_mountain_path() -> void:
 	var size := get_rect().size
 	for rock_position in [Vector2(260, 128), Vector2(548, 116), Vector2(850, 320), Vector2(360, 430)]:
-		_draw_rock(rock_position, 34.0)
-	for tree_position in [Vector2(180, 160), Vector2(400, 110), Vector2(690, 145), Vector2(1000, 260), Vector2(940, 420)]:
-		_draw_tree(tree_position)
-	_draw_cave(Vector2(size.x * 0.84, size.y * 0.12), Vector2(128, 90))
-	_draw_spring_gate(Vector2(size.x * 0.10, size.y * 0.68))
+		_draw_landmark("mountain_rock", rock_position + Vector2(0, 34))
+	_draw_landmark("spring_cave", Vector2(size.x * 0.84 + 64.0, size.y * 0.12 + 90.0))
+	_draw_landmark("spring_gate", Vector2(size.x * 0.10, size.y * 0.68 + 25.0))
 	_draw_spring_seam(Vector2(size.x * 0.40, size.y * 0.30), discoveries.has("spring_seam"))
 	if basket_response != "return":
 		_draw_abandoned_basket(Vector2(size.x * 0.68, size.y * 0.60), discoveries.has("abandoned_basket"), basket_response == "trail")
@@ -737,37 +760,20 @@ func _draw_path(points: PackedVector2Array, width: float) -> void:
 	draw_polyline(points, Color("b6aa84"), 3.0, false)
 
 
-func _draw_dock(center: Vector2) -> void:
-	draw_rect(Rect2(center - Vector2(105, 18), Vector2(155, 36)), Color("836c4c"))
-	for index in range(7):
-		var x := center.x - 100.0 + float(index) * 23.0
-		draw_line(Vector2(x, center.y - 17.0), Vector2(x, center.y + 17.0), Color("b49567"), 2.0)
-	draw_colored_polygon(PackedVector2Array([
-		center + Vector2(-142, 42),
-		center + Vector2(-62, 42),
-		center + Vector2(-76, 62),
-		center + Vector2(-130, 62),
-	]), Color("725f47"))
-
-
-func _draw_building(position: Vector2, building_size: Vector2, roof_color: Color) -> void:
-	draw_rect(Rect2(position, building_size), Color("d7c9a7"))
-	draw_rect(Rect2(position + Vector2(0, building_size.y * 0.63), Vector2(building_size.x, building_size.y * 0.37)), Color("b99d70"))
-	draw_colored_polygon(PackedVector2Array([
-		position + Vector2(-12, 12),
-		position + Vector2(building_size.x * 0.5, -18),
-		position + Vector2(building_size.x + 12, 12),
-		position + Vector2(building_size.x, 34),
-		position + Vector2(0, 34),
-	]), roof_color)
-	draw_rect(Rect2(position + Vector2(building_size.x * 0.43, building_size.y * 0.58), Vector2(24, building_size.y * 0.42)), INK_ROOT.lightened(0.12))
-
-
-func _draw_tree(position: Vector2) -> void:
-	draw_rect(Rect2(position + Vector2(-5, 14), Vector2(10, 32)), Color("6f654b"))
-	draw_circle(position, 30.0, FRESH_CELADON.darkened(0.18))
-	draw_circle(position + Vector2(-18, 8), 22.0, FRESH_CELADON)
-	draw_circle(position + Vector2(19, 9), 21.0, Color("a1c98c"))
+func _draw_landmark(profile_id: String, feet_position: Vector2) -> bool:
+	if not LANDMARK_PROFILE_COLUMNS.has(profile_id):
+		return false
+	var frame_column := int(LANDMARK_PROFILE_COLUMNS[profile_id])
+	var destination := Rect2(
+		(feet_position - Vector2(float(LANDMARK_FRAME_SIZE.x) * 0.5, float(LANDMARK_FRAME_SIZE.y))).round(),
+		Vector2(LANDMARK_FRAME_SIZE)
+	)
+	var source := Rect2(
+		Vector2(float(frame_column * LANDMARK_FRAME_SIZE.x), 0.0),
+		Vector2(LANDMARK_FRAME_SIZE)
+	)
+	draw_texture_rect_region(LANDMARK_ATLAS, destination, source, Color.WHITE, false, true)
+	return true
 
 
 func _draw_plant(position: Vector2, available: bool, regrowing: bool) -> void:
@@ -780,29 +786,6 @@ func _draw_plant(position: Vector2, available: bool, regrowing: bool) -> void:
 	draw_line(position + Vector2(0, 12), position - Vector2(0, 12), color.darkened(0.2), 3.0)
 	draw_circle(position + Vector2(-6, -6), 6.0, color)
 	draw_circle(position + Vector2(7, -2), 6.0, color)
-
-
-func _draw_rock(position: Vector2, radius: float) -> void:
-	draw_circle(position, radius, COOL_SHADOW)
-	draw_circle(position - Vector2(radius * 0.2, radius * 0.25), radius * 0.72, Color("6d837c"))
-
-
-func _draw_cave(position: Vector2, cave_size: Vector2) -> void:
-	draw_colored_polygon(PackedVector2Array([
-		position,
-		position + Vector2(cave_size.x * 0.5, -cave_size.y * 0.36),
-		position + Vector2(cave_size.x, 0),
-		position + cave_size,
-	]), COOL_SHADOW.darkened(0.28))
-	draw_rect(Rect2(position + Vector2(cave_size.x * 0.32, cave_size.y * 0.24), Vector2(cave_size.x * 0.36, cave_size.y * 0.76)), INK_ROOT.darkened(0.2))
-	draw_circle(position + Vector2(cave_size.x * 0.5, cave_size.y * 0.56), 7.0, SPIRIT_GOLD)
-
-
-func _draw_spring_gate(center: Vector2) -> void:
-	draw_line(center + Vector2(-27, 25), center + Vector2(-27, -31), Color("755f43"), 7.0)
-	draw_line(center + Vector2(27, 25), center + Vector2(27, -31), Color("755f43"), 7.0)
-	draw_line(center + Vector2(-34, -31), center + Vector2(34, -31), WARM_RUST.darkened(0.18), 10.0)
-	draw_circle(center + Vector2(0, -31), 5.0, SPIRIT_GOLD)
 
 
 func _draw_spring_lamp(feet: Vector2) -> void:

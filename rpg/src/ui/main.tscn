@@ -114,6 +114,7 @@ atlas_texture = ExtResource("8_ferry_tiles")
 [node name="MapCanvas" type="Control" parent="MapFrame"]
 unique_name_in_owner = true
 clip_contents = true
+texture_filter = 1
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("2_map")

@@ -124,7 +124,7 @@ Nakama may be evaluated later if the product grows into match-based content, ext
 
 Expand the executable RPG graybox into a complete 90-minute original chapter:
 
-1. top-down movement, collision, proximity interaction, 32 px TileMapLayer ground, and a shared deterministic detail layer in 照禾渡口 / 藏泉山道 (implemented; building/tree foreground asset refinement remains);
+1. top-down movement, collision, proximity interaction, 32 px TileMapLayer ground, a shared deterministic detail layer, and an eight-profile asset-backed landmark atlas in 照禾渡口 / 藏泉山道 (implemented; final hand-authored map refinement remains);
 2. resumable seven-line companion briefing, two attitude responses, dynamic quest-state presentation, and a resumable five-line chapter epilogue reflecting the played route (implemented);
 3. 月芽田两种不会锁死主线的采集方式、可见余留与结算回声（implemented）;
 4. 藏泉山道 free exploration, warning, optional stone-marker investigation, return/retreat, no-combat bypass, mid-map save, and companion rescue path (implemented);
@@ -132,7 +132,7 @@ Expand the executable RPG graybox into a complete 90-minute original chapter:
 6. an active chapter companion and a visible two-turn tactical deployable (implemented);
 7. side-story-, discovery-, harvest-, battle-status-, enemy-intelligence-, dialogue-, first-breath-stage-, and map-aware save v14, title/continue, two-step new-game protection, crash-consistent temporary/backup recovery with anti-downgrade validation, chapter replay, and an input-safe no-spoiler journey journal (implemented; v1–v13 migrate explicitly, phase/map combinations are validated strictly, and replay clears the ritual state);
 8. mouse, keyboard, and controller parity with physical-event/focus acceptance coverage, including selectable journal pages and proximity investigations (implemented);
-9. original visual direction and opt-in procedural ambience with recorded provenance (reproducible protagonist/companion/ferryman/herbkeeper and enemy atlases, animated map actors, and bright painted-paper dialogue portraits implemented; map/final asset refinement remains);
+9. original visual direction and opt-in procedural ambience with recorded provenance (reproducible protagonist/companion/ferryman/herbkeeper, enemy, ground/detail, and Zhaohe landmark atlases; animated map actors; and bright painted-paper dialogue portraits implemented; final art refinement remains);
 10. a third `cangquan_spring` micro-map and the ordered spatial ritual “听泉辨脉 → 月芽温脉 → 静坐引息” (implemented; wrong-order actions reject atomically, every successful step autosaves, and restoration preserves the exact ritual stage and coordinate);
 11. new-game-to-ending-to-save-resume-to-replay automated Godot acceptance path (implemented).
 

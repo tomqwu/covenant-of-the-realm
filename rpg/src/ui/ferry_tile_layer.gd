@@ -11,6 +11,7 @@ const TILE_MOONLEAF := Vector2i(4, 0)
 const TILE_STONE := Vector2i(5, 0)
 const TILE_DEEP_GRASS := Vector2i(6, 0)
 const TILE_WATER_GLINT := Vector2i(7, 0)
+const MOUNTAIN_GATE_BRIDGE := Rect2i(2, 12, 5, 5)
 
 @export var atlas_texture: Texture2D
 @export_enum("ferry", "mountain_path") var map_kind := "ferry"
@@ -31,8 +32,24 @@ func map_contract() -> Dictionary:
 		"tile_size": TILE_SIZE,
 		"used_rect": get_used_rect(),
 		"tile_counts": tile_counts.duplicate(true),
+		"mountain_gate_bridge": MOUNTAIN_GATE_BRIDGE if map_kind == "mountain_path" else Rect2i(),
 		"filter": texture_filter,
 	}
+
+
+func tile_kind_at_normalized(normalized_position: Vector2) -> String:
+	if (
+		normalized_position.x < 0.0
+		or normalized_position.y < 0.0
+		or normalized_position.x >= 1.0
+		or normalized_position.y >= 1.0
+	):
+		return "outside"
+	var cell := Vector2i(
+		int(floor(normalized_position.x * float(MAP_SIZE.x))),
+		int(floor(normalized_position.y * float(MAP_SIZE.y)))
+	)
+	return _tile_kind(get_cell_atlas_coords(cell))
 
 
 func _build_tile_set() -> TileSet:
@@ -84,6 +101,8 @@ func _tile_for_cell(cell: Vector2i) -> Vector2i:
 
 
 func _mountain_tile_for_cell(cell: Vector2i) -> Vector2i:
+	if MOUNTAIN_GATE_BRIDGE.has_point(cell):
+		return TILE_STONE if cell.x <= 4 else TILE_PATH
 	if cell.x <= 4:
 		return TILE_WATER_GLINT if (cell.x + cell.y) % 4 == 0 else TILE_WATER
 	var point := Vector2(cell) + Vector2(0.5, 0.5)
@@ -118,16 +137,20 @@ func _distance_to_segment(point: Vector2, start: Vector2, end: Vector2) -> float
 
 
 func _count_tile(tile: Vector2i) -> void:
-	var key := "grass"
+	var key := _tile_kind(tile)
+	tile_counts[key] += 1
+
+
+func _tile_kind(tile: Vector2i) -> String:
 	match tile:
 		TILE_WATER, TILE_WATER_GLINT:
-			key = "water"
+			return "water"
 		TILE_BANK:
-			key = "bank"
+			return "bank"
 		TILE_PATH:
-			key = "path"
+			return "path"
 		TILE_MOONLEAF:
-			key = "moonleaf"
+			return "moonleaf"
 		TILE_STONE:
-			key = "stone"
-	tile_counts[key] += 1
+			return "stone"
+	return "grass"

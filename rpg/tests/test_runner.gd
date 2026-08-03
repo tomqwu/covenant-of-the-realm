@@ -8,6 +8,7 @@ const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
 const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const DialoguePortraitScript := preload("res://src/ui/dialogue_portrait.gd")
+const MapOccluderScript := preload("res://src/ui/map_occluder.gd")
 const TEST_SAVE_PATH := "user://automated-test-save.json"
 const TEST_SCENE_SAVE_PATH := "user://automated-scene-save.json"
 const TEST_SETTINGS_PATH := "user://automated-test-settings.json"
@@ -34,6 +35,7 @@ func _run() -> void:
 	_test_settings_store()
 	_test_companion_trail()
 	_test_dialogue_portraits()
+	_test_map_landmark_adapter()
 	_test_ferryman_side_story()
 	_test_basket_side_story()
 	_test_environment_discoveries()
@@ -74,6 +76,37 @@ func _test_initial_state() -> void:
 	_expect_equal(state.snapshot()["first_breath_stage"], "unstarted", "新旅程尚未开始第一次引息仪轨")
 	_expect_true(state.available_actions().has("enter_spring"), "初始可尝试进山")
 	_expect_false(state.choose("unknown")["ok"], "未知行动不改变状态")
+
+
+func _test_map_landmark_adapter() -> void:
+	var occluder = MapOccluderScript.new()
+	_expect_false(
+		occluder.configure("invalid", "tree", "unknown_landmark", Vector2(10.5, 20.5), 20.5, 12),
+		"地标前景拒绝未知图集标识"
+	)
+	_expect_equal(occluder.profile_id, "", "非法地标标识不会部分配置表现节点")
+	_expect_true(
+		occluder.configure("test_tree", "tree", "tree_celadon", Vector2(10.5, 20.5), 20.5, 12),
+		"已声明树木图集标识可配置前景"
+	)
+	var contract: Dictionary = occluder.visual_contract()
+	_expect_equal(contract["atlas_path"], "res://assets/pixel/zhaohe_landmarks.png", "前景读取提交的照禾地标图集")
+	_expect_equal(contract["frame_size"], Vector2i(192, 128), "地标使用固定 192×128 像素帧")
+	_expect_equal(contract["frame_column"], 0, "青叶树稳定映射图集首列")
+	_expect_equal(contract["filter"], CanvasItem.TEXTURE_FILTER_NEAREST, "像素前景使用最近邻过滤")
+	_expect_true(contract["asset_backed"], "前景由图集区域而非即时矢量绘制")
+	_expect_true(contract["pixel_snapped"], "前景脚点对齐整数像素")
+	_expect_false(contract["collision_authority"], "地标表现不成为第二套碰撞权威")
+	var landmark_image: Image = occluder.texture.get_image()
+	_expect_equal(landmark_image.get_format(), Image.FORMAT_RGBA8, "地标源图导入后保留 RGBA8 像素格式")
+	_expect_equal(landmark_image.get_size(), Vector2i(1536, 128), "地标源图完整包含八个固定帧")
+	for column in range(8):
+		_expect_true(
+			_image_region_has_opaque_pixel(landmark_image, Rect2i(column * 192, 0, 192, 128)),
+			"地标图集第 %d 列包含可见像素" % column
+		)
+		_expect_equal(landmark_image.get_pixel(column * 192, 0).a, 0.0, "地标图集第 %d 列保留透明边界" % column)
+	occluder.free()
 
 
 func _test_enemy_catalog() -> void:
@@ -1691,6 +1724,19 @@ func _test_scene_smoke() -> void:
 	_expect_equal(enemy_sprite.sprite_frames.get_frame_count("idle_rock_armor_warden"), 2, "首领使用独立双帧图集行")
 	_expect_false(enemy_sprite.set_enemy_id("unknown_enemy"), "敌人表现节点拒绝未知配置而不伪造动画")
 	_expect_equal(enemy_sprite.enemy_id, "rock_armor_young", "非法表现标识不会覆盖当前敌人")
+	var map_canvas = instance.get_node("%MapCanvas")
+	var landmark_contract: Dictionary = map_canvas.landmark_visual_contract()
+	_expect_equal(landmark_contract["schema_version"], 1, "照禾地标表现合同使用稳定版本")
+	_expect_equal(landmark_contract["atlas_path"], "res://assets/pixel/zhaohe_landmarks.png", "地图读取提交的原创地标图集")
+	_expect_equal(landmark_contract["atlas_size"], Vector2(1536, 128), "八个地标帧完整装入固定图集")
+	_expect_equal(landmark_contract["frame_size"], Vector2i(192, 128), "每个地标区域使用固定像素边界")
+	_expect_equal(landmark_contract["profiles"].size(), 8, "表现合同只暴露八个稳定地标标识")
+	for profile_id in ["tree_celadon", "ferry_house_rust", "ferry_house_ochre", "ferry_house_teal", "ferry_dock", "mountain_rock", "spring_cave", "spring_gate"]:
+		_expect_true(landmark_contract["profiles"].has(profile_id), "地标合同包含 %s" % profile_id)
+	_expect_equal(landmark_contract["filter"], CanvasItem.TEXTURE_FILTER_NEAREST, "地图地标以最近邻绘制")
+	_expect_true(landmark_contract["pixel_snap"], "地图地标脚点锁定整数像素")
+	_expect_false(landmark_contract["collision_authority"], "地标图集不替代确定性碰撞规则")
+	_expect_false(map_canvas._draw_landmark("unknown_landmark", Vector2.ZERO), "地图表现拒绝未知地标标识")
 	_expect_true(instance.get_node("%MapCanvas").uses_ferry_tile_layers(), "照禾渡口地表由 TileMapLayer 组成")
 	var ferry_ground: TileMapLayer = instance.get_node("%FerryGround")
 	var map_contract: Dictionary = ferry_ground.map_contract()
@@ -1737,10 +1783,17 @@ func _test_scene_smoke() -> void:
 	instance._render([])
 	_expect_equal(map_detail.map_contract()["rebuild_count"], 1, "同一渡口上下文重复渲染不重建细节")
 	_expect_equal(instance.journey.snapshot(), before_detail_resync, "纯表现细节同步不修改确定性旅程")
-	var ferry_occlusion: Dictionary = instance.get_node("%MapCanvas").occlusion_contract()
+	var ferry_occlusion: Dictionary = map_canvas.occlusion_contract()
 	_expect_equal(ferry_occlusion["count"], 7, "渡口以三处屋檐和四处树冠组成独立前景节点")
+	_expect_equal(ferry_occlusion["asset_backed_count"], 7, "渡口全部可排序前景由同一像素地标图集提供")
 	_expect_true(ferry_occlusion["ids"].has("ferry_roof_0"), "前景合同包含可识别屋檐")
 	_expect_true(ferry_occlusion["ids"].has("ferry_tree_3"), "前景合同包含可识别树冠")
+	_expect_equal(ferry_occlusion["profiles"]["ferry_roof_0"], "ferry_house_rust", "首栋房屋映射稳定赭瓦图集列")
+	_expect_equal(ferry_occlusion["profiles"]["ferry_tree_3"], "tree_celadon", "树冠共享稳定青叶图集列")
+	var first_roof: Sprite2D = map_canvas.get_node("Occluder_ferry_roof_0")
+	_expect_true(first_roof.region_enabled, "房屋前景直接裁取图集区域")
+	_expect_equal(first_roof.texture.resource_path, "res://assets/pixel/zhaohe_landmarks.png", "房屋前景不再即时绘制屋檐")
+	_expect_equal(first_roof.position, first_roof.position.round(), "房屋脚点保持整数像素")
 	_expect_true(ferry_occlusion["maximum_depth"] <= ferry_occlusion["map_depth_ceiling"], "地图前景不越过深度上限")
 	_expect_true(instance.get_node("%DialogueOverlay").z_index > ferry_occlusion["maximum_depth"], "对话模态始终位于所有地图遮挡之上")
 	_expect_true(instance.get_node("%MapCanvas").depth_for_y(120.0) < instance.get_node("%MapCanvas").depth_for_y(520.0), "脚底越靠下显示深度越靠前")
@@ -1956,11 +2009,31 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%PathPuppetEnemySprite").visible, "山道显示失衡石傀像素轮廓")
 	_expect_false(enemy_sprite.visible, "探索阶段不会叠加战斗敌人节点")
 	_expect_equal(instance.get_node("%MapCanvas").occlusion_contract()["count"], 5, "山道使用五处可排序树冠前景")
+	_expect_equal(instance.get_node("%MapCanvas").occlusion_contract()["asset_backed_count"], 5, "山道五处树冠全部复用像素地标图集")
 	var path_contract: Dictionary = instance.get_node("%PathGround").map_contract()
 	_expect_equal(path_contract["map_kind"], "mountain_path", "山道图层声明独立地图类型")
-	_expect_equal(path_contract["tile_counts"]["water"], 100, "山道溪流宽度由固定地图数据约束")
+	_expect_equal(path_contract["tile_counts"]["water"], 85, "山道溪流为返程石桥保留十五个非水单元")
 	_expect_true(path_contract["tile_counts"]["path"] > 40, "山道存在连续可读石路")
 	_expect_true(path_contract["tile_counts"]["stone"] > 3, "山道敌区与调查点使用石地标记")
+	_expect_equal(path_contract["mountain_gate_bridge"], Rect2i(2, 12, 5, 5), "返程山门使用固定五乘五石桥区域")
+	var path_ground: TileMapLayer = instance.get_node("%PathGround")
+	_expect_equal(path_ground.tile_kind_at_normalized(ExplorationStateScript.PATH_RETURN_POSITION), "stone", "山道返程交互点不再落在溪水图块")
+	for anchor in [
+		ExplorationStateScript.PATH_START_POSITION,
+		ExplorationStateScript.PATH_RETURN_POSITION,
+		ExplorationStateScript.PATH_MARKER_POSITION,
+		ExplorationStateScript.PATH_SPRING_SEAM_POSITION,
+		ExplorationStateScript.PATH_ABANDONED_BASKET_POSITION,
+		ExplorationStateScript.PATH_ROCK_SPOOR_POSITION,
+		ExplorationStateScript.PATH_MOSS_SPOOR_POSITION,
+		ExplorationStateScript.PATH_PUPPET_SPOOR_POSITION,
+		ExplorationStateScript.PATH_ENEMY_POSITION,
+		ExplorationStateScript.PATH_MOSS_POSITION,
+		ExplorationStateScript.PATH_PUPPET_POSITION,
+		ExplorationStateScript.PATH_BYPASS_POSITION,
+	]:
+		var anchor_tile_kind: String = path_ground.tile_kind_at_normalized(anchor)
+		_expect_true(anchor_tile_kind != "water" and anchor_tile_kind != "outside", "山道交互锚点 %s 落在可读非水地表" % anchor)
 	var path_detail_contract: Dictionary = map_detail.map_contract()
 	_expect_equal(path_detail_contract["context_id"], "mountain_path", "山道切换共享细节层上下文")
 	_expect_equal(path_detail_contract["map_kind"], "mountain_path", "山道切换独立固定细节单元图")
@@ -2431,6 +2504,14 @@ func _expect_detail_cells_bounded_and_unique(contract: Dictionary, map_label: St
 	for tile_count in contract["tile_counts"].values():
 		counted_cells += int(tile_count)
 	_expect_equal(counted_cells, cells.size(), "%s细节分类计数覆盖全部单元" % map_label)
+
+
+func _image_region_has_opaque_pixel(image: Image, region: Rect2i) -> bool:
+	for y in range(region.position.y, region.end.y):
+		for x in range(region.position.x, region.end.x):
+			if image.get_pixel(x, y).a > 0.0:
+				return true
+	return false
 
 
 func _write_test_file(path: String, contents: String) -> void:

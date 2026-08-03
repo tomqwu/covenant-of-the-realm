@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "origin": "original",
   "tile_grid_px": 32,
   "actor_frame_px": [32, 56],
@@ -68,6 +68,32 @@
       "moss",
       "fallen_leaves",
       "water_foam"
+    ]
+  },
+  "landmark_atlas": {
+    "file": "zhaohe_landmarks.png",
+    "frame_size_px": [192, 128],
+    "foot_anchor_px": [96, 127],
+    "columns": 8,
+    "rows": 1,
+    "texture_filter": "nearest",
+    "pixel_snap": true,
+    "collision_authority": false,
+    "profiles": [
+      "tree_celadon",
+      "ferry_house_rust",
+      "ferry_house_ochre",
+      "ferry_house_teal",
+      "ferry_dock",
+      "mountain_rock",
+      "spring_cave",
+      "spring_gate"
+    ],
+    "occluding_profiles": [
+      "tree_celadon",
+      "ferry_house_rust",
+      "ferry_house_ochre",
+      "ferry_house_teal"
     ]
   }
 }

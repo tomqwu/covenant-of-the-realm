@@ -4,6 +4,29 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — Zhaohe landmarks use one reproducible pixel atlas
+
+The ferry, mountain path, and battle view now consume one original 1536×128 RGBA atlas with eight
+fixed 192×128 regions: celadon tree, three ferry houses, dock, mountain rock, spring cave, and
+spring gate. The project-authored Godot generator can target an isolated directory; the asset gate
+regenerates all seven committed atlases twice and requires both runs, the worktree, and Git index
+to match byte for byte. The contract fixes profile order, foot anchor, nearest filtering, integer snapping,
+transparent bounds, and `collision_authority: false`.
+
+The existing three-house/four-tree ferry, five-tree path, and four-tree battle occluder nodes now
+render atlas regions directly, so Y-depth behavior gains real pixel assets without a child-node or
+budget increase. Dock, rocks, cave, and gates are drawn as regions from the same atlas through the
+existing map canvas. Their former runtime geometry helpers were removed. Domain obstacles,
+interaction radii, story state, and save v14 remain authoritative and unchanged.
+
+The mountain return coordinate previously sat over a water tile even though the deterministic
+domain allowed it. A fixed 5×5 stone bridge now covers that authored gate approach while preserving
+the stable coordinate and old saves; all path spawn and interaction anchors are tested against
+non-water ground. The scene remains 110 static nodes with a 120-node peak and zero leaks. Two
+34-PNG capture passes are byte-identical, and the reproducible package is 552,060 bytes with
+SHA-256 `14ff2a2a2b239f7ffff92fff269e3325d54cde5d9fd4d3fc7b01b630ac6ebca9` and 15 explicit
+runtime-resource probes.
+
 ### 2026-08-03 — First breath is a saved three-point spatial ritual
 
 The chapter now enters a third micro-map, `cangquan_spring`, after the mountain path. Three fixed,

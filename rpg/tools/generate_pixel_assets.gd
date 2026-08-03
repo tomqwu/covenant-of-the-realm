@@ -5,6 +5,18 @@ const FRAME_SIZE := Vector2i(32, 56)
 const ATLAS_SIZE := Vector2i(128, 224)
 const ENEMY_FRAME_SIZE := Vector2i(64, 64)
 const ENEMY_ATLAS_SIZE := Vector2i(128, 256)
+const LANDMARK_FRAME_SIZE := Vector2i(192, 128)
+const LANDMARK_ATLAS_SIZE := Vector2i(1536, 128)
+const LANDMARK_PROFILES := [
+	"tree_celadon",
+	"ferry_house_rust",
+	"ferry_house_ochre",
+	"ferry_house_teal",
+	"ferry_dock",
+	"mountain_rock",
+	"spring_cave",
+	"spring_gate",
+]
 const TRANSPARENT := Color(0, 0, 0, 0)
 const INK := Color("27312e")
 const SKIN := Color("d9b895")
@@ -13,14 +25,21 @@ const GOLD := Color("e4c36e")
 
 
 func _initialize() -> void:
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUTPUT_DIR))
+	var user_args := OS.get_cmdline_user_args()
+	if user_args.size() > 1:
+		push_error("pixel asset generator accepts at most one output directory")
+		quit(1)
+		return
+	var output_dir := OUTPUT_DIR if user_args.is_empty() else str(user_args[0])
+	DirAccess.make_dir_recursive_absolute(_globalize_output_path(output_dir))
 	_generate_actor("protagonist.png", Color("58738f"), Color("b89b63"), "protagonist")
 	_generate_actor("yanqing.png", Color("c6764f"), Color("73533d"), "yanqing")
 	_generate_actor("liangshu.png", Color("526963"), Color("a88b57"), "liangshu")
 	_generate_actor("huishen.png", Color("82966a"), Color("a9784f"), "huishen")
 	_generate_enemy_atlas()
 	_generate_ferry_tiles()
-	print("Generated original pixel atlases in %s." % OUTPUT_DIR)
+	_generate_landmark_atlas()
+	print("Generated original pixel atlases in %s." % output_dir)
 	quit(0)
 
 
@@ -30,8 +49,8 @@ func _generate_actor(file_name: String, robe: Color, accent: Color, role: String
 	for row in range(4):
 		for column in range(4):
 			_draw_frame(image, Vector2i(column * FRAME_SIZE.x, row * FRAME_SIZE.y), row, column, robe, accent, role)
-	var output_path := "%s/%s" % [OUTPUT_DIR, file_name]
-	var error := image.save_png(ProjectSettings.globalize_path(output_path))
+	var output_path := _asset_output_path(file_name)
+	var error := image.save_png(output_path)
 	if error != OK:
 		push_error("Unable to save %s: %s" % [output_path, error])
 		quit(1)
@@ -56,8 +75,8 @@ func _generate_ferry_tiles() -> void:
 	_draw_detail_tile(image, 5, "moss")
 	_draw_detail_tile(image, 6, "fallen_leaves")
 	_draw_detail_tile(image, 7, "water_foam")
-	var output_path := "%s/ferry_tiles.png" % OUTPUT_DIR
-	var error := image.save_png(ProjectSettings.globalize_path(output_path))
+	var output_path := _asset_output_path("ferry_tiles.png")
+	var error := image.save_png(output_path)
 	if error != OK:
 		push_error("Unable to save %s: %s" % [output_path, error])
 		quit(1)
@@ -78,11 +97,137 @@ func _generate_enemy_atlas() -> void:
 					_draw_stone_puppet(image, origin, column)
 				_:
 					_draw_rock_armor_warden(image, origin, column)
-	var output_path := "%s/enemy_profiles.png" % OUTPUT_DIR
-	var error := image.save_png(ProjectSettings.globalize_path(output_path))
+	var output_path := _asset_output_path("enemy_profiles.png")
+	var error := image.save_png(output_path)
 	if error != OK:
 		push_error("Unable to save %s: %s" % [output_path, error])
 		quit(1)
+
+
+func _generate_landmark_atlas() -> void:
+	var image := Image.create(LANDMARK_ATLAS_SIZE.x, LANDMARK_ATLAS_SIZE.y, false, Image.FORMAT_RGBA8)
+	image.fill(TRANSPARENT)
+	for column in range(LANDMARK_PROFILES.size()):
+		var origin := Vector2i(column * LANDMARK_FRAME_SIZE.x, 0)
+		match LANDMARK_PROFILES[column]:
+			"tree_celadon":
+				_draw_landmark_tree(image, origin)
+			"ferry_house_rust":
+				_draw_landmark_house(image, origin, Color("9a513d"), Color("c6764f"), Color("e4c36e"))
+			"ferry_house_ochre":
+				_draw_landmark_house(image, origin, Color("806e50"), Color("a88b57"), Color("8ebb83"))
+			"ferry_house_teal":
+				_draw_landmark_house(image, origin, Color("466a68"), Color("668c83"), Color("e7a76f"))
+			"ferry_dock":
+				_draw_landmark_dock(image, origin)
+			"mountain_rock":
+				_draw_landmark_rock(image, origin)
+			"spring_cave":
+				_draw_landmark_cave(image, origin)
+			"spring_gate":
+				_draw_landmark_gate(image, origin)
+	var output_path := _asset_output_path("zhaohe_landmarks.png")
+	var error := image.save_png(output_path)
+	if error != OK:
+		push_error("Unable to save %s: %s" % [output_path, error])
+		quit(1)
+
+
+func _draw_landmark_tree(image: Image, origin: Vector2i) -> void:
+	_fill(image, Rect2i(origin.x + 60, origin.y + 122, 72, 4), Color(0.15, 0.19, 0.18, 0.28))
+	_fill(image, Rect2i(origin.x + 90, origin.y + 69, 13, 55), Color("5d513c"))
+	_fill(image, Rect2i(origin.x + 82, origin.y + 79, 12, 8), Color("6f654b"))
+	_fill(image, Rect2i(origin.x + 101, origin.y + 73, 14, 8), Color("6f654b"))
+	_fill(image, Rect2i(origin.x + 59, origin.y + 39, 75, 50), Color("739b70"))
+	_fill(image, Rect2i(origin.x + 72, origin.y + 24, 50, 65), Color("8ebb83"))
+	_fill(image, Rect2i(origin.x + 48, origin.y + 52, 44, 42), Color("82ad78"))
+	_fill(image, Rect2i(origin.x + 111, origin.y + 49, 39, 43), Color("a1c98c"))
+	_fill(image, Rect2i(origin.x + 82, origin.y + 30, 15, 9), Color("b7d79d"))
+	_fill(image, Rect2i(origin.x + 58, origin.y + 62, 11, 8), Color("a9cf91"))
+	_fill(image, Rect2i(origin.x + 126, origin.y + 58, 10, 8), Color("c0dca4"))
+	_fill(image, Rect2i(origin.x + 68, origin.y + 86, 18, 6), Color("587f62"))
+	_fill(image, Rect2i(origin.x + 112, origin.y + 84, 17, 6), Color("698e68"))
+
+
+func _draw_landmark_house(image: Image, origin: Vector2i, roof: Color, roof_light: Color, banner: Color) -> void:
+	_fill(image, Rect2i(origin.x + 14, origin.y + 123, 164, 4), Color(0.15, 0.19, 0.18, 0.30))
+	_fill(image, Rect2i(origin.x + 24, origin.y + 49, 144, 74), Color("d7c9a7"))
+	_fill(image, Rect2i(origin.x + 24, origin.y + 93, 144, 30), Color("b99d70"))
+	for band in range(10):
+		var width := 32 + band * 16
+		var x := origin.x + 96 - (width >> 1)
+		_fill(image, Rect2i(x, origin.y + 10 + band * 4, width, 4), roof if band > 3 else roof_light)
+	_fill(image, Rect2i(origin.x + 8, origin.y + 50, 176, 7), roof.darkened(0.12))
+	_fill(image, Rect2i(origin.x + 31, origin.y + 57, 7, 66), Color("735b43"))
+	_fill(image, Rect2i(origin.x + 154, origin.y + 57, 7, 66), Color("735b43"))
+	_fill(image, Rect2i(origin.x + 82, origin.y + 83, 29, 40), INK.lightened(0.10))
+	_fill(image, Rect2i(origin.x + 88, origin.y + 91, 17, 32), Color("6f654b"))
+	_fill(image, Rect2i(origin.x + 47, origin.y + 72, 23, 18), Color("58738f"))
+	_fill(image, Rect2i(origin.x + 51, origin.y + 76, 15, 10), PAPER)
+	_fill(image, Rect2i(origin.x + 123, origin.y + 72, 23, 18), Color("58738f"))
+	_fill(image, Rect2i(origin.x + 127, origin.y + 76, 15, 10), PAPER)
+	_fill(image, Rect2i(origin.x + 115, origin.y + 58, 8, 25), banner)
+	_fill(image, Rect2i(origin.x + 116, origin.y + 61, 6, 3), PAPER)
+
+
+func _draw_landmark_dock(image: Image, origin: Vector2i) -> void:
+	_fill(image, Rect2i(origin.x + 8, origin.y + 122, 176, 4), Color(0.15, 0.19, 0.18, 0.24))
+	_fill(image, Rect2i(origin.x + 18, origin.y + 68, 154, 34), Color("725f47"))
+	for plank in range(7):
+		_fill(image, Rect2i(origin.x + 22 + plank * 21, origin.y + 71, 3, 28), Color("b49567"))
+	_fill(image, Rect2i(origin.x + 26, origin.y + 102, 8, 21), Color("5d513c"))
+	_fill(image, Rect2i(origin.x + 154, origin.y + 102, 8, 21), Color("5d513c"))
+	_fill(image, Rect2i(origin.x + 29, origin.y + 108, 72, 12), Color("836c4c"))
+	_fill(image, Rect2i(origin.x + 39, origin.y + 120, 51, 5), Color("5d513c"))
+	_fill(image, Rect2i(origin.x + 107, origin.y + 57, 47, 6), Color("e4c36e"))
+	_fill(image, Rect2i(origin.x + 128, origin.y + 43, 5, 21), Color("735b43"))
+
+
+func _draw_landmark_rock(image: Image, origin: Vector2i) -> void:
+	_fill(image, Rect2i(origin.x + 50, origin.y + 122, 92, 4), Color(0.15, 0.19, 0.18, 0.30))
+	_fill(image, Rect2i(origin.x + 61, origin.y + 83, 71, 39), INK)
+	_fill(image, Rect2i(origin.x + 67, origin.y + 72, 58, 48), Color("60766f"))
+	_fill(image, Rect2i(origin.x + 78, origin.y + 63, 35, 38), Color("829a8f"))
+	_fill(image, Rect2i(origin.x + 84, origin.y + 69, 19, 7), Color("9bada2"))
+	_fill(image, Rect2i(origin.x + 69, origin.y + 97, 18, 5), Color("8ebb83"))
+	_fill(image, Rect2i(origin.x + 105, origin.y + 103, 15, 4), Color("739b70"))
+
+
+func _draw_landmark_cave(image: Image, origin: Vector2i) -> void:
+	_fill(image, Rect2i(origin.x + 15, origin.y + 123, 162, 4), Color(0.15, 0.19, 0.18, 0.34))
+	for band in range(9):
+		var width := 72 + band * 12
+		var x := origin.x + 96 - (width >> 1)
+		_fill(image, Rect2i(x, origin.y + 30 + band * 8, width, 8), Color("486d68") if band < 4 else Color("355e63"))
+	_fill(image, Rect2i(origin.x + 68, origin.y + 70, 56, 53), INK.darkened(0.18))
+	_fill(image, Rect2i(origin.x + 76, origin.y + 61, 40, 17), INK.darkened(0.18))
+	_fill(image, Rect2i(origin.x + 92, origin.y + 88, 8, 8), GOLD)
+	_fill(image, Rect2i(origin.x + 88, origin.y + 84, 16, 16), Color(0.89, 0.76, 0.43, 0.18))
+	_fill(image, Rect2i(origin.x + 43, origin.y + 99, 18, 5), Color("8ebb83"))
+	_fill(image, Rect2i(origin.x + 132, origin.y + 106, 15, 4), Color("739b70"))
+
+
+func _draw_landmark_gate(image: Image, origin: Vector2i) -> void:
+	_fill(image, Rect2i(origin.x + 49, origin.y + 123, 94, 4), Color(0.15, 0.19, 0.18, 0.24))
+	_fill(image, Rect2i(origin.x + 64, origin.y + 64, 10, 59), Color("755f43"))
+	_fill(image, Rect2i(origin.x + 118, origin.y + 64, 10, 59), Color("755f43"))
+	_fill(image, Rect2i(origin.x + 55, origin.y + 56, 82, 11), Color("9a513d"))
+	_fill(image, Rect2i(origin.x + 62, origin.y + 49, 68, 8), Color("c6764f"))
+	_fill(image, Rect2i(origin.x + 91, origin.y + 50, 10, 10), GOLD)
+	_fill(image, Rect2i(origin.x + 83, origin.y + 72, 26, 15), Color("d7c9a7"))
+	_fill(image, Rect2i(origin.x + 87, origin.y + 76, 18, 3), INK.lightened(0.15))
+
+
+func _asset_output_path(file_name: String) -> String:
+	var user_args := OS.get_cmdline_user_args()
+	var output_dir := OUTPUT_DIR if user_args.is_empty() else str(user_args[0])
+	return _globalize_output_path(output_dir.path_join(file_name))
+
+
+func _globalize_output_path(path: String) -> String:
+	if path.begins_with("res://") or path.begins_with("user://"):
+		return ProjectSettings.globalize_path(path)
+	return path
 
 
 func _draw_enemy_shadow(image: Image, origin: Vector2i, width: int) -> void:

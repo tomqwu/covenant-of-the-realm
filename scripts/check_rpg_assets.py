@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import struct
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,10 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 MAP_ATLAS_COLUMNS = 8
 MAP_ATLAS_ROWS = 2
 MAP_ATLAS_SIZE_PX = (256, 64)
+LANDMARK_ATLAS_COLUMNS = 8
+LANDMARK_ATLAS_ROWS = 1
+LANDMARK_FRAME_SIZE_PX = (192, 128)
+LANDMARK_ATLAS_SIZE_PX = (1536, 128)
 MAP_BASE_TILE_NAMES = [
     "grass",
     "water",
@@ -34,14 +39,98 @@ MAP_DETAIL_TILE_NAMES = [
     "fallen_leaves",
     "water_foam",
 ]
+LANDMARK_PROFILES = [
+    "tree_celadon",
+    "ferry_house_rust",
+    "ferry_house_ochre",
+    "ferry_house_teal",
+    "ferry_dock",
+    "mountain_rock",
+    "spring_cave",
+    "spring_gate",
+]
+OCCLUDING_LANDMARK_PROFILES = LANDMARK_PROFILES[:4]
 
 
 def _png_size(path: Path) -> tuple[int, int]:
-    with path.open("rb") as stream:
-        header = stream.read(24)
-    if len(header) != 24 or not header.startswith(PNG_SIGNATURE) or header[12:16] != b"IHDR":
-        raise ValueError("not a valid PNG header")
-    return struct.unpack(">II", header[16:24])
+    data = path.read_bytes()
+    if not data.startswith(PNG_SIGNATURE):
+        raise ValueError("not a valid PNG signature")
+
+    offset = len(PNG_SIGNATURE)
+    size: tuple[int, int] | None = None
+    compressed_rows: list[bytes] = []
+    saw_iend = False
+    while offset < len(data):
+        if len(data) - offset < 12:
+            raise ValueError("truncated PNG chunk")
+        chunk_length = struct.unpack(">I", data[offset : offset + 4])[0]
+        chunk_end = offset + 12 + chunk_length
+        if chunk_end > len(data):
+            raise ValueError("truncated PNG chunk")
+        chunk_type = data[offset + 4 : offset + 8]
+        chunk_data = data[offset + 8 : offset + 8 + chunk_length]
+        expected_crc = struct.unpack(">I", data[offset + 8 + chunk_length : chunk_end])[0]
+        actual_crc = zlib.crc32(chunk_data, zlib.crc32(chunk_type)) & 0xFFFFFFFF
+        if actual_crc != expected_crc:
+            raise ValueError(f"PNG chunk CRC mismatch: {chunk_type.decode('ascii', 'replace')}")
+
+        if size is None:
+            if chunk_type != b"IHDR" or chunk_length != 13:
+                raise ValueError("PNG must begin with a 13-byte IHDR chunk")
+            (
+                width,
+                height,
+                bit_depth,
+                color_type,
+                compression_method,
+                filter_method,
+                interlace_method,
+            ) = struct.unpack(">IIBBBBB", chunk_data)
+            if width == 0 or height == 0:
+                raise ValueError("PNG dimensions must be positive")
+            if bit_depth != 8 or color_type != 6:
+                raise ValueError("PNG must use 8-bit RGBA pixels")
+            if compression_method != 0 or filter_method != 0 or interlace_method != 0:
+                raise ValueError("PNG must use standard compression/filtering without interlace")
+            size = (width, height)
+        elif chunk_type == b"IHDR":
+            raise ValueError("PNG must contain exactly one IHDR chunk")
+
+        if chunk_type == b"IDAT":
+            compressed_rows.append(chunk_data)
+        elif chunk_type == b"IEND":
+            if chunk_length != 0:
+                raise ValueError("PNG IEND chunk must be empty")
+            saw_iend = True
+            offset = chunk_end
+            if offset != len(data):
+                raise ValueError("PNG contains trailing data after IEND")
+            break
+        offset = chunk_end
+
+    if size is None:
+        raise ValueError("PNG is missing IHDR")
+    if not compressed_rows:
+        raise ValueError("PNG is missing IDAT image data")
+    if not saw_iend:
+        raise ValueError("PNG is missing IEND")
+
+    decompressor = zlib.decompressobj()
+    try:
+        rows = decompressor.decompress(b"".join(compressed_rows)) + decompressor.flush()
+    except zlib.error as error:
+        raise ValueError("invalid PNG image data") from error
+    if not decompressor.eof or decompressor.unused_data or decompressor.unconsumed_tail:
+        raise ValueError("invalid PNG image data")
+
+    width, height = size
+    row_stride = 1 + width * 4
+    if len(rows) != row_stride * height:
+        raise ValueError("PNG image data length does not match its dimensions")
+    if any(rows[row * row_stride] > 4 for row in range(height)):
+        raise ValueError("PNG uses an invalid row filter")
+    return size
 
 
 def validate_contract(data: Any) -> list[str]:
@@ -49,7 +138,7 @@ def validate_contract(data: Any) -> list[str]:
     if not isinstance(data, dict):
         return ["asset contract must be an object"]
     expected = {
-        "schema_version": 1,
+        "schema_version": 2,
         "origin": "original",
         "tile_grid_px": 32,
         "actor_frame_px": [32, 56],
@@ -186,6 +275,46 @@ def validate_contract(data: Any) -> list[str]:
                     )
             except ValueError as error:
                 failures.append(f"{map_file}: {error}")
+    landmark_atlas = data.get("landmark_atlas")
+    if not isinstance(landmark_atlas, dict):
+        failures.append("landmark_atlas must be an object")
+        return failures
+    if landmark_atlas.get("frame_size_px") != list(LANDMARK_FRAME_SIZE_PX):
+        failures.append("landmark_atlas.frame_size_px must be [192, 128]")
+    if landmark_atlas.get("foot_anchor_px") != [96, 127]:
+        failures.append("landmark_atlas.foot_anchor_px must be [96, 127]")
+    if landmark_atlas.get("columns") != LANDMARK_ATLAS_COLUMNS:
+        failures.append(f"landmark_atlas.columns must be {LANDMARK_ATLAS_COLUMNS}")
+    if landmark_atlas.get("rows") != LANDMARK_ATLAS_ROWS:
+        failures.append(f"landmark_atlas.rows must be {LANDMARK_ATLAS_ROWS}")
+    if landmark_atlas.get("texture_filter") != "nearest":
+        failures.append("landmark_atlas.texture_filter must be nearest")
+    if landmark_atlas.get("pixel_snap") is not True:
+        failures.append("landmark_atlas.pixel_snap must be true")
+    if landmark_atlas.get("collision_authority") is not False:
+        failures.append("landmark_atlas.collision_authority must be false")
+    if landmark_atlas.get("profiles") != LANDMARK_PROFILES:
+        failures.append("landmark_atlas.profiles must match the eight stable landmark IDs")
+    if landmark_atlas.get("occluding_profiles") != OCCLUDING_LANDMARK_PROFILES:
+        failures.append(
+            "landmark_atlas.occluding_profiles must contain only tree and house IDs"
+        )
+    landmark_file = landmark_atlas.get("file")
+    if not isinstance(landmark_file, str) or Path(landmark_file).name != landmark_file:
+        failures.append("landmark_atlas.file must be a local file name")
+    else:
+        path = ASSET_DIR / landmark_file
+        if not path.is_file():
+            failures.append(f"missing landmark atlas: {landmark_file}")
+        else:
+            try:
+                actual = _png_size(path)
+                if actual != LANDMARK_ATLAS_SIZE_PX:
+                    failures.append(
+                        f"{landmark_file}: expected {LANDMARK_ATLAS_SIZE_PX}, got {actual}"
+                    )
+            except ValueError as error:
+                failures.append(f"{landmark_file}: {error}")
     return failures
 
 
@@ -200,7 +329,7 @@ def main() -> None:
     print(
         "RPG pixel assets passed: "
         f"{len(data['atlases'])} actors, four animated enemies, "
-        "and one 32 px map atlas validated."
+        "one 32 px map atlas, and eight environment landmarks validated."
     )
 
 

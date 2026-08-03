@@ -157,6 +157,7 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 	var maximum_nodes := 0
 	var static_scene_nodes := 0
 	var maximum_detail_rebuilds := 0
+	var maximum_landmark_nodes := 0
 	var state_peaks := {
 		"title": 0,
 		"path": 0,
@@ -190,6 +191,10 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		maximum_detail_rebuilds = maxi(maximum_detail_rebuilds, int(title_detail_contract["rebuild_count"]))
 		if int(title_detail_contract["rebuild_count"]) != 1 or not bool(title_detail_contract["visible"]):
 			failures.append("标题底图细节必须恰好构建一次并保持可见")
+		var title_landmarks: Dictionary = instance.get_node("%MapCanvas").occlusion_contract()
+		maximum_landmark_nodes = maxi(maximum_landmark_nodes, int(title_landmarks["count"]))
+		if _cycle == 0 and (int(title_landmarks["count"]) != 7 or int(title_landmarks["asset_backed_count"]) != 7):
+			failures.append("渡口必须复用七个资产化房屋/树木前景节点")
 
 		instance.start_new_game()
 		await process_frame
@@ -214,6 +219,10 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		maximum_detail_rebuilds = maxi(maximum_detail_rebuilds, int(path_detail_contract["rebuild_count"]))
 		if int(path_detail_contract["rebuild_count"]) != 2 or not bool(path_detail_contract["visible"]):
 			failures.append("首次山道切换必须只追加一次可见细节重建")
+		var path_landmarks: Dictionary = instance.get_node("%MapCanvas").occlusion_contract()
+		maximum_landmark_nodes = maxi(maximum_landmark_nodes, int(path_landmarks["count"]))
+		if _cycle == 0 and (int(path_landmarks["count"]) != 5 or int(path_landmarks["asset_backed_count"]) != 5):
+			failures.append("山道必须复用五个资产化树木前景节点")
 
 		instance._on_action("approach_enemy")
 		instance.get_node("%SceneTransition").finish()
@@ -223,6 +232,10 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		maximum_detail_rebuilds = maxi(maximum_detail_rebuilds, int(battle_detail_contract["rebuild_count"]))
 		if int(battle_detail_contract["rebuild_count"]) != 2 or bool(battle_detail_contract["visible"]):
 			failures.append("战斗必须隐藏细节且不得重复构建缓存的山道布局")
+		var battle_landmarks: Dictionary = instance.get_node("%MapCanvas").occlusion_contract()
+		maximum_landmark_nodes = maxi(maximum_landmark_nodes, int(battle_landmarks["count"]))
+		if _cycle == 0 and (int(battle_landmarks["count"]) != 4 or int(battle_landmarks["asset_backed_count"]) != 4):
+			failures.append("战斗镜头必须复用四个资产化树木前景节点")
 		instance._on_action("guard")
 		state_peaks["battle_action_immediate"] = maxi(int(state_peaks["battle_action_immediate"]), _count_nodes(instance))
 		await process_frame
@@ -246,6 +259,8 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		maximum_detail_rebuilds = maxi(maximum_detail_rebuilds, int(spring_detail_contract["rebuild_count"]))
 		if int(spring_detail_contract["rebuild_count"]) != 2 or bool(spring_detail_contract["visible"]):
 			failures.append("藏泉石室必须隐藏山道细节且不得重建细节缓存")
+		if _cycle == 0 and int(instance.get_node("%MapCanvas").occlusion_contract()["count"]) != 0:
+			failures.append("藏泉石室不得残留照禾地标前景节点")
 
 		# These actions have no transition or deferred node creation: `_render()`
 		# replaces the single nearby-action child synchronously. Sample immediately
@@ -283,6 +298,7 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 		"maximum_nodes": maximum_nodes,
 		"static_scene_nodes": static_scene_nodes,
 		"maximum_detail_rebuilds": maximum_detail_rebuilds,
+		"maximum_landmark_nodes": maximum_landmark_nodes,
 		"state_peaks": state_peaks,
 		"root_children_after": root.get_child_count(),
 	}

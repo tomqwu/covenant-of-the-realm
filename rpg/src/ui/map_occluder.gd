@@ -1,57 +1,63 @@
-extends Node2D
+extends Sprite2D
 
-const INK_ROOT := Color("27312e")
-const FRESH_CELADON := Color("8ebb83")
+const LANDMARK_ATLAS := preload("res://assets/pixel/zhaohe_landmarks.png")
+const FRAME_SIZE := Vector2i(192, 128)
+const PROFILE_COLUMNS := {
+	"tree_celadon": 0,
+	"ferry_house_rust": 1,
+	"ferry_house_ochre": 2,
+	"ferry_house_teal": 3,
+}
 
 var occluder_id := ""
-var kind := "tree"
-var dimensions := Vector2.ZERO
-var accent := Color("c6764f")
+var kind := ""
+var profile_id := ""
 var feet_y := 0.0
 
 
 func configure(
 	next_id: String,
 	next_kind: String,
+	next_profile_id: String,
 	next_position: Vector2,
-	next_dimensions: Vector2,
-	next_accent: Color,
 	next_feet_y: float,
 	next_z_index: int
-) -> void:
+) -> bool:
+	if not PROFILE_COLUMNS.has(next_profile_id):
+		return false
 	occluder_id = next_id
 	name = "Occluder_%s" % next_id
 	kind = next_kind
-	position = next_position.round()
-	dimensions = next_dimensions
-	accent = next_accent
+	profile_id = next_profile_id
 	feet_y = next_feet_y
+	texture = LANDMARK_ATLAS
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	region_enabled = true
+	region_filter_clip_enabled = true
+	region_rect = Rect2(
+		Vector2(float(int(PROFILE_COLUMNS[profile_id]) * FRAME_SIZE.x), 0.0),
+		Vector2(FRAME_SIZE)
+	)
+	centered = true
+	offset = Vector2(0.0, -float(FRAME_SIZE.y) * 0.5)
+	position = next_position.round()
 	z_index = next_z_index
-	queue_redraw()
+	return true
 
 
 func visual_contract() -> Dictionary:
 	return {
 		"id": occluder_id,
 		"kind": kind,
+		"profile_id": profile_id,
 		"feet_y": feet_y,
 		"z_index": z_index,
 		"position": position,
+		"frame_size": FRAME_SIZE,
+		"frame_column": int(PROFILE_COLUMNS.get(profile_id, -1)),
+		"filter": texture_filter,
+		"atlas_path": texture.resource_path if texture != null else "",
+		"asset_backed": texture == LANDMARK_ATLAS and region_enabled,
+		"pixel_snapped": position == position.round(),
+		"collision_authority": false,
 	}
-
-
-func _draw() -> void:
-	match kind:
-		"tree":
-			draw_circle(Vector2.ZERO, 30.0, FRESH_CELADON.darkened(0.18))
-			draw_circle(Vector2(-18, 8), 22.0, FRESH_CELADON)
-			draw_circle(Vector2(19, 9), 21.0, Color("a1c98c"))
-		"roof":
-			draw_colored_polygon(PackedVector2Array([
-				Vector2(-12, 12),
-				Vector2(dimensions.x * 0.5, -18),
-				Vector2(dimensions.x + 12, 12),
-				Vector2(dimensions.x, 34),
-				Vector2(0, 34),
-			]), accent)
-			draw_line(Vector2(0, 34), Vector2(dimensions.x, 34), INK_ROOT.lightened(0.22), 2.0)
