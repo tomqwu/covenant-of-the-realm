@@ -26,9 +26,9 @@ false-green imports, tests, captures, exports, content probes, or packaged boot 
 nearest Git revision, clean/dirty source state, required runtime resources, and excluded development
 resources. `make play-rpg-package` launches that pack with the pinned Godot entrypoint. The package
 gate exports the PCK and manifest twice, requires byte-identical results, verifies the manifest,
-probes the packed namespace for 20 runtime resources and nine excluded `tests/`/`tools/` files,
-then boots the pack headlessly. The current reproducible PCK is 672,056 bytes with SHA-256
-`ad8a2e042bc085bbdd97ff2f98adadb8345d925fd5276065d410a8413e3ac295`.
+probes the packed namespace for 22 runtime resources and nine excluded `tests/`/`tools/` files,
+then boots the pack headlessly. The current reproducible PCK is 681,960 bytes with SHA-256
+`7fbbf9d9d6c634cc7643fc0b9c7b54539e9af5e55bf97ce6f3a114d230aee888`.
 A native `.app`/`.exe` is intentionally deferred until platform export templates,
 signing identity, product icon, and distribution target are confirmed.
 
@@ -40,9 +40,9 @@ and pause/resume are exercised as physical input events by `make test-rpg-input`
 deterministic ferry-runner route steps, 50,000
 bounded companion-footprint updates, 2,000 complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. Lifecycle sampling covers title, path, dialogue choices, active patrol, patrol worksite dialogue, stable battle, immediate and settled post-action frames, the scrollable journal, all three spring stages, and completion. The checked-in
 budget allows 2.5 seconds for each pure-domain workload and 7 seconds for the expanded 13-state lifecycle workload,
-caps the main scene at 122 nodes, and requires every cycle to return the root to its baseline child
-count. The static scene uses 112 nodes; the measured peak is 122, active patrol uses 120, worksite dialogue uses 122,
-each spring ritual stage uses 113, and the completed scene uses 115, with zero root-child leaks. Godot runs the
+caps the main scene at 124 nodes, and requires every cycle to return the root to its baseline child
+count. The static scene uses 114 nodes; the measured peak is 124, active patrol uses 122, worksite dialogue uses 124,
+each spring ritual stage uses 115, and the completed scene uses 117, with zero root-child leaks. Godot runs the
 lifecycle gate on a fixed 60 FPS clock, keeps required focus/deferred-tree settle frames, and
 disables automatic drawing because deterministic PNG captures own pixel verification. The runner
 reports measured times but does not treat one development machine as a release hardware promise.
@@ -77,6 +77,15 @@ settings v3 增加“标准/大字”文字大小和“关闭/开启”高对比
 阅读文本在场景基准字号上放大 1.25 倍；高对比按明度把每个阅读标签推向不透明的
 深墨或纸白锚点，纸面浅色与深底浅字两种极性都只增强、不反转。两项无障碍设置
 同样只作用于表现层，v1/v2 设置保守迁移为标准字号与普通对比。
+
+settings v4 增加“对话显字：标准/快速/整句”。标准与快速分别以确定性的 42/84 个
+Unicode 字符每秒显示当前行；整句在新行出现时直接显示全文，但不会自动换行、推进、
+选择回应或缩短阅读时间。玩家仍可随时显示全文、回顾最近四句或跳到回应。切到整句
+会补全当前行，切回渐显不会重新遮住已经读过的文字；负数、NaN、无限与超大 delta
+均安全处理。该偏好与战斗表现、动态简化互相独立，只写 settings，不进入 Journey、
+Dialogue 行号或 save v16。v1–v3 保留已有合法偏好并迁移为标准显字速度；当前 v4
+缺失、错类型或未知枚举会整体回落安全默认值。设置提升先轮转已提交主文件；备份
+失败保持原字节，提升失败回滚，中断后缺失主文件会在下次读取时从已验证备份恢复。
 
 当前功能性美术灰盒采用明亮的有界滚动 RPG 镜头。第一套原创、确定性生成的人物图集
 已经锁定 32×56 px 帧、固定脚底锚点、16×20 px 碰撞基准、四方向待机/行走动画、

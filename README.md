@@ -8,7 +8,8 @@
 **《山河有契》**（英文工作名：**Covenant of the Realm**）正在发展为一款原创、
 中文优先、章节式的 2D 修仙剧情 RPG。Godot 可玩章节已经串联自由移动、碰撞、
 双地图地表、第三张藏泉石室微地图与原创像素细节层、可恢复分支与章节余波对话、明亮纸绘头像、可选择“见闻/灵物志”的行旅札记、脚印式同伴跟随、陶小满六点送件巡路及船架/竹架两端点回响、持久环境见闻、三痕辨势、守堤与药篓双结果支线、补船木架/晾晒竹架/避雨石棚三处可重复生活叙事、近距离采集、三类意图窗口敌人、守巢首领、事件驱动的四敌攻击/受击像素动画、可撤退回合战斗、同伴援护、版本化存档和“听泉辨脉 → 月芽温脉 → 静坐引息”的首次境界突破；现有多人
-MUD 与单人 PWA 作为可运行研究原型保留。
+MUD 与单人 PWA 作为可运行研究原型保留。标题与暂停页还提供标准、快速、整句三档
+对话显字偏好；整句模式只关闭逐字揭示，不会自动推进或代选回应。
 
 ## Play the RPG graybox
 
@@ -81,12 +82,13 @@ make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
 The repository pytest gate passes 136 tests at 100% statement and branch coverage (561 statements /
-286 branches). Godot behavior is covered by 2,627 headless rule/scene assertions plus an independent
-319-check chapter E2E and 150-check physical-input/focus path. Eight committed pixel atlases are
-regenerated twice and must match the Git index byte for byte. The reproducible 672,056-byte PCK has SHA-256
-`ad8a2e042bc085bbdd97ff2f98adadb8345d925fd5276065d410a8413e3ac295`; its probe requires
-20 runtime resources, excludes nine development resources, and two consecutive 39-PNG capture runs
-produce identical SHA-256 sets. The MUD adapter has
+286 branches). Godot behavior is covered by 2,703 headless rule/scene assertions plus an independent
+330-check chapter E2E and 169-check physical-input/focus path. Eight committed pixel atlases are
+regenerated twice and must match the Git index byte for byte. The reproducible 681,960-byte PCK has SHA-256
+`7fbbf9d9d6c634cc7643fc0b9c7b54539e9af5e55bf97ce6f3a114d230aee888`; its probe requires
+22 runtime resources, excludes nine development resources, and two consecutive 40-PNG capture runs
+produce aggregate SHA-256 `ce846a88dc3ac3f841f883e5872b3511472a0c69c7a500df2fe2f23763abdf46`.
+The MUD adapter has
 isolated Evennia tests, and its release path
 is exercised through two real concurrent Telnet clients. The preserved browser prototype retains
 its own 100% unit result and 53-execution Playwright matrix. See [testing](docs/TESTING.md),

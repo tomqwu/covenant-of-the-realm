@@ -689,13 +689,13 @@ theme_override_styles/panel = SubResource("StylePaper")
 [node name="Margin" type="MarginContainer" parent="TitleOverlay/Center/TitlePanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 54
-theme_override_constants/margin_top = 42
+theme_override_constants/margin_top = 30
 theme_override_constants/margin_right = 54
-theme_override_constants/margin_bottom = 42
+theme_override_constants/margin_bottom = 30
 
 [node name="Column" type="VBoxContainer" parent="TitleOverlay/Center/TitlePanel/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 12
 
 [node name="GameTitle" type="Label" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
 layout_mode = 2
@@ -769,6 +769,11 @@ text = "文字大小：标准"
 unique_name_in_owner = true
 layout_mode = 2
 text = "高对比：关闭"
+
+[node name="TitleDialogueSpeedButton" type="Button" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "对话显字：标准"
 
 [node name="TitleControls" type="Label" parent="TitleOverlay/Center/TitlePanel/Margin/Column"]
 layout_mode = 2
@@ -870,6 +875,11 @@ text = "文字大小：标准"
 unique_name_in_owner = true
 layout_mode = 2
 text = "高对比：关闭"
+
+[node name="PauseDialogueSpeedButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "对话显字：标准"
 
 [node name="ResumeButton" type="Button" parent="PauseOverlay/Center/PausePanel/Margin/Column"]
 unique_name_in_owner = true

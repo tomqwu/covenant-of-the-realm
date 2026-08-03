@@ -2,6 +2,8 @@ extends Control
 
 const CONTENT_PATH := "res://content/prologue.json"
 const LARGE_TEXT_SCALE := 1.25
+const DIALOGUE_REVEAL_STANDARD_RATE := 42.0
+const DIALOGUE_REVEAL_FAST_RATE := 84.0
 const HIGH_CONTRAST_INK := Color("131a17")
 const HIGH_CONTRAST_PAPER := Color("fdfaf1")
 const ENEMY_NOTE_IDS := [
@@ -46,6 +48,8 @@ const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
 @onready var pause_text_scale_button: Button = %PauseTextScaleButton
 @onready var title_contrast_button: Button = %TitleContrastButton
 @onready var pause_contrast_button: Button = %PauseContrastButton
+@onready var title_dialogue_speed_button: Button = %TitleDialogueSpeedButton
+@onready var pause_dialogue_speed_button: Button = %PauseDialogueSpeedButton
 @onready var audio_manager: AudioStreamPlayer = %AudioManager
 @onready var dialogue_overlay: Control = %DialogueOverlay
 @onready var dialogue_speaker_label: Label = %DialogueSpeakerLabel
@@ -110,6 +114,8 @@ func _ready() -> void:
 	_style_settings_button(pause_text_scale_button)
 	_style_settings_button(title_contrast_button)
 	_style_settings_button(pause_contrast_button)
+	_style_settings_button(title_dialogue_speed_button)
+	_style_settings_button(pause_dialogue_speed_button)
 	_style_settings_button(dialogue_history_button)
 	_style_settings_button(dialogue_skip_button)
 	_style_settings_button(dialogue_next_button)
@@ -132,6 +138,8 @@ func _ready() -> void:
 	pause_text_scale_button.pressed.connect(toggle_text_scale)
 	title_contrast_button.pressed.connect(toggle_high_contrast)
 	pause_contrast_button.pressed.connect(toggle_high_contrast)
+	title_dialogue_speed_button.pressed.connect(toggle_dialogue_speed)
+	pause_dialogue_speed_button.pressed.connect(toggle_dialogue_speed)
 	dialogue_history_button.pressed.connect(toggle_dialogue_history)
 	dialogue_skip_button.pressed.connect(skip_dialogue_to_response)
 	dialogue_next_button.pressed.connect(advance_dialogue)
@@ -790,6 +798,28 @@ func toggle_high_contrast() -> void:
 	_apply_accessibility_settings()
 
 
+func toggle_dialogue_speed() -> void:
+	var candidate: Dictionary = settings.duplicate(true)
+	match str(settings.get("dialogue_speed", "standard")):
+		"standard":
+			candidate["dialogue_speed"] = "fast"
+		"fast":
+			candidate["dialogue_speed"] = "instant"
+		_:
+			candidate["dialogue_speed"] = "standard"
+	if not SettingsStoreScript.write(candidate, settings_path):
+		return
+	settings = candidate
+	_apply_accessibility_settings()
+	if (
+		settings["dialogue_speed"] == "instant"
+		and dialogue.active
+		and not dialogue_history_visible
+		and not _dialogue_at_choices()
+	):
+		show_full_dialogue_line()
+
+
 func _apply_audio_settings() -> void:
 	audio_manager.set_audio_volume(float(settings["audio_volume"]))
 	audio_manager.set_audio_enabled(bool(settings["audio_enabled"]))
@@ -840,10 +870,20 @@ func _capture_reading_baseline() -> void:
 func _apply_accessibility_settings() -> void:
 	var scale_text := "文字大小：大字" if settings["text_scale"] == "large" else "文字大小：标准"
 	var contrast_text := "高对比：开启" if settings["high_contrast"] else "高对比：关闭"
+	var dialogue_speed_labels: Dictionary = {
+		"fast": "对话显字：快速",
+		"instant": "对话显字：整句",
+	}
+	var dialogue_speed_text := str(dialogue_speed_labels.get(
+		str(settings.get("dialogue_speed", "standard")),
+		"对话显字：标准"
+	))
 	title_text_scale_button.text = scale_text
 	pause_text_scale_button.text = scale_text
 	title_contrast_button.text = contrast_text
 	pause_contrast_button.text = contrast_text
+	title_dialogue_speed_button.text = dialogue_speed_text
+	pause_dialogue_speed_button.text = dialogue_speed_text
 	for reading_control in reading_labels:
 		var size_key := _reading_font_size_key(reading_control)
 		var color_key := _reading_font_color_key(reading_control)
@@ -868,9 +908,13 @@ func _high_contrast_color(base_color: Color) -> Color:
 
 
 func accessibility_contract() -> Dictionary:
+	var dialogue_speed := str(settings.get("dialogue_speed", "standard"))
 	return {
 		"text_scale": settings["text_scale"],
 		"high_contrast": settings["high_contrast"],
+		"dialogue_speed": dialogue_speed,
+		"dialogue_characters_per_second": 0.0 if dialogue_speed == "instant" else _dialogue_reveal_rate(),
+		"dialogue_instant": dialogue_speed == "instant",
 		"reading_label_count": reading_labels.size(),
 		"base_dialogue_font_size": int(base_reading_font_sizes.get(dialogue_label, 0)),
 		"dialogue_font_size": dialogue_label.get_theme_font_size("font_size"),
@@ -960,7 +1004,23 @@ func toggle_pause_menu() -> void:
 		dialogue_overlay.hide()
 		resume_button.grab_focus.call_deferred()
 	else:
-		_render_dialogue_overlay()
+		_restore_dialogue_after_pause()
+
+
+func _restore_dialogue_after_pause() -> void:
+	if not dialogue.active:
+		dialogue_overlay.hide()
+		return
+	# Pausing only hides the existing presentation. Re-rendering here would
+	# restart the current line and could conceal text the player already read
+	# after changing a reveal-speed preference in the pause menu.
+	dialogue_overlay.show()
+	if dialogue_history_visible:
+		dialogue_history_button.grab_focus.call_deferred()
+	elif _dialogue_at_choices():
+		_focus_first_dialogue_choice.call_deferred()
+	else:
+		dialogue_next_button.grab_focus.call_deferred()
 
 
 func return_to_title() -> void:
@@ -1057,6 +1117,7 @@ func _set_title_settings_disabled(disabled: bool) -> void:
 		title_motion_button,
 		title_text_scale_button,
 		title_contrast_button,
+		title_dialogue_speed_button,
 	]:
 		button.disabled = disabled
 
@@ -1067,7 +1128,11 @@ func new_game_confirmation_contract() -> Dictionary:
 		"warning": title_status.text,
 		"confirm_label": new_game_button.text,
 		"cancel_label": continue_button.text,
-		"settings_disabled": title_audio_button.disabled and title_contrast_button.disabled,
+		"settings_disabled": (
+			title_audio_button.disabled
+			and title_contrast_button.disabled
+			and title_dialogue_speed_button.disabled
+		),
 		"save_artifact_present": _has_local_save_artifact(),
 		"rule_authority": false,
 	}
@@ -1391,11 +1456,9 @@ func _render_dialogue_overlay() -> void:
 	dialogue_speaker_label.text = speaker
 	_set_dialogue_portrait("protagonist" if speaker == "你" else "yanqing" if speaker == "砚青" else "liangshu" if speaker == "梁叔" else "huishen" if speaker == "蕙婶" else "tao_xiaoman" if speaker == "陶小满" else "journal")
 	dialogue_label.text = _resolved_dialogue_text(str(line.get("text", "")))
-	dialogue_label.visible_characters = 0
-	dialogue_reveal_elapsed = 0.0
 	dialogue_skip_button.show()
 	dialogue_next_button.show()
-	dialogue_next_button.text = "显示全文"
+	_begin_dialogue_reveal()
 	dialogue_next_button.grab_focus.call_deferred()
 
 
@@ -1671,13 +1734,42 @@ func journal_contract() -> Dictionary:
 
 
 func _process_dialogue_reveal(delta: float) -> void:
-	if dialogue_history_visible or _dialogue_at_choices() or dialogue_label.visible_characters == -1:
+	if (
+		not is_finite(delta)
+		or delta <= 0.0
+		or dialogue_history_visible
+		or _dialogue_at_choices()
+		or dialogue_label.visible_characters == -1
+	):
 		return
-	dialogue_reveal_elapsed += delta * 42.0
-	dialogue_label.visible_characters = mini(dialogue_label.text.length(), floori(dialogue_reveal_elapsed))
-	if dialogue_label.visible_characters >= dialogue_label.text.length():
+	var text_length := dialogue_label.text.length()
+	var reveal_increment := delta * _dialogue_reveal_rate()
+	if not is_finite(reveal_increment):
+		dialogue_reveal_elapsed = float(text_length)
+	else:
+		dialogue_reveal_elapsed = minf(float(text_length), dialogue_reveal_elapsed + reveal_increment)
+	dialogue_label.visible_characters = mini(text_length, floori(dialogue_reveal_elapsed))
+	if dialogue_label.visible_characters >= text_length:
 		dialogue_label.visible_characters = -1
 		dialogue_next_button.text = "继续"
+
+
+func _begin_dialogue_reveal() -> void:
+	dialogue_reveal_elapsed = 0.0
+	if str(settings.get("dialogue_speed", "standard")) == "instant":
+		dialogue_label.visible_characters = -1
+		dialogue_next_button.text = "继续"
+		return
+	dialogue_label.visible_characters = 0
+	dialogue_next_button.text = "显示全文"
+
+
+func _dialogue_reveal_rate() -> float:
+	return (
+		DIALOGUE_REVEAL_FAST_RATE
+		if str(settings.get("dialogue_speed", "standard")) == "fast"
+		else DIALOGUE_REVEAL_STANDARD_RATE
+	)
 
 
 func _phase_display_name(phase_name: String) -> String:

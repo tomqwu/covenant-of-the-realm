@@ -262,6 +262,7 @@ func _capture_flow() -> void:
 	await _settle()
 	await _save_frame("04-chapter-epilogue.png")
 	await _capture_worksite_reactions(instance, worksite_journey_snapshot, worksite_patrol_snapshot)
+	await _capture_dialogue_speed_setting(instance)
 	SaveGameScript.remove(CAPTURE_SAVE_PATH)
 	SettingsStoreScript.remove(CAPTURE_SETTINGS_PATH)
 	quit(0)
@@ -341,6 +342,45 @@ func _capture_worksite_reactions(
 	await _settle()
 	_assert_tao_dialogue_ready(instance, "晾晒工位")
 	await _save_frame("01-patrol-herbs-reaction.png", true)
+
+
+func _capture_dialogue_speed_setting(instance) -> void:
+	assert(instance.dialogue.active and instance.dialogue.dialogue_id == "patrol_herbs_followup",
+		"对话显字参考图必须复用末尾稳定的活动工位对话")
+	assert(instance.settings["dialogue_speed"] == "standard",
+		"对话显字参考图必须从默认标准偏好开始")
+	var journey_before: Dictionary = instance.journey.snapshot()
+	var dialogue_before: Dictionary = instance.dialogue.snapshot()
+	var save_before := FileAccess.get_file_as_string(CAPTURE_SAVE_PATH)
+	instance.toggle_dialogue_speed()
+	instance.toggle_dialogue_speed()
+	assert(instance.settings["dialogue_speed"] == "instant",
+		"对话显字参考图必须切到整句模式")
+	assert(instance.journey.snapshot() == journey_before and instance.dialogue.snapshot() == dialogue_before,
+		"对话显字偏好不得修改 Journey 或结构化对话位置")
+	assert(FileAccess.get_file_as_string(CAPTURE_SAVE_PATH) == save_before,
+		"对话显字偏好不得改写 save v16")
+	instance.toggle_pause_menu()
+	await _settle()
+	var pause_speed_button: Button = instance.get_node("%PauseDialogueSpeedButton")
+	assert(instance.get_node("%PauseOverlay").visible,
+		"整句模式参考图必须显示暂停设置")
+	assert(
+		pause_speed_button.text == "对话显字：整句"
+		and instance.get_node("%TitleDialogueSpeedButton").text == "对话显字：整句",
+		"标题与暂停必须同步显示整句偏好"
+	)
+	assert(not instance.get_node("%SceneTransition").visible,
+		"整句模式参考图不得残留场景转场")
+	var viewport_rect := Rect2(Vector2.ZERO, Vector2(1152, 648))
+	assert(viewport_rect.encloses(pause_speed_button.get_global_rect()),
+		"整句模式按钮必须完整落在最小窗口内")
+	await _save_frame("01-dialogue-speed-setting.png", true)
+	instance.toggle_pause_menu()
+	instance.toggle_dialogue_speed()
+	await _settle()
+	assert(instance.settings["dialogue_speed"] == "standard",
+		"新增参考图后必须恢复标准对话显字偏好")
 
 
 func _save_frame(filename: String, preserve_patrol: bool = false) -> void:

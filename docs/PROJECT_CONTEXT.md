@@ -141,11 +141,14 @@ Expand the executable RPG graybox into a complete 90-minute original chapter:
 8. mouse, keyboard, and controller parity with physical-event/focus acceptance coverage, including selectable journal pages, proximity investigations, the route-order dialogue, a representative herbs-priority runner worksite reaction (with the full four-variant matrix in E2E), and all three repeatable life-landmark actions (implemented);
 9. original visual direction and opt-in procedural ambience with recorded provenance (reproducible protagonist/companion/ferryman/herbkeeper/ferry-runner, enemy, ground/detail, and 2112×128 Zhaohe landmark atlases; animated map actors; and bright painted-paper dialogue portraits implemented; final art refinement remains);
 10. a third `cangquan_spring` micro-map and the ordered spatial ritual “听泉辨脉 → 月芽温脉 → 静坐引息” (implemented; wrong-order actions reject atomically, every successful step autosaves, and restoration preserves the exact ritual stage and coordinate);
-11. new-game-to-ending-to-save-resume-to-replay automated Godot acceptance path (implemented).
+11. new-game-to-ending-to-save-resume-to-replay automated Godot acceptance path (implemented);
+12. settings-v4 standard/fast/instant dialogue reveal, with title/pause and keyboard/mouse/controller
+    parity, conservative v1–v3 migration, no auto-advance, and no Journey/save-v16 authority
+    (implemented).
 
 The next production milestone is a 15–20 minute asset-backed sample chapter, prioritizing a
-dialogue-speed preference, painted portrait refinement, denser NPC schedules, and longer original
-side-story content before expanding to the full 90-minute target. The ordered implementation and decision boundaries are recorded in
+painted portrait refinement, denser NPC schedules, and longer original side-story content before
+expanding to the full 90-minute target. The ordered implementation and decision boundaries are recorded in
 [Next Production Plan v0.1](design/NEXT_PRODUCTION_PLAN_v0.1.md).
 
 ## Open decisions

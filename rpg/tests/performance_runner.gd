@@ -9,7 +9,7 @@ const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const BUDGET_PATH := "res://tests/performance_budget.json"
 const PERFORMANCE_SAVE_PATH := "user://performance-save.json"
 const PERFORMANCE_SETTINGS_PATH := "user://performance-settings.json"
-const EXPECTED_STATIC_MAIN_SCENE_NODES := 112
+const EXPECTED_STATIC_MAIN_SCENE_NODES := 114
 const DIRECTIONS := [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]
 const COMPLETE_BATTLE_ACTIONS := [
 	"talk_to_companion",
@@ -264,11 +264,35 @@ func _benchmark_scene_lifecycle(budget: Dictionary) -> Dictionary:
 			failures.append("标题底图必须使用固定整数像素滚动世界")
 		if instance.get_node("%WorldRoot").is_ancestor_of(instance.get_node("%ChapterLabel")):
 			failures.append("HUD 不得进入滚动世界节点树")
+		if (
+			instance.get_node("%TitleDialogueSpeedButton").text != "对话显字：标准"
+			or instance.get_node("%PauseDialogueSpeedButton").text != "对话显字：标准"
+		):
+			failures.append("生命周期新场景必须从持久设置的标准对话显字开始")
+		instance.toggle_dialogue_speed()
+		if instance.settings.get("dialogue_speed") != "fast":
+			failures.append("生命周期无法切到快速对话显字")
+		instance.toggle_dialogue_speed()
+		if instance.settings.get("dialogue_speed") != "instant":
+			failures.append("生命周期无法切到整句显示")
 
 		instance.start_new_game()
 		await process_frame
 		await process_frame
 		instance._start_companion_dialogue()
+		if instance.get_node("%DialogueLabel").visible_characters != -1:
+			failures.append("整句显示必须在生命周期中直接显示全文")
+		instance.toggle_dialogue_speed()
+		instance.advance_dialogue()
+		if instance.settings.get("dialogue_speed") != "standard" or instance.get_node("%DialogueLabel").visible_characters != 0:
+			failures.append("整句循环回标准后下一句必须恢复逐字显示")
+		instance._process_dialogue_reveal(0.10)
+		var standard_reveal_count: int = instance.get_node("%DialogueLabel").visible_characters
+		instance.toggle_dialogue_speed()
+		instance._process_dialogue_reveal(0.10)
+		var fast_reveal_count: int = instance.get_node("%DialogueLabel").visible_characters
+		if standard_reveal_count <= 0 or fast_reveal_count <= standard_reveal_count:
+			failures.append("快速对话显字必须在相同固定增量内推进更多文字")
 		instance.skip_dialogue_to_response()
 		await process_frame
 		await process_frame

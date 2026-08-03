@@ -4,6 +4,31 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — Dialogue reveal speed is a presentation preference, not a reading timer
+
+Settings v4 adds the stable `dialogue_speed` enum: `standard`, `fast`, or `instant`. Standard keeps
+the existing 42 Unicode characters-per-second reveal; fast uses 84; instant shows every newly
+rendered line in full. None of the modes auto-advances a line, chooses a response, removes the
+full-line/history/skip controls, or imposes a reading timeout. Switching to instant completes the
+current line; switching back never conceals text already shown. Negative, non-finite, and oversized
+frame deltas cannot advance structured dialogue or overflow the reveal accumulator.
+
+The preference is deliberately independent from battle-feedback speed and reduced motion. It is
+written only through the validated settings store after a complete candidate succeeds; a failed
+candidate leaves the current UI and existing settings file unchanged. V1–v3 settings preserve every
+field valid in their source schema and migrate to standard reveal speed. Current v4 files require a
+valid enum and otherwise fall back as one whole object rather than leaking partially parsed values.
+Promotion first rotates a known-good primary to a short-lived backup; backup failure leaves the
+primary untouched, promotion failure rolls it back, and a missing primary after interruption is
+restored from that validated backup on the next read.
+
+Dialogue ID and line index remain the only resumable dialogue authority. Character-level reveal
+progress is transient: loading an active line starts it according to the current local preference.
+Journey, Patrol, combat, content, rewards, and save v16 are unchanged. Pausing hides rather than
+re-renders the current dialogue presentation, so changing the preference in the pause menu cannot
+rewind already-read text. The paired title/pause controls add two static scene nodes; the measured
+lifecycle boundary is 114 static / 124 peak with zero root leaks.
+
 ### 2026-08-03 — Enemy action animation consumes semantic events without gameplay authority
 
 The four stable enemy profiles now share one original 384×256 RGBA atlas. Every 64×64 profile

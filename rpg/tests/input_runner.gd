@@ -29,6 +29,26 @@ func _run() -> void:
 	_expect(ProjectSettings.get_setting("display/window/size/min_width") == 1152, "最小窗口宽度保持可读基准")
 	_expect(ProjectSettings.get_setting("display/window/size/min_height") == 648, "最小窗口高度保持可读基准")
 	_expect(root.gui_get_focus_owner() == game.get_node("%NewGameButton"), "首次标题焦点落在新游戏")
+	var title_dialogue_speed: Button = game.get_node("%TitleDialogueSpeedButton")
+	_expect(title_dialogue_speed.text == "对话显字：标准", "标题默认显示标准对话显字")
+	title_dialogue_speed.grab_focus()
+	await _trigger_ui_key(KEY_ENTER)
+	_expect(
+		title_dialogue_speed.text == "对话显字：快速"
+		and game.get_node("%PauseDialogueSpeedButton").text == "对话显字：快速",
+		"真实键盘确认同步切换标题与暂停的快速对话显字"
+	)
+	await _trigger_mouse_click(title_dialogue_speed.get_global_rect().get_center())
+	_expect(
+		game.settings["dialogue_speed"] == "instant"
+		and title_dialogue_speed.text == "对话显字：整句",
+		"真实鼠标点击切换到整句显示"
+	)
+	_expect(
+		SettingsStoreScript.read(SETTINGS_PATH)["data"]["dialogue_speed"] == "instant",
+		"键鼠切换整句显示写入独立 settings v4"
+	)
+	game.get_node("%NewGameButton").grab_focus()
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(not game.get_node("%TitleOverlay").visible, "手柄 A 启动新游戏")
 	var input_camera_initial: Dictionary = game.world_camera_contract()
@@ -64,8 +84,42 @@ func _run() -> void:
 	await _trigger_key(KEY_E)
 	_expect(game.dialogue.active and game.get_node("%DialogueOverlay").visible, "键盘 E 开启同伴简报")
 	_expect(game.get_node("%DialoguePortrait").mouse_filter == Control.MOUSE_FILTER_IGNORE, "纸绘头像不截获键盘或手柄对话焦点")
-	game.skip_dialogue_to_response()
+	_expect(
+		game.get_node("%DialogueLabel").visible_characters == -1
+		and game.get_node("%DialogueNextButton").text == "继续",
+		"整句偏好让新台词完整显示但仍等待玩家推进"
+	)
+	await _trigger_key(KEY_E)
+	_expect(game.dialogue.line_index == 1 and game.get_node("%DialogueLabel").visible_characters == -1, "整句模式下真实键盘 E 只推进一行")
+	await _trigger_joy_button(JOY_BUTTON_START)
+	_expect(game.get_node("%PauseOverlay").visible, "活动对话中手柄 Start 打开暂停设置")
 	await _settle()
+	var speed_journey_before: Dictionary = game.journey.snapshot()
+	var speed_dialogue_before: Dictionary = game.dialogue.snapshot()
+	var speed_save_before := FileAccess.get_file_as_string(SAVE_PATH)
+	game.get_node("%PauseDialogueSpeedButton").grab_focus()
+	await _trigger_joy_button(JOY_BUTTON_A)
+	_expect(
+		game.settings["dialogue_speed"] == "standard"
+		and game.get_node("%PauseDialogueSpeedButton").text == "对话显字：标准"
+		and game.get_node("%TitleDialogueSpeedButton").text == "对话显字：标准",
+		"真实手柄 A 从暂停菜单循环回标准对话显字"
+	)
+	_expect(game.journey.snapshot() == speed_journey_before and game.dialogue.snapshot() == speed_dialogue_before, "对话显字设置不取得 Journey 或 Dialogue 权威")
+	_expect(FileAccess.get_file_as_string(SAVE_PATH) == speed_save_before, "对话显字设置只写 settings 而不改动 save v16 字节")
+	game.get_node("%ResumeButton").grab_focus()
+	await _trigger_joy_button(JOY_BUTTON_A)
+	_expect(not game.get_node("%PauseOverlay").visible, "手柄恢复后返回同一活动对话")
+	await _trigger_key(KEY_E)
+	_expect(game.dialogue.line_index == 2 and game.get_node("%DialogueLabel").visible_characters == 0, "标准速度在下一句重新从逐字显示开始")
+	var reveal_line_before: int = game.dialogue.line_index
+	var reveal_save_before := FileAccess.get_file_as_string(SAVE_PATH)
+	await _trigger_mouse_click(game.get_node("%DialogueNextButton").get_global_rect().get_center())
+	_expect(game.dialogue.line_index == reveal_line_before and game.get_node("%DialogueLabel").visible_characters == -1, "真实鼠标第一次点击只显示当前全文")
+	_expect(FileAccess.get_file_as_string(SAVE_PATH) == reveal_save_before, "显示全文属于瞬时表现且不写游戏存档")
+	await _trigger_mouse_click(game.get_node("%DialogueSkipButton").get_global_rect().get_center())
+	await _settle()
+	_expect(game.dialogue.at_choices(game.content["dialogues"]["companion_briefing"]["lines"].size()), "真实鼠标快进只到回应而不代选")
 	_expect(game.get_node("%DialoguePortrait").visual_contract()["portrait_id"] == "protagonist", "手柄回应前显示主角纸绘头像")
 	var response_focus := root.gui_get_focus_owner()
 	_expect(response_focus is Button and response_focus.text == "先看退路，再进山。", "回应选择默认聚焦第一项")
@@ -229,6 +283,9 @@ func _run() -> void:
 	game.get_node("%PauseMotionButton").grab_focus()
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(game.get_node("%PauseMotionButton").text == "动态效果：简化", "手柄 A 切换简化动态")
+	game.get_node("%PauseDialogueSpeedButton").grab_focus()
+	await _trigger_joy_button(JOY_BUTTON_A)
+	_expect(game.get_node("%PauseDialogueSpeedButton").text == "对话显字：快速", "手柄 A 在常规暂停中切换快速对话显字")
 	game.get_node("%PauseTextScaleButton").grab_focus()
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(game.get_node("%PauseTextScaleButton").text == "文字大小：大字", "手柄 A 切换大字模式")
@@ -342,6 +399,7 @@ func _run() -> void:
 	_expect(game.get_node("%BattleEnemySprite").presentation_contract()["state"] == "react", "真实方向与确认输入触发同一敌人受击语义")
 	game.return_to_title()
 	await _settle()
+	_expect(game.get_node("%TitleDialogueSpeedButton").text == "对话显字：快速", "返回标题保留快速对话显字偏好")
 	var battle_save_text := FileAccess.get_file_as_string(SAVE_PATH)
 	game.get_node("%NewGameButton").grab_focus()
 	await _trigger_joy_button(JOY_BUTTON_A)
@@ -357,6 +415,7 @@ func _run() -> void:
 	_expect(root.gui_get_focus_owner() == game.get_node("%NewGameButton"), "方向动作可从取消移到确认重新开始")
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(not game.get_node("%TitleOverlay").visible and game.journey.phase_id() == "riverbank", "手柄二次确认建立新旅程")
+	_expect(game.settings["dialogue_speed"] == "fast", "明确新开旅程不会清除本机对话显字偏好")
 
 	game.get_node("%AudioManager").set_audio_enabled(false)
 	game.queue_free()
@@ -379,6 +438,11 @@ func _run() -> void:
 	game.configure_settings_path(SETTINGS_PATH)
 	root.add_child(game)
 	await _settle()
+	_expect(
+		game.settings["dialogue_speed"] == "fast"
+		and game.get_node("%TitleDialogueSpeedButton").text == "对话显字：快速",
+		"新场景在继续游戏前恢复独立对话显字偏好"
+	)
 	_expect(game.continue_game(), "输入验收从标题恢复藏泉石室")
 	game.get_node("%SceneTransition").finish()
 	await _settle()
