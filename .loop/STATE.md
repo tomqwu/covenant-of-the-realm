@@ -5,29 +5,34 @@
 - Repository: `/Users/tomwu/Projects/covenant-of-the-realm`
 - Branch: `codex/rpg-foundation`
 - Draft PR: <https://github.com/tomqwu/covenant-of-the-realm/pull/7>
-- Current clean base is pushed head `4fd9d14da391fa76a9dcd5b0c78d936ca7815629`; the package-
-  provenance candidate is reviewed and ready to commit. The last confirmed remote `main` remains
+- Schema-v2 head `0b863a6b3f5ad1e5368d866d79c3e5c70b60e841` is pushed. Actions run
+  `30861429246` is green across MUD, multiplayer, RPG, and Journey, but its Linux PCK supplied the
+  evidence that triggered the current clean-cache correction. The last confirmed remote `main` remains
   `7256ade54792ff481ffc30517ca2c693f78be198` and must not be merged without authorization.
 - Manifest schema v2 records normalized `build_os` / `build_architecture`, keeps exact schema-v1
   verification, and rejects partial, unknown, noncanonical, wrong-type, future-schema, and unexpected
   fields. It records build provenance, not a selected native release target.
-- Final local `make check` passes: 152 Python tests at 100% statement/branch coverage (600 statements /
+- The schema-v2 base passed local `make check`: 152 Python tests at 100% statement/branch coverage (600 statements /
   306 branches), 21 Evennia integration tests plus the real two-client journey, 2,716 Godot rule/scene
   assertions, 330 chapter E2E checks, 169 physical-input checks, 122 browser unit tests at 100%, 53
   Playwright executions, badges, and reproducible browser output.
-- Godot lifecycle passes in `886.56` ms for 20 complete 13-state cycles, one dialogue reveal probe,
+- Its Godot lifecycle passed in `886.56` ms for 20 complete 13-state cycles, one dialogue reveal probe,
   four settings writes, 114 static / 124 peak nodes, and zero root leaks.
-- The real `macos/arm64` package gate double-exports an identical 697,160-byte PCK at SHA-256
-  `2f1c122199227f9c9a02537a4b9311c44f8ed03285c8b87267c995b6e45cf5a5`, verifies both manifests,
-  requires 22 runtime resources, excludes nine development resources, and boots headlessly. Existing
-  Linux evidence is the same size at SHA-256
-  `1b8a4a14b9e72fb5352711bda70794203627b476221abdc789f31da38c605713`; schema-v2 hosted evidence
-  awaits the candidate push.
+- Three equal-source Linux runs and independent local worktrees proved that the old 697,160-byte PCK
+  changed across empty import caches even though sequential exports sharing one cache matched. Entry
+  comparison isolated all drift to Godot's generated binary `main.scn`; the other 60 entries matched.
+- The uncommitted correction sets `editor/export/convert_text_resources_to_binary=false` and extends
+  the package gate to two normal exports plus two independent empty-cache project copies. All four
+  local macOS/arm64 PCKs match at 709,100 bytes and SHA-256
+  `e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`; strict manifests, 22/9
+  content probing, and headless boot pass. `make check` is green with the same 152 / 600 / 306 Python
+  coverage and one `967.67` ms Godot lifecycle sample; hosted equal-source confirmation remains pending.
 
 ## Next action
 
-Commit and push the reviewed candidate, monitor all Draft PR #7 checks, refresh the ignored package
-from the resulting clean head, update the PR body and closeout state, and keep `main` unchanged.
+Commit and push the locally green clean-cache correction, then compare its Linux package with a
+second docs-only hosted run at the same RPG tree. Refresh the ignored clean package, update the PR
+body and closeout state, and keep `main` unchanged.
 
 ## Blockers
 

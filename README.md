@@ -22,7 +22,7 @@ make setup-rpg
 make play-rpg
 ```
 
-To build and launch the same reproducible resource pack used by the package gate:
+To build and launch a local resource pack through the same export path used by the package gate:
 
 ```sh
 make play-rpg-package
@@ -73,7 +73,7 @@ make test-rpg                # Godot domain and scene tests
 make test-rpg-e2e            # complete Godot new-game → ending → resume → replay path
 make test-rpg-input          # keyboard/controller events, focus, movement, interact, pause
 make test-rpg-performance    # movement/combat throughput and scene-lifecycle leak budget
-make check-rpg-package       # reproducible PCK/manifest, content probe, SHA-256, and boot smoke
+make check-rpg-package       # warm/fresh PCK identity, manifest, content probe, and boot smoke
 make rpg-content-check       # original story-graph integrity
 make test                    # rules, Evennia integration, real two-client E2E
 make lint                    # Ruff and documentation integrity
@@ -84,11 +84,13 @@ make test-multiplayer-e2e    # live server + real two-client journey only
 The repository pytest gate passes 152 tests at 100% statement and branch coverage (600 statements /
 306 branches). Godot behavior is covered by 2,716 headless rule/scene assertions plus an independent
 330-check chapter E2E and 169-check physical-input/focus path. Eight committed pixel atlases are
-regenerated twice and must match the Git index byte for byte. With pinned Godot 4.7.1, the
-697,160-byte PCK is reproducible within each build host: macOS SHA-256 is
-`2f1c122199227f9c9a02537a4b9311c44f8ed03285c8b87267c995b6e45cf5a5`, while Linux CI run
-`30859844869` produces `1b8a4a14b9e72fb5352711bda70794203627b476221abdc789f31da38c605713`.
-Its probe requires 22 runtime resources and excludes nine development resources; two consecutive
+regenerated twice and must match the Git index byte for byte. With pinned Godot 4.7.1 and export-time
+text-to-binary scene conversion disabled, the package gate compares two normal exports plus exports
+from two independent clean import caches. All four local macOS/arm64 PCKs are 709,100 bytes at
+SHA-256 `e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`.
+The normalized build tuple is provenance rather than a canonical-hash key; hosted and cross-OS
+identity are reported only from controlled equal-source evidence. The probe requires 22 runtime
+resources and excludes nine development resources; two consecutive
 41-PNG capture runs produce aggregate SHA-256
 `6e1c0f5b3bca174f25726bfec6de61c86bb9962e57641ca29de90717dc68f4b7`.
 The MUD adapter has

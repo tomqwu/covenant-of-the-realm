@@ -106,15 +106,30 @@ def test_make_target_uses_checked_godot_gate(target: str) -> None:
 def test_package_scripts_use_checked_godot_gate() -> None:
     package_script = (REPO_ROOT / "scripts" / "package_rpg").read_text(encoding="utf-8")
     check_script = (REPO_ROOT / "scripts" / "check_rpg_package").read_text(encoding="utf-8")
+    project_settings = (REPO_ROOT / "rpg" / "project.godot").read_text(encoding="utf-8")
 
     assert package_script.count('"$repo_root/scripts/godot_checked"') == 1
-    assert check_script.count('"$repo_root/scripts/godot_checked"') == 2
+    assert check_script.count('"$repo_root/scripts/godot_checked"') == 4
     assert package_script.count("scripts/rpg_package_manifest.py") == 1
     assert "--source-revision" in package_script
     assert "--source-tree-state" in package_script
     assert check_script.count('"$repo_root/scripts/package_rpg"') == 2
+    assert "command -v rsync" in check_script
+    assert check_script.count("rsync -a --exclude '.godot/'") == 2
+    assert check_script.count('--export-pack "Playable Pack"') == 2
+    assert (
+        '--path "$fresh_first_project" \\\n  --export-pack "Playable Pack" "$fresh_first_pack"'
+        in check_script
+    )
+    assert (
+        '--path "$fresh_second_project" \\\n  --export-pack "Playable Pack" "$fresh_second_pack"'
+        in check_script
+    )
     assert 'cmp "$first_pack" "$second_pack"' in check_script
+    assert 'cmp "$first_pack" "$fresh_first_pack"' in check_script
+    assert 'cmp "$fresh_first_pack" "$fresh_second_pack"' in check_script
     assert 'cmp "$first_manifest" "$second_manifest"' in check_script
     assert "scripts/rpg_package_manifest.py" in check_script
     assert "--verify" in check_script
     assert 'data["build_os"] + "/" + data["build_architecture"]' in check_script
+    assert "export/convert_text_resources_to_binary=false" in project_settings

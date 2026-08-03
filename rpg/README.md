@@ -27,17 +27,17 @@ nearest Git revision, clean/dirty source state, normalized `build_os` / `build_a
 required runtime resources, and excluded development resources. Schema v2 writes only `macos` or
 `linux` plus `arm64` or `x86_64`, omits host names, OS versions, paths, and timestamps, and still
 verifies exact legacy schema-v1 manifests. `make play-rpg-package` launches that pack with the pinned
-Godot entrypoint. The package
-gate exports the PCK and manifest twice, requires byte-identical results, verifies the manifest,
-probes the packed namespace for 22 runtime resources and nine excluded `tests/`/`tools/` files,
-then boots the pack headlessly. Reproducibility is currently host-scoped: both exports on one build
-host using pinned Godot 4.7.1 must be byte-identical, but imported pack bytes are not claimed
-identical across build operating systems. The current 697,160-byte macOS pack has SHA-256
-`2f1c122199227f9c9a02537a4b9311c44f8ed03285c8b87267c995b6e45cf5a5`; Linux CI run
-`30859844869` independently exports the same size twice with SHA-256
-`1b8a4a14b9e72fb5352711bda70794203627b476221abdc789f31da38c605713`.
-A native `.app`/`.exe` is intentionally deferred until platform export templates,
-signing identity, product icon, and distribution target are confirmed.
+Godot entrypoint. Godot's default export-time TSCN→SCN repack assigned fresh internal node IDs on
+each empty import cache, so sequential exports sharing one cache were stable while equal-source clean
+checkouts were not. The project now keeps text scenes as source text during export. The gate compares
+two normal exports with two independent project copies that each build an empty `.godot` cache, then
+verifies the manifest, probes 22 required and nine excluded `tests/`/`tools/` resources, and boots the
+pack headlessly. All four current local macOS/arm64 PCKs are 709,100 bytes at SHA-256
+`e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`. Build tuples remain coarse,
+privacy-preserving provenance; hosted or cross-OS equality requires equal-source evidence and is not
+inferred from the tuple alone.
+A native `.app`/`.exe` is intentionally deferred until the owner selects the first platform and public
+license, then confirms export templates, signing identity, product icon, and distribution target.
 
 The development window has a 1152×648 minimum because that is the validated readable layout.
 Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, battle confirmation,

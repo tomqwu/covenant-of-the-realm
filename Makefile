@@ -23,10 +23,10 @@ play: ## Start the multiplayer server on loopback ports 4000-4002
 play-rpg: ## Open the original single-player RPG graybox
 	@./scripts/godot --path rpg
 
-package-rpg: rpg-import-assets ## Export a reproducible Godot pack and SHA-256 manifest into ignored build/rpg
+package-rpg: rpg-import-assets ## Export a local Godot pack and SHA-256 provenance manifest into ignored build/rpg
 	@./scripts/package_rpg
 
-play-rpg-package: package-rpg ## Build and launch the same resource pack validated by CI
+play-rpg-package: package-rpg ## Build and launch a local pack through the validated export path
 	@./scripts/godot --main-pack build/rpg/covenant-of-the-realm.pck
 
 capture-rpg-ui: ## Rebuild the RPG scale test and UI reference screenshots
@@ -73,7 +73,7 @@ test-rpg-input: rpg-import-assets ## Exercise real semantic input events, focus 
 test-rpg-performance: rpg-import-assets ## Benchmark deterministic movement, battle resolution, and scene cleanup
 	@./scripts/godot_checked --headless --disable-render-loop --fixed-fps 60 --path rpg --script res://tests/performance_runner.gd
 
-check-rpg-package: ## Export the Godot pack twice, compare bytes, and boot it headlessly
+check-rpg-package: ## Compare warm and clean-cache PCK exports, then probe and boot the pack
 	@./scripts/check_rpg_package
 
 test-integration: ## Run isolated Evennia command and world-construction tests

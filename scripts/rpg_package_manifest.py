@@ -1,4 +1,4 @@
-"""Create and verify a deterministic manifest for the Godot resource pack."""
+"""Create and verify a canonical provenance manifest for the Godot resource pack."""
 
 from __future__ import annotations
 
@@ -248,7 +248,7 @@ def main() -> None:
     print(
         "RPG package manifest written: "
         f"{manifest['size_bytes']} bytes, sha256 {manifest['sha256']}, "
-        f"build host {manifest['build_os']}/{manifest['build_architecture']}."
+        f"build tuple {manifest['build_os']}/{manifest['build_architecture']}."
     )
 
 

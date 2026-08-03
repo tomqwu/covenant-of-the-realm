@@ -1,16 +1,20 @@
 # Loop Plan
 
-## Current loop — host-scoped playable-pack provenance
+## Current loop — clean-cache playable-pack provenance
 
 - [x] Turn the observed macOS/Linux PCK byte difference into an explicit tested manifest contract;
-  retain same-host double-export identity, content probing, and boot smoke.
+  record the coarse build tuple without treating it as a canonical-hash key.
 - [x] Version the ignored package manifest with normalized build OS and architecture fields while
   keeping source revision/state, Godot version, preset, resource allowlist, and exclusions strict.
 - [x] Extend positive and malformed manifest tests plus package script coverage without checking a
   generated PCK or local machine state into Git.
-- [x] Re-run package, RPG, and repository gates; update decisions and handoff evidence with exact
-  platform-scoped hashes.
-- [ ] Review, commit, push, and monitor Draft PR #7 without merging it.
+- [x] Prove the former same-cache gate missed fresh-import drift, isolate it to the generated
+  `main.scn`, and record equal-source Linux and local worktree evidence.
+- [x] Keep authored text scenes textual during export and compare two normal plus two independent
+  clean-cache PCKs while retaining manifest verification, content probing, and boot smoke.
+- [x] Re-run RPG and repository gates; review and prepare the clean-cache fix for commit.
+- [ ] Push and compare two independent hosted runs at the same RPG tree before closing Draft PR #7;
+  do not merge it.
 
 ## Recently completed
 
@@ -36,5 +40,5 @@
 ## Blocked production boundary
 
 Native `.app`/`.exe` packaging waits for the owner to select the first platform, export templates,
-signing approach, icon, license, and distribution target. The reproducible PCK remains the daily
-playable-package gate until that decision is made.
+signing approach, icon, license, and distribution target. The clean-cache PCK identity/content/boot
+gate remains the daily playable-package boundary until that decision is made.

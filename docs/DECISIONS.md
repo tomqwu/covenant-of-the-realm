@@ -4,23 +4,34 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
-### 2026-08-03 — PCK reproducibility is scoped to a recorded build host, not a release target
+### 2026-08-03 — Text scenes stay textual after local clean-cache identity proof
 
-Godot 4.7.1 exports the current PCK to the same 697,160-byte size on the local macOS host and Linux
-CI, but the byte hashes differ: `2f1c122199227f9c9a02537a4b9311c44f8ed03285c8b87267c995b6e45cf5a5`
-for `macos/arm64` and `1b8a4a14b9e72fb5352711bda70794203627b476221abdc789f31da38c605713`
-for `linux/x86_64`. The reproducibility gate therefore means two exports on the same build host must
-match byte for byte; it does not claim that imported Godot pack bytes match across operating systems.
-Both platform results still pass the same 22-required / nine-excluded resource probe and headless boot.
+The former same-cache double-export gate hid a Godot 4.7.1 clean-import instability. Equal packaged RPG
+inputs on three Linux CI runs produced the same 697,160-byte size but different hashes, while each run's
+two sequential exports matched. Two independent local worktrees reproduced the drift. A PCK entry-level
+comparison found 60 identical entries and one changing generated entry:
+`.godot/exported/133200997/export-…-main.scn`. Godot's export conversion instantiates and repacks the
+text scene, assigning fresh internal node identities when no export cache exists. This mechanism is
+visible in Godot 4.7.1's [export pipeline](https://github.com/godotengine/godot/blob/a13da4feb8d8aefc283c3763d33a2f170a18d541/editor/export/editor_export_platform.cpp#L1020-L1095),
+[`PackedScene` packing](https://github.com/godotengine/godot/blob/a13da4feb8d8aefc283c3763d33a2f170a18d541/scene/resources/packed_scene.cpp#L1099-L1123),
+and [random resource-ID creation](https://github.com/godotengine/godot/blob/a13da4feb8d8aefc283c3763d33a2f170a18d541/core/io/resource_uid.cpp#L113-L130).
+
+The project therefore sets `editor/export/convert_text_resources_to_binary=false`. Runtime still loads
+the authored `main.tscn`, and the package no longer depends on a generated binary-scene identity. The
+package gate now compares four outputs: two normal exports and two exports from independent project
+copies with empty `.godot` caches. All four local macOS/arm64 outputs are 709,100 bytes at SHA-256
+`e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`; the 22-required /
+nine-excluded resource probe and headless boot still pass. Keeping the scene textual costs 11,940
+bytes (1.71%) in the current pack. Hosted and cross-OS equality are recorded only after controlled
+equal-source evidence rather than inferred from an OS/architecture tuple.
 
 Manifest schema v2 records normalized `build_os` (`macos` or `linux`) and `build_architecture`
 (`arm64` or `x86_64`) beside the existing source, engine, preset, resource, size, and hash fields.
-Generation derives these values from Python's build host and fails closed on empty, partial, unknown,
-or non-string values. Verification accepts an exact legacy schema-v1 artifact, rejects future schema
-versions and unexpected fields, and validates a v2 artifact from its recorded tuple rather than the
-machine performing later offline verification. Host names, runner IDs, OS/kernel versions, CPU models,
-user paths, timestamps, and environment variables are deliberately absent so provenance stays stable
-and does not leak local state.
+Generation derives these values from Python's build environment and fails closed on empty, partial,
+unknown, non-string, noncanonical, or wrong-type values. Verification accepts an exact legacy
+schema-v1 artifact and rejects future schemas or unexpected fields. Host names, runner IDs, OS/kernel
+versions, CPU models, user paths, timestamps, and environment variables remain absent, so the tuple is
+coarse privacy-preserving provenance rather than a machine identity or canonical-hash key.
 
 These fields describe where a PCK was built, not the executable ABI or a selected release platform.
 Native preset, templates, signing, notarization, icon, license, and distribution decisions remain at
@@ -250,7 +261,8 @@ The mountain return coordinate previously sat over a water tile even though the 
 domain allowed it. A fixed 5×5 stone bridge now covers that authored gate approach while preserving
 the stable coordinate and old saves; all path spawn and interaction anchors are tested against
 non-water ground. The scene remains 110 static nodes with a 120-node peak and zero leaks. Two
-34-PNG capture passes are byte-identical, and the reproducible package is 559,676 bytes with
+34-PNG capture passes are byte-identical, and that gate invocation produced two matching 559,676-byte
+packages with
 SHA-256 `482485ac5610f7d9157461b4d178fcac0712a23674980e131d6a2a9bfd3d4f1d` and 15 explicit
 runtime-resource probes.
 
@@ -293,8 +305,8 @@ The detail TileSet deliberately owns zero physics and navigation layers and expo
 `collision_authority: false`; normalized ExplorationState obstacles, interaction radii, saves, and
 story rules remain authoritative. The redundant full-screen background node was replaced rather
 than increasing the scene tree, preserving 110 static nodes and the existing 120-node immediate
-and stable peak. The generator, atlas row order, exact cell layouts, package resources, double PCK
-export, and two consecutive 32-image capture sets are all deterministic quality gates.
+and stable peak. The generator, atlas row order, exact cell layouts, package resources, same-cache PCK
+comparison, and two consecutive 32-image capture sets were deterministic quality gates at that stage.
 
 ### 2026-08-02 — Three studied spoors reveal timing without changing combat truth
 
@@ -649,18 +661,20 @@ Modal UI has an explicit rendering hierarchy: dialogue above map actors, title a
 and pause above title. This prevents actor sprites and combat feedback from crossing paper panels
 or blocking menu labels as new presentation nodes are added.
 
-### 2026-08-01 — Reproducible PCK as the overnight delivery boundary
+### 2026-08-01 — Verified PCK as the overnight delivery boundary
 
-The overnight slice exports a cross-platform Godot resource pack and validates it by two
-byte-identical builds plus a headless main-scene boot. Every build now also emits a deterministic
-JSON manifest containing the exact size, SHA-256, engine and preset, nearest Git revision,
-clean/dirty source state, runtime-resource probes, and development-resource exclusions. The package
-gate compares two manifests, recalculates their artifact fields, opens the PCK as the active
-`res://` namespace, currently requires 22 production resources, and rejects nine representative files
-under the excluded `tests/` and `tools/` trees before booting the main scene. Generated `.gd.uid` files are committed as
-intentional Godot resource identity metadata; the `.pck` itself stays under ignored `build/`.
-Native macOS, Windows, or Linux executables wait for a confirmed distribution target, official
-export templates, product icon, signing identity, and platform smoke tests. Local players can
+The overnight slice exports a cross-platform Godot resource pack and validates it through byte
+comparisons plus a headless main-scene boot. Every build emits a canonical provenance manifest with
+the exact size, SHA-256, engine and preset, nearest Git revision, clean/dirty source state,
+runtime-resource probes, and development-resource exclusions. The current package gate compares two
+normal outputs with two independent empty-cache project copies, compares both normal manifests,
+recalculates their artifact fields, opens the PCK as the active `res://` namespace, requires 22
+production resources, and rejects nine representative files under the excluded `tests/` and `tools/`
+trees before booting the main scene. Generated `.gd.uid` files are committed as intentional Godot
+resource identity metadata; the `.pck` and export caches stay under ignored `build/` / `.godot/`.
+Native macOS, Windows, or Linux executables wait for an owner-selected first platform and public
+license, a confirmed distribution target, official export templates, product icon, signing identity,
+and platform smoke tests. Local players can
 build and launch the validated pack with `make play-rpg-package` using the pinned engine entrypoint.
 
 ### 2026-08-01 — Visible two-turn tactical deployable

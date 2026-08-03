@@ -19,6 +19,11 @@ window/size/min_width=1152
 window/size/min_height=648
 window/stretch/mode="canvas_items"
 
+[editor]
+
+; Binary scene repacking assigns fresh node identities on empty import caches.
+export/convert_text_resources_to_binary=false
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
