@@ -81,11 +81,11 @@ make check                   # RPG, MUD, and preserved PWA gates
 make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
-The repository pytest gate passes 136 tests at 100% statement and branch coverage (561 statements /
-286 branches). Godot behavior is covered by 2,716 headless rule/scene assertions plus an independent
+The repository pytest gate passes 152 tests at 100% statement and branch coverage (600 statements /
+306 branches). Godot behavior is covered by 2,716 headless rule/scene assertions plus an independent
 330-check chapter E2E and 169-check physical-input/focus path. Eight committed pixel atlases are
-regenerated twice and must match the Git index byte for byte. The 697,160-byte PCK is reproducible
-within each pinned build host: macOS SHA-256 is
+regenerated twice and must match the Git index byte for byte. With pinned Godot 4.7.1, the
+697,160-byte PCK is reproducible within each build host: macOS SHA-256 is
 `2f1c122199227f9c9a02537a4b9311c44f8ed03285c8b87267c995b6e45cf5a5`, while Linux CI run
 `30859844869` produces `1b8a4a14b9e72fb5352711bda70794203627b476221abdc789f31da38c605713`.
 Its probe requires 22 runtime resources and excludes nine development resources; two consecutive

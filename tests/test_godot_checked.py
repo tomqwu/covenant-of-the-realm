@@ -109,3 +109,12 @@ def test_package_scripts_use_checked_godot_gate() -> None:
 
     assert package_script.count('"$repo_root/scripts/godot_checked"') == 1
     assert check_script.count('"$repo_root/scripts/godot_checked"') == 2
+    assert package_script.count("scripts/rpg_package_manifest.py") == 1
+    assert "--source-revision" in package_script
+    assert "--source-tree-state" in package_script
+    assert check_script.count('"$repo_root/scripts/package_rpg"') == 2
+    assert 'cmp "$first_pack" "$second_pack"' in check_script
+    assert 'cmp "$first_manifest" "$second_manifest"' in check_script
+    assert "scripts/rpg_package_manifest.py" in check_script
+    assert "--verify" in check_script
+    assert 'data["build_os"] + "/" + data["build_architecture"]' in check_script

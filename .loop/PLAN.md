@@ -2,13 +2,13 @@
 
 ## Current loop — host-scoped playable-pack provenance
 
-- [ ] Turn the observed macOS/Linux PCK byte difference into an explicit tested manifest contract;
+- [x] Turn the observed macOS/Linux PCK byte difference into an explicit tested manifest contract;
   retain same-host double-export identity, content probing, and boot smoke.
-- [ ] Version the ignored package manifest with normalized build OS and architecture fields while
+- [x] Version the ignored package manifest with normalized build OS and architecture fields while
   keeping source revision/state, Godot version, preset, resource allowlist, and exclusions strict.
-- [ ] Extend positive and malformed manifest tests plus package script coverage without checking a
+- [x] Extend positive and malformed manifest tests plus package script coverage without checking a
   generated PCK or local machine state into Git.
-- [ ] Re-run package, RPG, and repository gates; update decisions and handoff evidence with exact
+- [x] Re-run package, RPG, and repository gates; update decisions and handoff evidence with exact
   platform-scoped hashes.
 - [ ] Review, commit, push, and monitor Draft PR #7 without merging it.
 

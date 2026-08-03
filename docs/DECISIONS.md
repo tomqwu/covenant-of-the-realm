@@ -4,6 +4,28 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — PCK reproducibility is scoped to a recorded build host, not a release target
+
+Godot 4.7.1 exports the current PCK to the same 697,160-byte size on the local macOS host and Linux
+CI, but the byte hashes differ: `2f1c122199227f9c9a02537a4b9311c44f8ed03285c8b87267c995b6e45cf5a5`
+for `macos/arm64` and `1b8a4a14b9e72fb5352711bda70794203627b476221abdc789f31da38c605713`
+for `linux/x86_64`. The reproducibility gate therefore means two exports on the same build host must
+match byte for byte; it does not claim that imported Godot pack bytes match across operating systems.
+Both platform results still pass the same 22-required / nine-excluded resource probe and headless boot.
+
+Manifest schema v2 records normalized `build_os` (`macos` or `linux`) and `build_architecture`
+(`arm64` or `x86_64`) beside the existing source, engine, preset, resource, size, and hash fields.
+Generation derives these values from Python's build host and fails closed on empty, partial, unknown,
+or non-string values. Verification accepts an exact legacy schema-v1 artifact, rejects future schema
+versions and unexpected fields, and validates a v2 artifact from its recorded tuple rather than the
+machine performing later offline verification. Host names, runner IDs, OS/kernel versions, CPU models,
+user paths, timestamps, and environment variables are deliberately absent so provenance stays stable
+and does not leak local state.
+
+These fields describe where a PCK was built, not the executable ABI or a selected release platform.
+Native preset, templates, signing, notarization, icon, license, and distribution decisions remain at
+the existing owner boundary.
+
 ### 2026-08-03 — Painted-paper portrait v2 is deterministic presentation, not a second character model
 
 The exact stable order remains `protagonist`, `yanqing`, `liangshu`, `huishen`, `tao_xiaoman`,
@@ -634,7 +656,7 @@ byte-identical builds plus a headless main-scene boot. Every build now also emit
 JSON manifest containing the exact size, SHA-256, engine and preset, nearest Git revision,
 clean/dirty source state, runtime-resource probes, and development-resource exclusions. The package
 gate compares two manifests, recalculates their artifact fields, opens the PCK as the active
-`res://` namespace, currently requires seven production resources, and rejects nine representative files
+`res://` namespace, currently requires 22 production resources, and rejects nine representative files
 under the excluded `tests/` and `tools/` trees before booting the main scene. Generated `.gd.uid` files are committed as
 intentional Godot resource identity metadata; the `.pck` itself stays under ignored `build/`.
 Native macOS, Windows, or Linux executables wait for a confirmed distribution target, official
