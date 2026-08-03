@@ -15,7 +15,7 @@
   13-state, dialogue-save, node, map/camera, or zero-leak workload.
 - [x] Re-exercise the normal one-sample, deliberate two-sample, and prior-failure/no-confirmation
   paths with explicit probe-cycle and settings-write evidence; restore both temporary budgets.
-- [ ] Run both complete gates, review the verified diff, commit, push, and monitor Draft PR #7
+- [x] Run both complete gates, review the verified diff, commit, push, and monitor Draft PR #7
   without merging it.
 
 ## Recently completed

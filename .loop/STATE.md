@@ -5,9 +5,10 @@
 - Repository: `/Users/tomwu/Projects/covenant-of-the-realm`
 - Branch: `codex/rpg-foundation`
 - Draft PR: <https://github.com/tomqwu/covenant-of-the-realm/pull/7>
-- Current clean head: `9c271dc09a156b8f3a1efb06176c030651521565` (`fix(ci): confirm clean
-  lifecycle overages`). It preserves the 20-cycle, 7-second, 114-static, 124-peak, map/camera, and
-  zero-leak contracts and gives only an otherwise-clean timing overage one complete confirmation.
+- Green implementation head: `f9841f08923fd4162dfbab4977f04a3133d85de8` (`fix(ci): isolate
+  lifecycle persistence probe`). It preserves the 20-cycle, 7-second, 114-static, 124-peak,
+  map/camera, and zero-leak contracts and gives only an otherwise-clean timing overage one complete
+  confirmation.
 - The docs-only closeout run
   [30854940370](https://github.com/tomqwu/covenant-of-the-realm/actions/runs/30854940370) passed MUD,
   Multiplayer E2E, and Journey quality but reported one RPG lifecycle timing failure: 7,210.19 ms
@@ -20,7 +21,7 @@
   two clean but slow lifecycle samples (`7,812.553` and `7,563.640` ms), 40 total cycles, 114/124
   nodes, and zero leaks. Pure workloads on the same host were also 25–35% slower than recent green
   hosts, confirming shared-VM slowdown rather than a structural failure.
-- The pending workload refinement keeps all 20 cycles and all 13 states, including dialogue start,
+- The workload refinement keeps all 20 cycles and all 13 states, including dialogue start,
   line completion/advance, autosave, response save, patrol, worksite dialogue, battle, journal,
   spring ritual, completion, map/camera checks, and cleanup. Each complete sample's first cycle runs
   the full reveal profile with four real settings writes; cycles 2–20 no longer multiply settings
@@ -49,11 +50,20 @@
 - Repository-wide `make check` passes with another `1,065.80` ms lifecycle sample, 136 Python tests
   at 100% statement/branch coverage, the real two-client MUD journey, all Godot gates, 122 browser
   unit tests at 100% coverage, 53 Playwright executions, badges, and a reproducible browser build.
+- GitHub Actions run
+  [30857633042](https://github.com/tomqwu/covenant-of-the-realm/actions/runs/30857633042) is green
+  across MUD quality, Multiplayer E2E, Journey prototype, and RPG quality. Its slower Linux host
+  passes the lifecycle gate in one `5,878.46` ms sample with 20 cycles, one probe, four verified
+  settings writes, 114 static / 124 peak nodes, and zero leaks.
+- The ignored local playable package was refreshed from clean implementation head `f9841f0`:
+  681,960-byte PCK, SHA-256
+  `7fbbf9d9d6c634cc7643fc0b9c7b54539e9af5e55bf97ce6f3a114d230aee888`, 22 required resources,
+  nine development resources excluded, and `source_tree_state: clean`.
 
 ## Next action
 
-Review the complete diff, then commit, push, and monitor Draft PR #7. After the hosted run is green,
-refresh the ignored playable package from the clean revision and resume the painted-paper portrait
+Commit and push this docs-only closeout, verify its hosted run stays green, refresh the ignored
+playable package from the resulting clean revision, then resume the painted-paper portrait
 refinement loop.
 
 ## Blockers
