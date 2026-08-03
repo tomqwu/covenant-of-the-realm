@@ -15,7 +15,7 @@
 - [x] Cover settings migration and failed writes, fixed-step and oversized-delta reveal, manual full
   line/history/skip semantics, mouse/keyboard/controller input, active-dialogue resume, new/replay,
   lifecycle budgets, readable deterministic captures, reproducible package contents, and boot behavior.
-- [ ] Run the repository-wide `make check`, review the complete diff, update durable decisions and
+- [x] Run the repository-wide `make check`, review the complete diff, update durable decisions and
   exact metrics, commit, push, and monitor Draft PR #7 without merging it.
 
 ## Recently completed

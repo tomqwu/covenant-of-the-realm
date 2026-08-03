@@ -5,7 +5,8 @@
 - Repository: `/Users/tomwu/Projects/covenant-of-the-realm`
 - Branch: `codex/rpg-foundation`
 - Draft PR: <https://github.com/tomqwu/covenant-of-the-realm/pull/7>
-- Previous loop head: `78f8843 docs(loop): close ferry worksite cycle`.
+- Feature commit: `d3eb9513d682e5271413efe86d2e516d7e8115f5` (`feat(rpg): add accessible
+  dialogue reveal`).
 - The implemented loop adds independent settings v4 `dialogue_speed`: standard 42 characters/s,
   fast 84 characters/s, or instant full-line display. Instant never auto-advances or selects a
   response; changing back to gradual reveal never conceals already-read text.
@@ -22,7 +23,12 @@
   complete at 1152×648.
 - Reproducible PCK: 681,960 bytes; SHA-256
   `7fbbf9d9d6c634cc7643fc0b9c7b54539e9af5e55bf97ce6f3a114d230aee888`; 22 required runtime resources,
-  nine excluded development resources, manifest verification and packaged boot pass.
+  nine excluded development resources, manifest verification and packaged boot pass. The ignored
+  local playable package records the clean feature revision above.
+- GitHub Actions run
+  [30854348421](https://github.com/tomqwu/covenant-of-the-realm/actions/runs/30854348421) passed
+  all four jobs for the feature commit: MUD quality, Multiplayer E2E, Journey prototype, and RPG
+  quality. Draft PR #7 remains open and unmerged; remote `main` remains `7256ade`.
 
 ## Verified this loop
 
@@ -46,9 +52,10 @@
 
 ## Next action
 
-Commit and push this feature, monitor Draft PR #7, then refresh the ignored playable package from
-the committed revision. The next unblocked product loop is painted-paper portrait refinement and a
-denser original NPC schedule.
+Begin the next unblocked product loop with a bounded painted-paper portrait refinement and denser
+original NPC schedule while keeping presentation out of Journey, Patrol, Dialogue, and save
+authority. Refresh the ignored playable package from the clean closeout revision after this state
+snapshot is committed.
 
 ## Blockers
 
