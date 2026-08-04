@@ -58,13 +58,14 @@ replay, or any non-battle phase hides the node and clears its ID. It never enter
 Journey, save v17, content, damage, round timing, or input. Boss arrival no longer starts a same-phase
 full-screen transition, so the cue cannot be hidden and the next focused action remains available.
 
-The current local contract is covered by 3,202 Godot unit/scene assertions, 360 chapter E2E checks,
+The current contract is covered by 3,202 Godot unit/scene assertions, 360 chapter E2E checks,
 192 physical-input checks, a 117-node static scene and 127-node peak, a 25-required / nine-excluded
 package boundary, and the 43-capture aggregate
 `80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
-Four local macOS/arm64 exports, including two fresh-cache copies, match at 824,432 bytes and SHA-256
+Four local macOS/arm64 exports and four GitHub-hosted Linux/x86_64 exports from run `30873652565`,
+each including two fresh-cache copies, match at 824,432 bytes and SHA-256
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
-the 25/9 resource probe, and packaged boot pass locally.
+the 25/9 resource probe, and packaged boot pass locally and hosted.
 
 ## Preserved multiplayer prototype
 

@@ -14,7 +14,7 @@
   cleanup, exact expiry/replacement, reload/title behavior, and immediate physical controller input.
 - [x] Reproduce the atlas and two 43-image capture passes, keep the 25/9 package boundary, measure
   117 static / 127 peak nodes, and pass the four-export PCK identity/content/boot gate.
-- [ ] Run `make check`, audit secrets and unrelated files, commit, push, and update/monitor Draft PR #7
+- [x] Run `make check`, audit secrets and unrelated files, commit, push, and update/monitor Draft PR #7
   without merging `main`.
 
 ## Recently completed

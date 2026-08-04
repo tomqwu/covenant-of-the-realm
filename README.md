@@ -102,9 +102,11 @@ macOS/arm64 exports and four GitHub-hosted Linux/x86_64 exports from run `308699
 two fresh-cache project copies, all match at 812,608 bytes and SHA-256
 `aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`; manifest verification,
 the 25-required / nine-excluded resource probe, and packaged boot smoke pass locally and hosted.
-For the current outgoing-defeat input, four local macOS/arm64 exports match at 824,432 bytes and
-SHA-256 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`;
-manifest verification, the unchanged 25/9 probe, and packaged boot pass. Two consecutive 43-PNG
+For the current outgoing-defeat input, four local macOS/arm64 exports and four GitHub-hosted
+Linux/x86_64 exports from run `30873652565`, each including two fresh-cache project copies, all
+match at 824,432 bytes and SHA-256
+`6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
+the unchanged 25/9 probe, and packaged boot pass locally and hosted. Two consecutive 43-PNG
 capture runs are byte-identical and produce aggregate SHA-256
 `80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
 The MUD adapter has

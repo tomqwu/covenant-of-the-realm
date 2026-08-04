@@ -26,19 +26,23 @@
 - Nine source atlases regenerate twice and match the Git index. Two independent 43-PNG capture passes
   are byte-identical at aggregate SHA-256
   `80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
-- Four local macOS/arm64 exports, including two independent fresh-cache project copies, match at
-  824,432 bytes and SHA-256
-  `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
-  the unchanged 25-required / nine-excluded resource probe, and packaged boot smoke pass.
-- The implementation is locally verified but not yet committed or pushed. The current base head is
-  `7d925b4d4546df957ca13e9f4e426918c9186eca`; Draft PR #7 remains open and remote `main` must not be
-  merged without authorization.
+- Four local macOS/arm64 exports and four GitHub-hosted Linux/x86_64 exports from run
+  `30873652565`, each including two independent fresh-cache project copies, match at 824,432 bytes
+  and SHA-256 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`;
+  manifest verification, the unchanged 25-required / nine-excluded resource probe, and packaged
+  boot smoke pass locally and hosted.
+- Implementation commit `735499a48b0d25706b7ac8d108e3f9e2094a3441` is pushed. GitHub Actions run
+  `30873652565` attempt 2 is green across RPG, MUD, real multiplayer E2E, and the 53-execution
+  browser matrix; the targeted retry replaced a stalled Playwright dependency-install runner step.
+  Draft PR #7 remains open and draft. Remote `main` remains
+  `7256ade54792ff481ffc30517ca2c693f78be198` and was not merged.
 
 ## Next action
 
-Commit and push the verified outgoing-defeat loop, monitor Draft PR #7 to green, refresh this state
-with the exact implementation head and hosted evidence, then begin the intent-specific enemy attack
-accent loop without changing save v17 or combat authority.
+Begin the intent-specific enemy attack-accent loop. Render a distinct, text-equivalent “刚才” accent
+only when the action-result context and enemy-response event jointly prove the announced intent
+resolved; keep save v17, Journey combat authority, input timing, node budgets, and package boundaries
+unchanged.
 
 ## Blockers
 

@@ -28,13 +28,14 @@ still use the paper reveal, but regular-to-warden handoff instead shows “灵�
 the battle safe frame while both sprites and the new intent are visible. This keeps the cue readable
 and lets the already-focused next action accept an independent controller press immediately.
 
-The local gate is 159 Python tests at 100% statement/branch coverage, 3,202 Godot unit/scene
+The gate is 159 Python tests at 100% statement/branch coverage, 3,202 Godot unit/scene
 assertions, 360 chapter E2E checks, 192 physical-input checks, and a 117 static / 127 peak node
 boundary. Two 43-PNG passes are byte-identical at aggregate SHA-256
-`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`. Four local
-macOS/arm64 PCK exports, including two fresh-cache copies, match at 824,432 bytes and SHA-256
+`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`. Four local macOS/arm64
+PCK exports and four GitHub-hosted Linux/x86_64 exports from run `30873652565`, each including two
+fresh-cache copies, match at 824,432 bytes and SHA-256
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; the 25-required /
-nine-excluded resource probe and packaged boot pass.
+nine-excluded resource probe and packaged boot pass locally and hosted.
 
 ### 2026-08-03 — Battle presentation uses an ID-only settled-action context
 

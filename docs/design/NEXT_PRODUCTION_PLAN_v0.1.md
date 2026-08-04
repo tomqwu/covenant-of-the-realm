@@ -34,9 +34,10 @@ run `30869981829` 的四个 Linux/x86_64 PCK（各含两个独立 fresh cache）
 `aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`；manifest、启动 smoke
 和 25 项运行资源 / 9 项开发资源排除在本地与 hosted 均已通过。该 run 的 RPG、MUD、多人
 E2E 与浏览器原型四项任务全绿。
-当前败退输入的四个本地 macOS/arm64 PCK 均为 824,432 bytes，SHA-256 为
+当前败退输入的四个本地 macOS/arm64 PCK 与 GitHub run `30873652565` 的四个
+Linux/x86_64 PCK（各含两个独立 fresh cache）均为 824,432 bytes，SHA-256 为
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`；25/9 资源探针、
-manifest 与启动 smoke 通过。连续两轮 43 张 PNG 逐字节一致，聚合 SHA-256 均为
+manifest 与启动 smoke 在本地与 hosted 均通过。连续两轮 43 张 PNG 逐字节一致，聚合 SHA-256 均为
 `80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`。
 现阶段最大缺口不再是底层闭环，而是正式人物精修、探索密度和内容时长。
 

@@ -43,9 +43,11 @@ exports and four GitHub-hosted Linux/x86_64 exports from run `30869981829`, each
 independent fresh-cache project copies, all match at 812,608 bytes and SHA-256
 `aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`. Manifest verification,
 the 25-required / nine-excluded resource probe, and packaged boot smoke all pass locally and hosted.
-For the current outgoing-defeat input, four local macOS/arm64 exports match at 824,432 bytes and
-SHA-256 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`;
-manifest verification, the unchanged 25/9 resource probe, and packaged boot pass. Two consecutive
+For the current outgoing-defeat input, four local macOS/arm64 exports and four GitHub-hosted
+Linux/x86_64 exports from run `30873652565`, each including two independent fresh-cache project
+copies, all match at 824,432 bytes and SHA-256
+`6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
+the unchanged 25/9 resource probe, and packaged boot pass locally and hosted. Two consecutive
 43-PNG capture batches are byte-identical and reproduce aggregate SHA-256
 `80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
 A native `.app`/`.exe` is intentionally deferred until the owner selects the first platform and public
