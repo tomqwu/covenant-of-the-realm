@@ -30,16 +30,17 @@ or save migration, ignores pointer and focus input, and has explicit false autho
 damage, intent selection, gameplay timing, input, Journey, and save v17.
 
 The local gate is 3,530 Godot unit/scene assertions, 374 chapter E2E checks, 198 physical-input
-checks, a 945.30 ms 20-cycle lifecycle sample, 117 static / 127 peak nodes, and zero root leaks.
+checks, a 952.74 ms 20-cycle lifecycle sample, 117 static / 127 peak nodes, and zero root leaks.
 Two 43-PNG passes reproduce aggregate SHA-256
 `153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`. Four local macOS/arm64
-PCK exports, including two independent fresh-cache copies, match at 870,304 bytes and SHA-256
-`009689da1eea0005e492e747928a5401c9fc7395962f61c16dae14e9d627caa1`; the 25-required /
+PCK exports, including two independent fresh-cache copies, match at 870,720 bytes and SHA-256
+`7959ac89fe6f058b742883cacc04c6b2398b8d72355b8ce9b663e934630fbc98`; the 25-required /
 nine-excluded probe, manifest verification, and packaged boot pass locally. Hosted run
 `30877432459` passed the RPG functional suites at feature commit `02dc402`, then its lifecycle
 confirmation measured 7,075.94 ms against the unchanged 7,000 ms ceiling before packaging. The
-allocation follow-up removes presentation-path allocations without relaxing that ceiling and has
-no GitHub-hosted Linux package result yet.
+first allocation follow-up at `7dfdd98` confirmed at 7,108.08 ms in run `30878257664`. The current
+follow-up removes repeated transition, idle, and empty-event work while preserving all 20 cycles,
+state assertions, and the same ceiling; it has no GitHub-hosted Linux package result yet.
 
 ### 2026-08-03 — Regular-enemy defeat is an outgoing-only, nonblocking presentation role
 

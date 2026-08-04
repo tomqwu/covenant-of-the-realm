@@ -18,25 +18,27 @@
   316 branches), 21 Evennia tests plus the real two-client journey, 3,530 Godot rule/scene assertions,
   374 chapter E2E checks, 198 physical-input/focus checks, 122 browser unit tests at 100%, and 53
   Playwright executions. Badges, deterministic builds, documentation links, and hygiene also pass.
-- The 20-cycle Godot lifecycle passes in `945.30` ms with 117 static / 127 peak nodes and zero root
+- The 20-cycle Godot lifecycle passes in `952.74` ms with 117 static / 127 peak nodes and zero root
   leaks. All domain workloads remain below 2.5 seconds.
 - Nine source atlases regenerate twice and match the Git index. Two independent 43-PNG capture passes
   are byte-identical at aggregate SHA-256
   `153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
 - Four local macOS/arm64 exports, including two independent fresh-cache project copies, match at
-  870,304 bytes and SHA-256
-  `009689da1eea0005e492e747928a5401c9fc7395962f61c16dae14e9d627caa1`; manifest verification,
+  870,720 bytes and SHA-256
+  `7959ac89fe6f058b742883cacc04c6b2398b8d72355b8ce9b663e934630fbc98`; manifest verification,
   the unchanged 25-required / nine-excluded probe, and packaged boot pass locally.
 - Feature commit `02dc402` is pushed. Hosted run `30877432459` passed MUD, Multiplayer, Journey,
   and the 3,530 / 374 / 198 RPG functional gates, then its clean lifecycle confirmation measured
-  7,075.94 ms against the unchanged 7,000 ms ceiling; packaging therefore did not run. The current
-  allocation follow-up removes presentation-path dictionary work, preserves the strict budget, and
-  passes the complete local gate, but has no hosted Linux package result yet. Draft PR #7 remains
-  open and draft; `main` was not merged.
+  7,075.94 ms against the unchanged 7,000 ms ceiling; packaging therefore did not run. Allocation
+  commit `7dfdd98` is also pushed; run `30878257664` passed the same functional gates but confirmed at
+  7,108.08 ms. The current hot-path follow-up removes repeated nonbattle reset, empty-event, idle,
+  and redundant no-state settle work while preserving 20 cycles, every state assertion, and the
+  strict budget. Its complete local gate passes, but it has no hosted Linux package result yet.
+  Draft PR #7 remains open and draft; `main` was not merged.
 
 ## Next action
 
-Commit and push the allocation follow-up, update Draft PR #7, and monitor all hosted checks without
+Commit and push the hot-path follow-up, update Draft PR #7, and monitor all hosted checks without
 merging `main`. After hosted evidence closes, begin the next bounded original NPC schedule or
 side-story content loop.
 

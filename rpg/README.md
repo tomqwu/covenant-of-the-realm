@@ -49,12 +49,14 @@ copies, all match at 824,432 bytes and SHA-256
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
 the unchanged 25/9 resource probe, and packaged boot pass locally and hosted. For the current
 resolved-intent accent input, four local macOS/arm64 exports, including two independent fresh-cache
-project copies, match at 870,304 bytes and SHA-256
-`009689da1eea0005e492e747928a5401c9fc7395962f61c16dae14e9d627caa1`; manifest verification,
+project copies, match at 870,720 bytes and SHA-256
+`7959ac89fe6f058b742883cacc04c6b2398b8d72355b8ce9b663e934630fbc98`; manifest verification,
 the unchanged 25/9 resource probe, and packaged boot pass locally. Hosted run `30877432459` passed
 the 3,530 / 374 / 198 RPG functional gates at feature commit `02dc402`, then its lifecycle
 confirmation measured 7,075.94 ms against the unchanged 7,000 ms ceiling before packaging. The
-current allocation follow-up preserves that ceiling and has no hosted Linux package result yet.
+first allocation follow-up at `7dfdd98` repeated that result in run `30878257664` at 7,108.08 ms.
+The current transition/idle hot-path follow-up preserves the ceiling, all 20 cycles, and every
+immediate/stable state assertion; it has no hosted Linux package result yet.
 Two consecutive 43-PNG capture batches are byte-identical and reproduce
 aggregate SHA-256
 `153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
@@ -78,7 +80,7 @@ the completed scene uses 120, title uses 125, dialogue uses 127, and journal plu
 lifecycle gate on a fixed 60 FPS clock, keeps required focus/deferred-tree settle frames, and
 disables automatic drawing because deterministic PNG captures own pixel verification. The runner
 reports measured times but does not treat one development machine as a release hardware promise.
-One checked sample measured 56.90 ms for 100,000 path-keeper advances and 945.30 ms for the complete
+One checked sample measured 53.85 ms for 100,000 path-keeper advances and 952.74 ms for the complete
 20-cycle lifecycle workload.
 Every cycle starts, advances, and saves dialogue before traversing the remaining states. The first
 cycle of each complete sample additionally runs standard/fast/instant reveal behavior through four

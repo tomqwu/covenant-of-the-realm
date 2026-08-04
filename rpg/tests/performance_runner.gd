@@ -534,7 +534,9 @@ func _benchmark_scene_lifecycle_sample(budget: Dictionary) -> Dictionary:
 				or battle_map_canvas.advance_battle_feedback(0.01)
 			):
 				failures.append("生命周期势痕精确到期必须原子清空全部身份且已空时拒绝继续推进")
-		await process_frame
+		# `_build_actions()` removes old buttons synchronously and defers only the
+		# focus handoff. One fixed frame drains that work before the stable sample;
+		# a second frame exercised no additional state or assertion.
 		await process_frame
 		state_peaks["battle_action_stable"] = maxi(int(state_peaks["battle_action_stable"]), _count_nodes(instance))
 		instance._on_action("use_talisman")

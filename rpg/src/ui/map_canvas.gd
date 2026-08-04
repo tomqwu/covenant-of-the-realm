@@ -75,6 +75,26 @@ const REGULAR_ENEMY_IDS := [
 	"spring_moss_shell",
 	"unbalanced_stone_puppet",
 ]
+const BATTLE_FEEDBACK_LABELS := {
+	"enemy_hit": "受到冲击",
+	"enemy_glanced": "化开冲势",
+	"spring_lamp_deployed": "石灯护阵",
+	"companion_supported": "砚青凝息",
+	"weakness_exposed": "识破弱点",
+	"regular_enemy_won": "灵物退开",
+	"boss_arrived": "守巢者现",
+	"battle_won": "道路已开",
+}
+const BATTLE_FEEDBACK_EVENT_PRIORITY := [
+	"enemy_hit",
+	"enemy_glanced",
+	"spring_lamp_deployed",
+	"companion_supported",
+	"weakness_exposed",
+	"regular_enemy_won",
+	"boss_arrived",
+	"battle_won",
+]
 const ATTACK_ACCENT_IDS := [
 	"rock_probing_charge",
 	"rock_rending_charge",
@@ -212,7 +232,7 @@ func set_story_state(
 	next_enemy_intel: Array = [],
 	next_first_breath_stage: String = "unstarted"
 ) -> void:
-	if next_phase != "battle":
+	if phase_id == "battle" and next_phase != "battle":
 		_reset_battle_feedback()
 	if next_phase != phase_id or talked != talked_to_companion:
 		companion_trail_needs_reset = true
@@ -302,6 +322,9 @@ func show_battle_feedback(
 	large_text: bool = false,
 	high_contrast: bool = false
 ) -> void:
+	if event_ids.is_empty():
+		_reset_battle_feedback()
+		return
 	if is_instance_valid(outgoing_enemy_sprite):
 		outgoing_enemy_sprite.clear_outgoing_defeat()
 	_clear_feedback_context()
@@ -309,46 +332,10 @@ func show_battle_feedback(
 	var battle_context: Dictionary = raw_battle_context if raw_battle_context is Dictionary else {}
 	feedback_enemy_id_before = str(battle_context.get("enemy_id_before", ""))
 	feedback_announced_intent_id = str(battle_context.get("announced_intent_id", ""))
-	var battle_context_valid := (
-		raw_battle_context is Dictionary
-		and battle_context.has("enemy_id_before")
-		and battle_context.has("announced_intent_id")
-		and typeof(battle_context["enemy_id_before"]) == TYPE_STRING
-		and typeof(battle_context["announced_intent_id"]) == TYPE_STRING
-	)
-	var event_ids_valid := true
-	for event_id in event_ids:
-		if typeof(event_id) != TYPE_STRING:
-			event_ids_valid = false
-			break
-	var response_event_count := event_ids.count("enemy_hit") + event_ids.count("enemy_glanced")
-	var has_terminal_event := false
-	for terminal_event_id in ATTACK_ACCENT_TERMINAL_EVENTS:
-		if event_ids.has(terminal_event_id):
-			has_terminal_event = true
-			break
-	var attack_style: Dictionary = ATTACK_ACCENT_STYLES.get(feedback_announced_intent_id, {})
-	var has_resolved_attack := (
-		phase_id == "battle"
-		and battle_context_valid
-		and event_ids_valid
-		and response_event_count == 1
-		and not has_terminal_event
-		and not attack_style.is_empty()
-		and str(attack_style.get("enemy_id", "")) == feedback_enemy_id_before
-		and enemy_id == feedback_enemy_id_before
-	)
-	if has_resolved_attack:
-		feedback_resolved_intent_id = feedback_announced_intent_id
-		feedback_attack_event_id = "enemy_hit" if event_ids.has("enemy_hit") else "enemy_glanced"
-		feedback_attack_shape_id = str(attack_style["shape_id"])
-		feedback_attack_color = attack_style["color"]
-		feedback_attack_large_text = large_text
-		feedback_attack_high_contrast = high_contrast
-		feedback_attack_label_text = "刚才 · %s · %s" % [
-			str(attack_style["label"]),
-			"受到冲击" if feedback_attack_event_id == "enemy_hit" else "化开冲势",
-		]
+	if phase_id == "battle" and (event_ids.has("enemy_hit") or event_ids.has("enemy_glanced")):
+		_arm_resolved_attack_accent(
+			event_ids, raw_battle_context, battle_context, large_text, high_contrast
+		)
 	if event_ids.has("regular_enemy_won") or event_ids.has("battle_won"):
 		feedback_outgoing_enemy_id = feedback_enemy_id_before
 	if event_ids.has("boss_arrived"):
@@ -371,29 +358,10 @@ func show_battle_feedback(
 			reduced_motion,
 			battle_enemy_sprite.position + OUTGOING_ENEMY_OFFSET
 		)
-	var labels := {
-		"enemy_hit": "受到冲击",
-		"enemy_glanced": "化开冲势",
-		"spring_lamp_deployed": "石灯护阵",
-		"companion_supported": "砚青凝息",
-		"weakness_exposed": "识破弱点",
-		"regular_enemy_won": "灵物退开",
-		"boss_arrived": "守巢者现",
-		"battle_won": "道路已开",
-	}
 	var next_text := ""
-	for event_id in [
-		"enemy_hit",
-		"enemy_glanced",
-		"spring_lamp_deployed",
-		"companion_supported",
-		"weakness_exposed",
-		"regular_enemy_won",
-		"boss_arrived",
-		"battle_won",
-	]:
+	for event_id in BATTLE_FEEDBACK_EVENT_PRIORITY:
 		if event_ids.has(event_id):
-			next_text = labels[event_id]
+			next_text = BATTLE_FEEDBACK_LABELS[event_id]
 	if has_regular_replacement:
 		next_text = "灵物退开 · 守巢者现"
 	if next_text.is_empty():
@@ -405,6 +373,48 @@ func show_battle_feedback(
 	feedback_motion_enabled = not reduced_motion
 	feedback_phase = 0.0
 	queue_redraw()
+
+
+func _arm_resolved_attack_accent(
+	event_ids: Array,
+	raw_battle_context,
+	battle_context: Dictionary,
+	large_text: bool,
+	high_contrast: bool
+) -> void:
+	if (
+		not (raw_battle_context is Dictionary)
+		or not battle_context.has("enemy_id_before")
+		or not battle_context.has("announced_intent_id")
+		or typeof(battle_context["enemy_id_before"]) != TYPE_STRING
+		or typeof(battle_context["announced_intent_id"]) != TYPE_STRING
+	):
+		return
+	var response_event_count := 0
+	for event_id in event_ids:
+		if typeof(event_id) != TYPE_STRING or event_id in ATTACK_ACCENT_TERMINAL_EVENTS:
+			return
+		if event_id == "enemy_hit" or event_id == "enemy_glanced":
+			response_event_count += 1
+	if response_event_count != 1:
+		return
+	var attack_style: Dictionary = ATTACK_ACCENT_STYLES.get(feedback_announced_intent_id, {})
+	if (
+		attack_style.is_empty()
+		or str(attack_style.get("enemy_id", "")) != feedback_enemy_id_before
+		or enemy_id != feedback_enemy_id_before
+	):
+		return
+	feedback_resolved_intent_id = feedback_announced_intent_id
+	feedback_attack_event_id = "enemy_hit" if event_ids.has("enemy_hit") else "enemy_glanced"
+	feedback_attack_shape_id = str(attack_style["shape_id"])
+	feedback_attack_color = attack_style["color"]
+	feedback_attack_large_text = large_text
+	feedback_attack_high_contrast = high_contrast
+	feedback_attack_label_text = "刚才 · %s · %s" % [
+		str(attack_style["label"]),
+		"受到冲击" if feedback_attack_event_id == "enemy_hit" else "化开冲势",
+	]
 
 
 func feedback_contract() -> Dictionary:
@@ -814,7 +824,8 @@ func advance_battle_feedback(delta: float) -> bool:
 
 
 func _process(delta: float) -> void:
-	advance_battle_feedback(delta)
+	if feedback_remaining > 0.0:
+		advance_battle_feedback(delta)
 
 
 func _sync_actor_visuals() -> void:
