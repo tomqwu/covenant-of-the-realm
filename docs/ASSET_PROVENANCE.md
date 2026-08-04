@@ -16,10 +16,10 @@ theme/font behavior. It commits no third-party font, music, map, sound file, or 
 dependency resolved separately from the repository; its official Linux build is checksum-pinned
 by `scripts/setup_rpg`.
 
-## 2026-08-02 · Deterministic character and ferry pixel atlases
+## 2026-08-02–03 · Deterministic character and ferry pixel atlases
 
-`rpg/assets/pixel/protagonist.png`, `yanqing.png`, `liangshu.png`, `huishen.png`, and
-`tao_xiaoman.png` are original 128×224 RGBA atlases generated
+`rpg/assets/pixel/protagonist.png`, `yanqing.png`, `liangshu.png`, `huishen.png`,
+`tao_xiaoman.png`, and `cenwei.png` are original 128×224 RGBA atlases generated
 by the project-authored `rpg/tools/generate_pixel_assets.gd`. No model, input image, stock asset,
 external palette, commercial sprite, font, or third-party art library is used. The generator draws
 two idle and two walking frames in four directions from rectangles and the confirmed project
@@ -35,6 +35,12 @@ were authored directly in the same project-local rectangle generator. No externa
 costume, game screenshot, stock sprite, model image, or third-party drawing code informed the
 atlas. Her matching bright painted-paper dialogue portrait is drawn at runtime by
 `dialogue_portrait.gd` from the recorded project palette and contains no embedded image asset.
+岑苇's river-jade short jacket, fresh-celadon accent, bamboo route tube, two route slips, and tied
+route band were added on 2026-08-03 through the same deterministic rectangle-and-palette generator.
+No model, input image, game screenshot, stock sprite, external character or costume reference, or
+third-party drawing code informed this atlas. Its fixed four-point route, feet position, courtesy
+yielding, and interaction are runtime state and presentation contracts rather than pixels; the
+atlas grants no collision, quest, battle, reward, or save authority.
 
 The same generator creates `ferry_tiles.png`, an original 256×64 RGBA atlas. Row zero preserves
 eight opaque 32 px ground tiles for grass, water, bank, road, moonleaf field, stone, deep grass,
@@ -72,8 +78,8 @@ drawing code.
 `docs/concepts/gameplay-ui-v1/01-portrait-gallery.png` is a direct Godot capture of those same
 runtime controls at the production dialogue size. The capture-only 3×2 board adds no packaged scene,
 runtime asset, or alternate art source. It is regenerated with the other functional screenshots;
-two complete 41-image passes have aggregate SHA-256
-`6e1c0f5b3bca174f25726bfec6de61c86bb9962e57641ca29de90717dc68f4b7`.
+two complete 42-image passes have aggregate SHA-256
+`f56422804793b50d4ee20e5b9a733bb7a5d61a4599771648a0a3028f2fb51bb7`.
 
 ## 2026-08-03 · Deterministic Zhaohe landmark atlas
 
@@ -89,16 +95,17 @@ the three life landmarks in the ferry, mountain-path, and battle views. Houses a
 foreground nodes; other landmarks are fixed map-canvas regions. These sprites own no collision,
 navigation, story, reward, or save authority. The life landmarks provide repeatable original
 spatial prose through the same keyboard, mouse, and controller action path while leaving the
-Journey snapshot unchanged and add no fields to the current save v16. The adjacent mountain-return bridge is ground data generated
+Journey snapshot unchanged and add no fields to the current save v17. The adjacent mountain-return bridge is ground data generated
 from the existing original tile atlas, not an imported asset.
 
 The landmark fields introduced in `asset_contract.json` schema v4 remain enforced by the current
-schema v5: file name, atlas/frame dimensions, foot anchor, profile order, occluding subset, nearest
-filtering, integer snapping, and non-authoritative role.
+schema v6: file name, atlas/frame dimensions, foot anchor, profile order, occluding subset, nearest
+filtering, integer snapping, and non-authoritative role. Schema v6 also records the sixth actor
+atlas, `cenwei.png`, without granting the atlas gameplay authority.
 MapCanvas visual contract v2 additionally binds each life-landmark profile to one phase,
 interaction anchor, and action ID without creating a second gameplay authority.
 `scripts/check_rpg_asset_reproducibility` invokes the pinned Godot generator into two isolated
-temporary directories, compares all eight generated atlases byte for byte, and then compares each
+temporary directories, compares all nine generated atlases byte for byte, and then compares each
 with its tracked Git-index blob and working-tree PNG. In CI the index is the committed checkout.
 Scene tests additionally load the imported landmark image as RGBA8,
 require every region to contain visible pixels and a transparent boundary, and verify that unknown
@@ -161,4 +168,7 @@ these screenshots.
 
 The screenshots can be rebuilt with `make capture-rpg-ui`. They document layout, scale, input,
 and readability decisions; the runtime-drawn shapes are placeholders rather than final sprites,
-tiles, portraits, textures, or promotional art.
+tiles, portraits, textures, or promotional art. The current set includes
+`02-path-keeper-route.png`, a direct runtime capture of 岑苇 on the mountain route. Two consecutive
+42-image passes have aggregate SHA-256
+`f56422804793b50d4ee20e5b9a733bb7a5d61a4599771648a0a3028f2fb51bb7`.

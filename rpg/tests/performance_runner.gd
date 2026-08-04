@@ -3,13 +3,14 @@ extends SceneTree
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
+const PathKeeperStateScript := preload("res://src/domain/path_keeper_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const BUDGET_PATH := "res://tests/performance_budget.json"
 const PERFORMANCE_SAVE_PATH := "user://performance-save.json"
 const PERFORMANCE_SETTINGS_PATH := "user://performance-settings.json"
-const EXPECTED_STATIC_MAIN_SCENE_NODES := 114
+const EXPECTED_STATIC_MAIN_SCENE_NODES := 115
 const LIFECYCLE_CONFIRMATION_POLICY_CHECKS := 6
 const DIRECTIONS := [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]
 const COMPLETE_BATTLE_ACTIONS := [
@@ -46,6 +47,7 @@ func _run() -> void:
 	var results := {
 		"movement": _benchmark_movement(budget),
 		"patrol": _benchmark_patrol(budget),
+		"path_keeper": _benchmark_path_keeper(budget),
 		"trail": _benchmark_companion_trail(budget),
 		"battle": _benchmark_battle(budget),
 	}
@@ -68,6 +70,8 @@ func _load_budget() -> Dictionary:
 		"movement_budget_ms",
 		"patrol_iterations",
 		"patrol_budget_ms",
+		"path_keeper_iterations",
+		"path_keeper_budget_ms",
 		"trail_iterations",
 		"trail_budget_ms",
 		"battle_iterations",
@@ -160,6 +164,48 @@ func _benchmark_patrol(budget: Dictionary) -> Dictionary:
 		"worksite_count": worksite_count,
 		"position": patrol.position,
 		"target_index": patrol.target_index,
+	}
+
+
+func _benchmark_path_keeper(budget: Dictionary) -> Dictionary:
+	var path_keeper = PathKeeperStateScript.new()
+	var exploration = ExplorationStateScript.new()
+	if not exploration.transition_to(ExplorationStateScript.MOUNTAIN_PATH_MAP_ID):
+		failures.append("山道补签人性能夹具无法进入山道地图")
+	var iterations := int(budget["path_keeper_iterations"])
+	var started := Time.get_ticks_usec()
+	var interaction_checksum := 0
+	var far_player := Vector2(0.90, 0.70)
+	for index in range(iterations):
+		path_keeper.advance(0.016, far_player)
+		if index % 31 == 0:
+			interaction_checksum += path_keeper.interaction_action(path_keeper.position).length()
+	var elapsed_ms := float(Time.get_ticks_usec() - started) / 1000.0
+	var contract: Dictionary = path_keeper.runtime_contract()
+	if elapsed_ms > float(budget["path_keeper_budget_ms"]):
+		failures.append(
+			"山道补签人预算超时：%.2f ms > %d ms"
+			% [elapsed_ms, int(budget["path_keeper_budget_ms"])]
+		)
+	if not exploration.is_walkable(path_keeper.position):
+		failures.append("山道补签人性能循环产生了不可行走终点")
+	if (
+		contract["route_points"] != PathKeeperStateScript.WAYPOINTS
+		or bool(contract["collision_authority"])
+		or bool(contract["quest_authority"])
+		or bool(contract["battle_authority"])
+		or bool(contract["reward_authority"])
+		or not bool(contract["persistent"])
+	):
+		failures.append("山道补签人性能循环改变了固定路线或权威边界")
+	if interaction_checksum <= 0:
+		failures.append("山道补签人性能循环没有覆盖近距语义交互")
+	return {
+		"iterations": iterations,
+		"elapsed_ms": snappedf(elapsed_ms, 0.01),
+		"interaction_checksum": interaction_checksum,
+		"position": path_keeper.position,
+		"target_index": path_keeper.target_index,
 	}
 
 
@@ -405,6 +451,22 @@ func _benchmark_scene_lifecycle_sample(budget: Dictionary) -> Dictionary:
 		var path_camera: Dictionary = instance.world_camera_contract()
 		if path_camera["normalized_focus"] != instance.exploration.player_position or not bool(path_camera["pixel_snap"]):
 			failures.append("山道切换必须同步确定性坐标与整数像素镜头")
+		var path_keeper_before: Dictionary = instance.path_keeper.snapshot()
+		instance.path_keeper.advance(2.0, Vector2(0.90, 0.70))
+		instance._render([])
+		var path_keeper_visual: Dictionary = instance.get_node("%MapCanvas").path_keeper_visual_contract()
+		if instance.path_keeper.snapshot() == path_keeper_before:
+			failures.append("山道生命周期必须推进补签人确定性路线")
+		if (
+			not bool(path_keeper_visual["visible"])
+			or not bool(path_keeper_visual["active"])
+			or path_keeper_visual["normalized_position"] != instance.path_keeper.position
+			or bool(path_keeper_visual["collision_authority"])
+			or bool(path_keeper_visual["quest_authority"])
+			or bool(path_keeper_visual["battle_authority"])
+			or bool(path_keeper_visual["reward_authority"])
+		):
+			failures.append("山道生命周期补签人表现必须跟随 domain 且保持零规则权威")
 
 		instance._on_action("approach_enemy")
 		instance.get_node("%SceneTransition").finish()

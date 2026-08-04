@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 from pathlib import Path
@@ -8,6 +9,54 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 GODOT_CHECKED = REPO_ROOT / "scripts" / "godot_checked"
+REFERENCE_CAPTURE_DIRECTORY = REPO_ROOT / "docs" / "concepts" / "gameplay-ui-v1"
+REFERENCE_CAPTURE_FILENAMES = (
+    "00-actor-scale-test.png",
+    "01-accessible-dialogue.png",
+    "01-basket-returned.png",
+    "01-companion-dialogue.png",
+    "01-companion-following.png",
+    "01-dialogue-journal.png",
+    "01-dialogue-speed-setting.png",
+    "01-ferry-watermark.png",
+    "01-ferryman-choice.png",
+    "01-ferryman-dialogue.png",
+    "01-ferryman-repaired.png",
+    "01-herbkeeper-choice.png",
+    "01-herbkeeper-dialogue.png",
+    "01-journey-journal.png",
+    "01-moonleaf-choice.png",
+    "01-moonleaf-regrowth.png",
+    "01-new-game-confirmation.png",
+    "01-patrol-boat-reaction.png",
+    "01-patrol-choice.png",
+    "01-patrol-herbs-reaction.png",
+    "01-patrol-runner.png",
+    "01-portrait-gallery.png",
+    "01-protagonist-dialogue.png",
+    "01-scene-transition.png",
+    "01-title-screen.png",
+    "01-y-depth-occlusion.png",
+    "01-zhaohe-ferry.png",
+    "02-cangquan-battle-react.png",
+    "02-cangquan-battle.png",
+    "02-cangquan-boss.png",
+    "02-cangquan-moss-battle.png",
+    "02-cangquan-path.png",
+    "02-cangquan-puppet-battle.png",
+    "02-enemy-intel-journal.png",
+    "02-enemy-spoors.png",
+    "02-path-discoveries.png",
+    "02-path-keeper-route.png",
+    "03-moonleaf-warmed.png",
+    "03-spring-chamber.png",
+    "03-spring-listened.png",
+    "04-chapter-epilogue.png",
+    "04-first-breath.png",
+)
+REFERENCE_CAPTURE_AGGREGATE_SHA256 = (
+    "f56422804793b50d4ee20e5b9a733bb7a5d61a4599771648a0a3028f2fb51bb7"
+)
 
 
 def _run_checked(tmp_path: Path, body: str, *arguments: str) -> subprocess.CompletedProcess[str]:
@@ -86,6 +135,16 @@ def _make_target_body(makefile: str, target: str) -> str:
     return makefile.split(marker, 1)[1].split("\n\n", 1)[0]
 
 
+def _shasum_listing_aggregate(paths: tuple[Path, ...]) -> str:
+    aggregate = hashlib.sha256()
+    for path in paths:
+        relative_path = path.relative_to(REPO_ROOT).as_posix()
+        file_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+        # Match `shasum -a 256 files | shasum -a 256`: two spaces and LF.
+        aggregate.update(f"{file_hash}  {relative_path}\n".encode())
+    return aggregate.hexdigest()
+
+
 @pytest.mark.parametrize(
     "target",
     [
@@ -133,3 +192,28 @@ def test_package_scripts_use_checked_godot_gate() -> None:
     assert "--verify" in check_script
     assert 'data["build_os"] + "/" + data["build_architecture"]' in check_script
     assert "export/convert_text_resources_to_binary=false" in project_settings
+
+
+def test_asset_reproducibility_and_capture_contract_include_path_keeper() -> None:
+    reproducibility_script = (
+        REPO_ROOT / "scripts" / "check_rpg_asset_reproducibility"
+    ).read_text(encoding="utf-8")
+    capture_script = (REPO_ROOT / "rpg" / "tools" / "capture_ui.gd").read_text(
+        encoding="utf-8"
+    )
+
+    assert "  cenwei.png\n" in reproducibility_script
+    assert capture_script.count("await _save_frame(") == 42
+    assert (
+        'await _save_frame("02-path-keeper-route.png", false, true)'
+        in capture_script
+    )
+
+
+def test_reference_capture_set_and_aggregate_are_locked() -> None:
+    captures = tuple(
+        sorted(REFERENCE_CAPTURE_DIRECTORY.glob("*.png"), key=lambda path: path.name)
+    )
+
+    assert tuple(path.name for path in captures) == REFERENCE_CAPTURE_FILENAMES
+    assert _shasum_listing_aggregate(captures) == REFERENCE_CAPTURE_AGGREGATE_SHA256

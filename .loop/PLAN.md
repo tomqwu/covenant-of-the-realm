@@ -1,23 +1,24 @@
 # Loop Plan
 
-## Current loop — clean-cache playable-pack provenance
+## Current loop — original mountain path-keeper schedule
 
-- [x] Turn the observed macOS/Linux PCK byte difference into an explicit tested manifest contract;
-  record the coarse build tuple without treating it as a canonical-hash key.
-- [x] Version the ignored package manifest with normalized build OS and architecture fields while
-  keeping source revision/state, Godot version, preset, resource allowlist, and exclusions strict.
-- [x] Extend positive and malformed manifest tests plus package script coverage without checking a
-  generated PCK or local machine state into Git.
-- [x] Prove the former same-cache gate missed fresh-import drift, isolate it to the generated
-  `main.scn`, and record equal-source Linux and local worktree evidence.
-- [x] Keep authored text scenes textual during export and compare two normal plus two independent
-  clean-cache PCKs while retaining manifest verification, content probing, and boot smoke.
-- [x] Re-run RPG and repository gates; review and prepare the clean-cache fix for commit.
-- [x] Push and compare two independent hosted RPG job attempts at the same commit before closing the
-  clean-cache loop on Draft PR #7; do not merge it.
+- [x] Add the original path-keeper 岑苇 with a bounded deterministic four-waypoint mountain route,
+  endpoint dwell, public-road validation, player courtesy hysteresis, and no quest/combat authority.
+- [x] Add six progress-aware Chinese route-checking echoes that remain repeatable and leave the full
+  Journey snapshot unchanged.
+- [x] Add a deterministic 32×56 four-direction idle/walk atlas and one development-only route capture
+  without importing an external or generated third-party asset.
+- [x] Upgrade to save v17 with a strict top-level path-keeper snapshot, conservative v1–v16 migration,
+  malformed/future-state rejection, and exact mid-route resume.
+- [x] Integrate one new map actor without weakening collision, focus, input parity, camera framing,
+  lifecycle/node budgets, or the existing Tao Xiaoman patrol.
+- [ ] Extend unit, E2E, physical-input, performance, capture, package, documentation, and migration
+  gates; run `make check`, audit, commit, push, and monitor Draft PR #7 without merging it.
 
 ## Recently completed
 
+- [x] Stabilize PCK export across normal and independent empty-cache projects, add manifest-v2 build
+  provenance, and prove identical PCK bytes locally plus two independent hosted RPG attempts.
 - [x] Refine all six deterministic bright painted-paper portrait profiles, add a capture-only 3×2
   comparison board, prove 41-image byte identity, and pass local plus hosted full gates.
 - [x] Stabilize hosted-runner lifecycle evidence with one bounded confirmation and a representative
@@ -33,8 +34,7 @@
 
 ## Next unblocked loops
 
-1. Add denser original NPC schedules after the semantic animation and portrait pipelines are stable.
-2. Add intent-specific telegraphs or visible outgoing-enemy defeat only after structured presentation
+1. Add intent-specific telegraphs or visible outgoing-enemy defeat only after structured presentation
    context can identify the resolved intent and replaced profile without entering the domain save.
 
 ## Blocked production boundary

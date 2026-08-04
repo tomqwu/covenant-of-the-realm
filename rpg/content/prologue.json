@@ -120,6 +120,11 @@
           "possible_targets": ["mountain_path"]
         },
         {
+          "id": "talk_to_path_keeper",
+          "label": "问问岑苇",
+          "possible_targets": ["mountain_path"]
+        },
+        {
           "id": "approach_enemy",
           "label": "接近岩甲幼兽",
           "possible_targets": ["battle"]
@@ -462,6 +467,12 @@
     "rock_spoor_inspected": "你蹲在晴光照亮的碎石边。两短一深的爪痕指向低处；砚青看出幼兽第二次冲撞前会先伏低肩甲，正好让镇岩符贴进甲缝。",
     "moss_spoor_inspected": "泉边孢尘被日光照成细亮的青点。潮湿空壳先贴地吸水，再昂起吐雾；趁它吸潮时引气，最容易吹散湿苔。",
     "puppet_spoor_inspected": "石屑拖痕一深一浅，穿过松影又回到亮处。沉锤扫落时，石傀的回正足会离地片刻，守稳便能借它自己的力气破势。",
+    "path_keeper_after_setback": "岑苇把被风拨歪的下山签敲正：“退回来不是走错。能把下一步带回来，这趟路就没白走。”",
+    "path_keeper_basket_returned": "岑苇见你空着手回来，笑着点头：“篓子回了药圃，下一位借用的人就不必从山脚空跑。”",
+    "path_keeper_basket_left": "岑苇往石棚方向望了一眼：“篓子留在背风处正好；山上的公用物，也该替山上的人省几步路。”",
+    "path_keeper_basket_found": "岑苇从签筒里抽出一截备用麻绳：“公用篓不怕旧，怕的是明明还能用，却没人肯搭一把手。”",
+    "path_keeper_spoor_noted": "岑苇顺着你指出的痕迹，把一枚路签移开半步：“看清谁从这里走过，路才不只是一条线。”",
+    "path_keeper_route_checked": "岑苇把浸过桐油的竹签插进石缝，退后看了看：“亮面朝下山。雾一起来，回头的人也不会认反。”",
     "ferry_watermark_discovered": "石堤内侧留着三层旧水痕。最高一层被人刻成短横：照禾人曾在涨水前整夜转移药苗。",
     "spring_seam_discovered": "青白泉纹在石缝里向低处分叉。砚青辨出其中一支通往旧药圃，说明藏泉并非无人照料。",
     "abandoned_basket_discovered": "破药篓里只剩干苔与一段换过两次的提绳。弃篓者带走药材，却把还能用的绳结留给后来人。",

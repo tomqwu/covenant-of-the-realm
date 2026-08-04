@@ -24,6 +24,46 @@ BUILD_ARCHITECTURE_ALIASES = {
     "x86_64": "x86_64",
 }
 REQUIRED_RESOURCES = [
+    "res://assets/pixel/cenwei.png",
+    "res://assets/pixel/enemy_profiles.png",
+    "res://assets/pixel/ferry_tiles.png",
+    "res://assets/pixel/zhaohe_landmarks.png",
+    "res://assets/pixel/huishen.png",
+    "res://assets/pixel/liangshu.png",
+    "res://assets/pixel/protagonist.png",
+    "res://assets/pixel/yanqing.png",
+    "res://assets/pixel/tao_xiaoman.png",
+    "res://content/prologue.json",
+    "res://src/domain/enemy_catalog.gd",
+    "res://src/domain/exploration_state.gd",
+    "res://src/domain/journey_state.gd",
+    "res://src/domain/path_keeper_state.gd",
+    "res://src/domain/patrol_state.gd",
+    "res://src/domain/save_game.gd",
+    "res://src/domain/settings_store.gd",
+    "res://src/ui/dialogue_portrait.gd",
+    "res://src/ui/enemy_sprite.gd",
+    "res://src/ui/main.gd",
+    "res://src/ui/main.tscn",
+    "res://src/ui/map_detail_layer.gd",
+    "res://src/ui/map_occluder.gd",
+    "res://src/ui/world_camera.gd",
+]
+EXCLUDED_RESOURCES = [
+    "res://tests/e2e_runner.gd",
+    "res://tests/input_runner.gd",
+    "res://tests/performance_budget.json",
+    "res://tests/performance_runner.gd",
+    "res://tests/test_runner.gd",
+    "res://tools/capture_ui.gd",
+    "res://tools/generate_pixel_assets.gd",
+    "res://tools/scale_test.tscn",
+    "res://tools/scale_test_canvas.gd",
+]
+# Schema v1 shipped before the mountain path keeper. Keep its resource roster
+# frozen so a newer verifier can still authenticate an archived v1 manifest
+# instead of silently reinterpreting it through today's package contents.
+SCHEMA_V1_REQUIRED_RESOURCES = [
     "res://assets/pixel/enemy_profiles.png",
     "res://assets/pixel/ferry_tiles.png",
     "res://assets/pixel/zhaohe_landmarks.png",
@@ -47,7 +87,7 @@ REQUIRED_RESOURCES = [
     "res://src/ui/map_occluder.gd",
     "res://src/ui/world_camera.gd",
 ]
-EXCLUDED_RESOURCES = [
+SCHEMA_V1_EXCLUDED_RESOURCES = [
     "res://tests/e2e_runner.gd",
     "res://tests/input_runner.gd",
     "res://tests/performance_budget.json",
@@ -108,6 +148,9 @@ def _base_manifest(
     pack_path: Path,
     source_revision: str,
     source_tree_state: str,
+    *,
+    required_resources: list[str] | None = None,
+    excluded_resources: list[str] | None = None,
 ) -> dict[str, Any]:
     if not pack_path.is_file() or pack_path.stat().st_size <= 0:
         raise ValueError("resource pack must be a non-empty file")
@@ -115,6 +158,12 @@ def _base_manifest(
         raise ValueError("source revision must be a 40-character lowercase Git object ID")
     if source_tree_state not in {"clean", "dirty"}:
         raise ValueError("source tree state must be clean or dirty")
+    resolved_required = (
+        REQUIRED_RESOURCES if required_resources is None else required_resources
+    )
+    resolved_excluded = (
+        EXCLUDED_RESOURCES if excluded_resources is None else excluded_resources
+    )
     return {
         "artifact": ARTIFACT_NAME,
         "artifact_type": "godot-resource-pack",
@@ -125,8 +174,8 @@ def _base_manifest(
         "size_bytes": pack_path.stat().st_size,
         "source_revision": source_revision,
         "source_tree_state": source_tree_state,
-        "required_resources": list(REQUIRED_RESOURCES),
-        "excluded_resources": list(EXCLUDED_RESOURCES),
+        "required_resources": list(resolved_required),
+        "excluded_resources": list(resolved_excluded),
     }
 
 
@@ -192,6 +241,8 @@ def verify_manifest(pack_path: Path, manifest_path: Path) -> list[str]:
                     pack_path,
                     str(data.get("source_revision", "")),
                     str(data.get("source_tree_state", "")),
+                    required_resources=SCHEMA_V1_REQUIRED_RESOURCES,
+                    excluded_resources=SCHEMA_V1_EXCLUDED_RESOURCES,
                 ),
             }
         elif schema_version == 2:

@@ -40,6 +40,7 @@ func _initialize() -> void:
 	_generate_actor("liangshu.png", Color("526963"), Color("a88b57"), "liangshu")
 	_generate_actor("huishen.png", Color("82966a"), Color("a9784f"), "huishen")
 	_generate_actor("tao_xiaoman.png", Color("d6a24f"), Color("4e9da4"), "tao_xiaoman")
+	_generate_actor("cenwei.png", Color("4e9da4"), Color("8ebb83"), "cenwei")
 	_generate_enemy_atlas()
 	_generate_ferry_tiles()
 	_generate_landmark_atlas()
@@ -529,6 +530,22 @@ func _draw_frame(image: Image, origin: Vector2i, direction: int, column: int, ro
 		_fill(image, Rect2i(center_x - 10, body_y + 16, 20, 5), PAPER.darkened(0.12))
 		_fill(image, Rect2i(center_x + 8, body_y + 8, 8, 16), accent.darkened(0.16))
 		_fill(image, Rect2i(center_x + 11, body_y + 10, 3, 12), GOLD.darkened(0.22))
+	elif role == "cenwei":
+		# The path keeper's short river-jade jacket leaves the legs readable.
+		# A fresh-celadon bamboo tube carries two gold-edged route slips, so the
+		# silhouette remains distinct even in the back-facing row.
+		_fill(image, Rect2i(center_x - 11, body_y + 15, 22, 5), robe.lightened(0.10))
+		_fill(image, Rect2i(center_x - 10, body_y + 19, 20, 4), robe.darkened(0.24))
+		_fill(image, Rect2i(center_x - 11, body_y + 14, 22, 3), GOLD.darkened(0.08))
+		var tube_x := center_x + 9 if direction != 1 else center_x - 14
+		_fill(image, Rect2i(tube_x, body_y + 7, 6, 23), accent.darkened(0.22))
+		_fill(image, Rect2i(tube_x + 1, body_y + 8, 4, 20), accent)
+		_fill(image, Rect2i(tube_x - 1, body_y + 5, 8, 3), INK.lightened(0.06))
+		var sign_shift := -1 if column == 2 else (1 if column == 3 else 0)
+		_fill(image, Rect2i(tube_x + sign_shift, body_y + 1, 3, 7), PAPER.darkened(0.08))
+		_fill(image, Rect2i(tube_x + 3 - sign_shift, body_y + 3, 3, 7), GOLD)
+		_fill(image, Rect2i(tube_x + sign_shift, body_y + 2, 3, 2), INK.lightened(0.10))
+		_fill(image, Rect2i(tube_x + 3 - sign_shift, body_y + 4, 3, 2), INK.lightened(0.10))
 	else:
 		# The herb keeper wears a woven apron and keeps a seed basket at her hip.
 		_fill(image, Rect2i(center_x - 9, body_y + 11, 18, 16), PAPER.darkened(0.18))
@@ -554,6 +571,13 @@ func _draw_frame(image: Image, origin: Vector2i, direction: int, column: int, ro
 		_fill(image, Rect2i(center_x - 8, head_y - 2, 16, 6), accent)
 		_fill(image, Rect2i(center_x - 10, head_y + 1, 4, 8), accent.darkened(0.18))
 		_fill(image, Rect2i(center_x + 7, head_y - 4, 7, 4), PAPER.darkened(0.12))
+	elif role == "cenwei":
+		# A narrow celadon route band and compact knot keep the face open while
+		# repeating the bamboo-tube color at map scale.
+		_fill(image, Rect2i(center_x - 8, head_y - 2, 16, 5), INK.lightened(0.04))
+		_fill(image, Rect2i(center_x - 9, head_y + 1, 18, 3), accent)
+		_fill(image, Rect2i(center_x + 4, head_y - 6, 7, 5), INK)
+		_fill(image, Rect2i(center_x - 2, head_y + 1, 5, 2), GOLD.darkened(0.08))
 	else:
 		_fill(image, Rect2i(center_x - 7, head_y, 14, 4), INK)
 		_fill(image, Rect2i(center_x - 4, head_y - 3, 8, 4), INK)

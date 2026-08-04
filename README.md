@@ -7,7 +7,7 @@
 
 **《山河有契》**（英文工作名：**Covenant of the Realm**）正在发展为一款原创、
 中文优先、章节式的 2D 修仙剧情 RPG。Godot 可玩章节已经串联自由移动、碰撞、
-双地图地表、第三张藏泉石室微地图与原创像素细节层、可恢复分支与章节余波对话、明亮纸绘头像、可选择“见闻/灵物志”的行旅札记、脚印式同伴跟随、陶小满六点送件巡路及船架/竹架两端点回响、持久环境见闻、三痕辨势、守堤与药篓双结果支线、补船木架/晾晒竹架/避雨石棚三处可重复生活叙事、近距离采集、三类意图窗口敌人、守巢首领、事件驱动的四敌攻击/受击像素动画、可撤退回合战斗、同伴援护、版本化存档和“听泉辨脉 → 月芽温脉 → 静坐引息”的首次境界突破；现有多人
+双地图地表、第三张藏泉石室微地图与原创像素细节层、可恢复分支与章节余波对话、明亮纸绘头像、可选择“见闻/灵物志”的行旅札记、脚印式同伴跟随、陶小满六点送件巡路及船架/竹架两端点回响、岑苇四点巡山与六类进度回声、持久环境见闻、三痕辨势、守堤与药篓双结果支线、补船木架/晾晒竹架/避雨石棚三处可重复生活叙事、近距离采集、三类意图窗口敌人、守巢首领、事件驱动的四敌攻击/受击像素动画、可撤退回合战斗、同伴援护、save v17 版本化存档和“听泉辨脉 → 月芽温脉 → 静坐引息”的首次境界突破；现有多人
 MUD 与单人 PWA 作为可运行研究原型保留。标题与暂停页还提供标准、快速、整句三档
 对话显字偏好；整句模式只关闭逐字揭示，不会自动推进或代选回应。
 
@@ -81,21 +81,23 @@ make check                   # RPG, MUD, and preserved PWA gates
 make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
-The repository pytest gate passes 152 tests at 100% statement and branch coverage (600 statements /
-306 branches). Godot behavior is covered by 2,716 headless rule/scene assertions plus an independent
-330-check chapter E2E and 169-check physical-input/focus path. Eight committed pixel atlases are
+The repository pytest gate passes 155 tests at 100% statement and branch coverage (621 statements /
+316 branches). Godot behavior is covered by 2,906 headless rule/scene assertions plus an independent
+350-check chapter E2E and 185-check physical-input/focus path. Nine committed pixel atlases are
 regenerated twice and must match the Git index byte for byte. With pinned Godot 4.7.1 and export-time
 text-to-binary scene conversion disabled, the package gate compares two normal exports plus exports
-from two independent clean import caches. For the packaged runtime inputs committed in `f5c60e2`,
+from two independent clean import caches. As historical controlled-input evidence, for the packaged runtime inputs committed in `f5c60e2`,
 four local macOS/arm64 exports and four exports in each of two independent GitHub-hosted Linux/x86_64
 RPG job attempts all match at 709,100 bytes and SHA-256
 `e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`.
 This is controlled same-input evidence, not a future cross-platform guarantee: the normalized build
 tuple remains provenance rather than a canonical-hash key or executable ABI. The probe requires 22
-runtime
-resources and excludes nine development resources; two consecutive
-41-PNG capture runs produce aggregate SHA-256
-`6e1c0f5b3bca174f25726bfec6de61c86bb9962e57641ca29de90717dc68f4b7`.
+runtime resources for that historical input. For the current local feature worktree, four macOS/arm64
+exports, including two fresh-cache project copies, match at 746,180 bytes and SHA-256
+`16fbb0098326c58d4a651f90e03ab20eb8a53a7dd98b896b79c089e1af974573`; manifest verification,
+the 24-required / nine-excluded resource probe, and packaged boot smoke pass locally, while hosted
+confirmation remains pending. Two consecutive 42-PNG capture runs produce aggregate SHA-256
+`f56422804793b50d4ee20e5b9a733bb7a5d61a4599771648a0a3028f2fb51bb7`.
 The MUD adapter has
 isolated Evennia tests, and its release path
 is exercised through two real concurrent Telnet clients. The preserved browser prototype retains

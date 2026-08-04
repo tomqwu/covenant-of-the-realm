@@ -4,6 +4,38 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — Cen Wei is a saved path presence, not a quest authority
+
+岑苇 follows four authored, publicly walkable points on 藏泉山道 at 0.075 normalized units per
+second. Endpoints dwell for 1.5 seconds and middle points for 0.25 seconds. The same 0.080/0.100
+enter/exit courtesy hysteresis used for readable moving interactions pauses him before the player
+selects the 0.065-radius action and releases him only after the player leaves. Dialogue, journal,
+pause, title, transitions, and non-path phases freeze the complete route snapshot. The route uses a
+dedicated deterministic `PathKeeperState`; it does not read wall-clock time, randomness,
+`NavigationAgent2D`, or a second collision system.
+
+The repeatable “问问岑苇” action selects exactly one original event in fixed precedence:
+setback, basket returned, basket left on the trail, basket found but unresolved, enemy spoor noted,
+then the default route check. These are progression-aware echoes, not additional progression. Every
+branch leaves the complete Journey snapshot unchanged and adds no item, statistic, relationship,
+journal entry, chapter echo, combat modifier, reward, or mainline gate. `MapCanvas` only maps the
+saved normalized feet to the original `cenwei.png` atlas, walking animation, integer placement, and
+Y depth; its visual contract explicitly denies collision, quest, battle, reward, and save authority.
+
+Save v17 adds one top-level `path_keeper` snapshot containing normalized position, adjacent target,
+route direction, dwell remaining, and courtesy-yield state. V1–v16 files migrate to the authored
+start rather than inventing elapsed movement; current files reject missing, off-route, inconsistent,
+or oversized-dwell state. Explicit chapter replay restores the same start. The route action remains
+selectable through keyboard, mouse, and controller, and modal presentation cannot advance it.
+
+The implementation gate is 2,906 Godot rule/scene assertions, 350 chapter E2E checks, and 185
+physical-input/focus checks. The latest 100,000-advance path-keeper sample is 55.79 ms. The scene
+contract is 115 static nodes, 125 peak, 121 on the mountain path, 123 with the ferry patrol, 125 in
+worksite dialogue, 116 in each spring state, 118 at completion, 123 at title, and 125 with dialogue
+plus journal; the latest 20-cycle lifecycle sample is 920.40 ms with zero root leaks. Nine source
+atlases and two 42-PNG capture passes reproduce, including `02-path-keeper-route.png`; the capture
+aggregate is `f56422804793b50d4ee20e5b9a733bb7a5d61a4599771648a0a3028f2fb51bb7`.
+
 ### 2026-08-03 — Text scenes stay textual after controlled clean-cache identity proof
 
 The former same-cache double-export gate hid a Godot 4.7.1 clean-import instability. Equal packaged RPG

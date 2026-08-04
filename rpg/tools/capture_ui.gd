@@ -6,11 +6,21 @@ const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
+const PathKeeperStateScript := preload("res://src/domain/path_keeper_state.gd")
 const DialoguePortraitScript := preload("res://src/ui/dialogue_portrait.gd")
 const CAPTURE_SETTINGS_PATH := "user://capture-ui-settings.json"
 
+var capture_output_dir := OUTPUT_DIR
+
 
 func _initialize() -> void:
+	var user_args := OS.get_cmdline_user_args()
+	if user_args.size() > 1:
+		push_error("UI capture accepts at most one output directory")
+		quit(1)
+		return
+	if not user_args.is_empty():
+		capture_output_dir = str(user_args[0])
 	_capture_flow.call_deferred()
 
 
@@ -133,6 +143,43 @@ func _capture_flow() -> void:
 	instance.get_node("%SceneTransition").finish()
 	await _settle()
 	await _save_frame("02-cangquan-path.png")
+	var path_keeper_capture_position: Vector2 = PathKeeperStateScript.WAYPOINTS[1]
+	assert(instance.path_keeper.restore({
+		"position_x": path_keeper_capture_position.x,
+		"position_y": path_keeper_capture_position.y,
+		"target_index": 2,
+		"route_step": 1,
+		"dwell_remaining": 0.0,
+		"yielding_to_player": true,
+	}), "守径参考图必须恢复到第二个稳定路点")
+	assert(instance.exploration.restore({
+		"map_id": ExplorationStateScript.MOUNTAIN_PATH_MAP_ID,
+		"player_x": path_keeper_capture_position.x + 0.05,
+		"player_y": path_keeper_capture_position.y,
+	}), "守径参考图必须把玩家恢复到公开交互半径内")
+	instance._render([])
+	await _settle()
+	var path_keeper_capture_contract: Dictionary = instance.get_node("%MapCanvas").path_keeper_visual_contract()
+	assert(
+		path_keeper_capture_contract["visible"]
+		and path_keeper_capture_contract["active"]
+		and path_keeper_capture_contract["normalized_position"].is_equal_approx(path_keeper_capture_position),
+		"守径参考图必须显示位于确定路线上的岑苇"
+	)
+	assert(
+		path_keeper_capture_contract["interaction_action"] == PathKeeperStateScript.TALK_TO_PATH_KEEPER
+		and instance.nearby_action_id == PathKeeperStateScript.TALK_TO_PATH_KEEPER,
+		"守径参考图必须使用真实近距交互行动"
+	)
+	assert(
+		not path_keeper_capture_contract["collision_authority"]
+		and not path_keeper_capture_contract["quest_authority"]
+		and not path_keeper_capture_contract["battle_authority"]
+		and not path_keeper_capture_contract["reward_authority"],
+		"守径参考图不得引入第二套玩法权威"
+	)
+	await _save_frame("02-path-keeper-route.png", false, true)
+	instance.path_keeper.reset()
 	instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.40, "player_y": 0.30})
 	instance._render([])
 	await _settle()
@@ -507,14 +554,18 @@ func _capture_dialogue_speed_setting(instance) -> void:
 		"新增参考图后必须恢复标准对话显字偏好")
 
 
-func _save_frame(filename: String, preserve_patrol: bool = false) -> void:
+func _save_frame(
+	filename: String,
+	preserve_patrol: bool = false,
+	preserve_path_keeper: bool = false
+) -> void:
 	var was_paused := paused
 	paused = true
-	_normalize_capture_state(preserve_patrol)
+	_normalize_capture_state(preserve_patrol, preserve_path_keeper)
 	_freeze_animated_sprites()
 	RenderingServer.force_draw(false)
 	await process_frame
-	var output_dir := ProjectSettings.globalize_path(OUTPUT_DIR)
+	var output_dir := ProjectSettings.globalize_path(capture_output_dir)
 	DirAccess.make_dir_recursive_absolute(output_dir)
 	var image := root.get_texture().get_image()
 	var error := image.save_png(output_dir.path_join(filename))
@@ -544,7 +595,10 @@ func _assert_tao_dialogue_ready(game, label: String) -> void:
 		"%s参考图必须完整显示陶小满身份条" % label)
 
 
-func _normalize_capture_state(preserve_patrol: bool = false) -> void:
+func _normalize_capture_state(
+	preserve_patrol: bool = false,
+	preserve_path_keeper: bool = false
+) -> void:
 	var game := root.find_child("Main", true, false)
 	if game != null and game.get("patrol") != null:
 		var patrol_state = game.get("patrol")
@@ -559,6 +613,17 @@ func _normalize_capture_state(preserve_patrol: bool = false) -> void:
 				journey_state.talked_to_companion,
 				str(patrol_state.worksite_context(journey_state.patrol_response).get("worksite_id", ""))
 			)
+	if game != null and game.get("path_keeper") != null:
+		var path_keeper_state = game.get("path_keeper")
+		var journey_state = game.get("journey")
+		if not preserve_path_keeper:
+			path_keeper_state.reset()
+		game.get_node("%MapCanvas").set_path_keeper_state(
+			path_keeper_state.position,
+			path_keeper_state.motion_direction(),
+			path_keeper_state.is_moving(),
+			journey_state.phase_id() == "mountain_path"
+		)
 	var map_canvas := root.find_child("MapCanvas", true, false)
 	if map_canvas != null and map_canvas.feedback_remaining > 0.0:
 		map_canvas.feedback_remaining = map_canvas.feedback_duration * 0.5

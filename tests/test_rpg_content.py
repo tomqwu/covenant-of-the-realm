@@ -306,6 +306,60 @@ def test_patrol_worksite_reactions_do_not_add_journal_results() -> None:
     assert worksite_events.isdisjoint(data["journal_side_entries"])
 
 
+def test_first_breath_story_locks_path_keeper_action_and_echoes() -> None:
+    data = story()
+    path_keeper_action = next(
+        action
+        for action in data["nodes"]["mountain_path"]["actions"]
+        if action["id"] == "talk_to_path_keeper"
+    )
+    path_keeper_action["label"] = "向岑苇领取奖励"
+    data["messages"]["path_keeper_route_checked"] = "一段被意外改写的路签回声。"
+    data["messages"].pop("path_keeper_after_setback")
+
+    failures = validate_story(data)
+
+    assert any(
+        failure.startswith(
+            "story.nodes.mountain_path.actions.talk_to_path_keeper must be "
+        )
+        for failure in failures
+    )
+    assert any(
+        failure.startswith("story.messages.path_keeper_route_checked must be ")
+        for failure in failures
+    )
+    assert any(
+        failure.startswith("story.messages.path_keeper_after_setback must be ")
+        for failure in failures
+    )
+
+    data = story()
+    data["nodes"]["mountain_path"]["actions"] = [
+        action
+        for action in data["nodes"]["mountain_path"]["actions"]
+        if action["id"] != "talk_to_path_keeper"
+    ]
+    assert (
+        "story.nodes.mountain_path.actions is missing path-keeper action "
+        "'talk_to_path_keeper'" in validate_story(data)
+    )
+
+    data = story()
+    data["nodes"]["mountain_path"] = []
+    assert (
+        "story.nodes.mountain_path.actions is missing path-keeper action "
+        "'talk_to_path_keeper'" in validate_story(data)
+    )
+
+    data = story()
+    data["nodes"]["mountain_path"]["actions"] = {}
+    assert (
+        "story.nodes.mountain_path.actions is missing path-keeper action "
+        "'talk_to_path_keeper'" in validate_story(data)
+    )
+
+
 def test_rejects_non_object_and_missing_contract() -> None:
     assert validate_story([]) == ["story must be an object"]
     failures = validate_story({"schema_version": 2})

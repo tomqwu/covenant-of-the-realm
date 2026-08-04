@@ -6,8 +6,9 @@ const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
+const PathKeeperStateScript := preload("res://src/domain/path_keeper_state.gd")
 
-const SAVE_VERSION := 16
+const SAVE_VERSION := 17
 const STORY_ID := "zhaohe_first_breath"
 const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 
@@ -18,7 +19,8 @@ static func write(
 	path: String = DEFAULT_SAVE_PATH,
 	dialogue_snapshot: Dictionary = {},
 	preserve_existing_backup: bool = false,
-	patrol_snapshot: Dictionary = {}
+	patrol_snapshot: Dictionary = {},
+	path_keeper_snapshot: Dictionary = {}
 ) -> Dictionary:
 	var stored_dialogue := dialogue_snapshot if not dialogue_snapshot.is_empty() else DialogueStateScript.default_snapshot()
 	var missing_required_patrol := (
@@ -27,6 +29,11 @@ static func write(
 		!= JourneyStateScript.PATROL_UNANSWERED
 	)
 	var stored_patrol := patrol_snapshot if not patrol_snapshot.is_empty() else PatrolStateScript.default_snapshot()
+	var stored_path_keeper := (
+		path_keeper_snapshot
+		if not path_keeper_snapshot.is_empty()
+		else PathKeeperStateScript.default_snapshot()
+	)
 	var payload := {
 		"save_version": SAVE_VERSION,
 		"story_id": STORY_ID,
@@ -34,6 +41,7 @@ static func write(
 		"exploration": exploration_snapshot,
 		"dialogue": stored_dialogue,
 		"patrol": stored_patrol,
+		"path_keeper": stored_path_keeper,
 	}
 	var temporary_path := path + ".tmp"
 	var repair_path := path + ".repair"
@@ -154,7 +162,10 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		return _result(false, {}, "invalid_journey")
 	if typeof(payload.get("exploration")) != TYPE_DICTIONARY:
 		return _result(false, {}, "invalid_exploration")
-	if version_number < SAVE_VERSION and _legacy_contains_patrol_work_dialogue(payload):
+	# Worksite dialogue identifiers became valid in v16. A v16 payload remains
+	# eligible for the v17 path-keeper migration instead of being mistaken for a
+	# pre-worksite save merely because the current schema advanced again.
+	if version_number < 16 and _legacy_contains_patrol_work_dialogue(payload):
 		return _result(false, {}, "invalid_dialogue")
 	if version_number == 1:
 		var migrated := payload.duplicate(true)
@@ -253,6 +264,10 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		var migrated := payload.duplicate(true)
 		migrated["save_version"] = SAVE_VERSION
 		return _validated_migration(migrated, 15, false)
+	if version_number == 16:
+		var migrated := payload.duplicate(true)
+		migrated["save_version"] = SAVE_VERSION
+		return _validated_migration(migrated, 16, false)
 	return _validate_current(payload)
 
 
@@ -265,6 +280,8 @@ static func _validate_current(payload: Dictionary) -> Dictionary:
 		return _result(false, {}, "invalid_dialogue")
 	if typeof(payload.get("patrol")) != TYPE_DICTIONARY:
 		return _result(false, {}, "invalid_patrol")
+	if typeof(payload.get("path_keeper")) != TYPE_DICTIONARY:
+		return _result(false, {}, "invalid_path_keeper")
 	var restored_dialogue = DialogueStateScript.new()
 	if not restored_dialogue.restore(payload["dialogue"]):
 		return _result(false, {}, "invalid_dialogue")
@@ -277,6 +294,9 @@ static func _validate_current(payload: Dictionary) -> Dictionary:
 	var restored_patrol = PatrolStateScript.new()
 	if not restored_patrol.restore(payload["patrol"]):
 		return _result(false, {}, "invalid_patrol")
+	var restored_path_keeper = PathKeeperStateScript.new()
+	if not restored_path_keeper.restore(payload["path_keeper"]):
+		return _result(false, {}, "invalid_path_keeper")
 	if not _exploration_matches_journey(restored_exploration, restored_journey):
 		return _result(false, {}, "invalid_map_phase")
 	if not _dialogue_matches_journey(restored_dialogue, restored_journey):
@@ -298,6 +318,7 @@ static func _validated_migration(
 ) -> Dictionary:
 	if migrate_patrol:
 		_migrate_patrol_snapshot(payload)
+	_migrate_path_keeper_snapshot(payload)
 	_normalize_migrated_exploration(payload["journey"], payload["exploration"])
 	var result := _validate_current(payload)
 	if result["ok"]:
@@ -539,6 +560,12 @@ static func _migrate_patrol_snapshot(payload: Dictionary) -> void:
 	# Migration therefore restores the neutral route without inventing a choice.
 	payload["journey"]["patrol_response"] = JourneyStateScript.PATROL_UNANSWERED
 	payload["patrol"] = PatrolStateScript.default_snapshot()
+
+
+static func _migrate_path_keeper_snapshot(payload: Dictionary) -> void:
+	# V1-v16 never recorded the mountain path keeper's live route. Start from
+	# the neutral authored endpoint rather than inventing elapsed patrol time.
+	payload["path_keeper"] = PathKeeperStateScript.default_snapshot()
 
 
 static func _result(ok: bool, data: Dictionary, reason: String) -> Dictionary:

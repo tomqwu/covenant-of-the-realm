@@ -12,6 +12,7 @@ const TALK_TO_COMPANION := "talk_to_companion"
 const TALK_TO_FERRYMAN := "talk_to_ferryman"
 const TALK_TO_HERBKEEPER := "talk_to_herbkeeper"
 const TALK_TO_PATROL_RUNNER := "talk_to_patrol_runner"
+const TALK_TO_PATH_KEEPER := "talk_to_path_keeper"
 const TALK_AT_BOAT_WORKSITE := "talk_at_boat_worksite"
 const TALK_AT_HERBS_WORKSITE := "talk_at_herbs_worksite"
 const INSPECT_BOAT_REPAIR := "inspect_boat_repair"
@@ -163,6 +164,7 @@ func available_actions() -> PackedStringArray:
 				path_actions.append(INSPECT_MOSS_SPOOR)
 			if not enemy_intel.has(EnemyCatalogScript.UNBALANCED_STONE_PUPPET):
 				path_actions.append(INSPECT_PUPPET_SPOOR)
+			path_actions.append(TALK_TO_PATH_KEEPER)
 			path_actions.append_array(PackedStringArray([
 				APPROACH_ENEMY,
 				APPROACH_MOSS_SHELL,
@@ -193,6 +195,8 @@ func choose(action_id: String) -> Dictionary:
 		Phase.RIVERBANK:
 			return _choose_riverbank(action_id)
 		Phase.MOUNTAIN_PATH:
+			if action_id == TALK_TO_PATH_KEEPER:
+				return _result(true, [_path_keeper_event_id()])
 			if action_id == INSPECT_PATH_MARKER:
 				return _result(true, ["path_marker_inspected"])
 			if action_id == INSPECT_RAIN_SHELTER:
@@ -606,6 +610,20 @@ func _record_enemy_intel(intel_id: String, event_id: String) -> Dictionary:
 		return _result(false, ["spoor_already_inspected"])
 	enemy_intel.append(intel_id)
 	return _result(true, [event_id])
+
+
+func _path_keeper_event_id() -> String:
+	if setbacks > 0:
+		return "path_keeper_after_setback"
+	if basket_response == BASKET_RETURN:
+		return "path_keeper_basket_returned"
+	if basket_response == BASKET_TRAIL:
+		return "path_keeper_basket_left"
+	if discoveries.has(DISCOVERY_ABANDONED_BASKET):
+		return "path_keeper_basket_found"
+	if not enemy_intel.is_empty():
+		return "path_keeper_spoor_noted"
+	return "path_keeper_route_checked"
 
 
 func complete_companion_briefing(response_id: String) -> Dictionary:

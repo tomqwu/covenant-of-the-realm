@@ -5,38 +5,36 @@
 - Repository: `/Users/tomwu/Projects/covenant-of-the-realm`
 - Branch: `codex/rpg-foundation`
 - Draft PR: <https://github.com/tomqwu/covenant-of-the-realm/pull/7>
-- Clean-cache implementation head `f5c60e2fcc2ec6806e1434bac01a40f16551c2ec` is pushed. Actions run
-  `30862795331` attempt 1 is green across MUD, multiplayer, RPG, and Journey; its independently rerun
-  RPG job in attempt 2 is also green. The last confirmed remote `main` remains
+- The worktree completes the original mountain path keeper 岑苇: a deterministic four-point public
+  route, endpoint dwell, analytic courtesy yielding, a project-generated 32×56 four-direction atlas,
+  real keyboard/mouse/controller interaction, and six repeatable progress-aware Chinese echoes.
+- Save v17 stores the exact top-level `path_keeper` route snapshot, explicitly migrates v1–v16 to the
+  neutral authored start, and rejects missing, malformed, future, off-route, or inconsistent state.
+  The actor remains presentation-only and has no collision, quest, battle, reward, or hidden progress
+  authority.
+- Local `make check` is green: 155 Python tests at 100% statement and branch coverage (621 statements /
+  316 branches), 21 Evennia tests plus the real two-client journey, 2,906 Godot rule/scene assertions,
+  350 chapter E2E checks, 185 physical-input/focus checks, 122 browser unit tests at 100%, 53
+  Playwright executions, badges, deterministic browser output, and repository hygiene.
+- The fixed-clock Godot performance gate passes 100,000 path-keeper advances in `55.46` ms and the
+  complete 20-cycle, 13-state lifecycle in `928.60` ms with 115 static / 125 peak nodes and zero root
+  leaks. Budgets remain 2.5 seconds per domain workload and 7 seconds for lifecycle.
+- Nine source atlases regenerate twice and match Git. Two independent 42-PNG capture passes match the
+  worktree byte-for-byte; the exact filename set and aggregate SHA-256
+  `f56422804793b50d4ee20e5b9a733bb7a5d61a4599771648a0a3028f2fb51bb7` are unit-gated.
+- Four macOS/arm64 PCK exports, including two independent fresh-cache project copies, match at 746,180
+  bytes and SHA-256 `16fbb0098326c58d4a651f90e03ab20eb8a53a7dd98b896b79c089e1af974573`;
+  manifest verification, the 24-required / nine-excluded probe, and packaged boot smoke pass.
+- Independent architecture and validation reviews found no blocking runtime defect after adding exact
+  schema-v1 history, all six echo branches, analytic frame-slicing equivalence, reverse mid-route
+  restoration, real mouse activation, and the committed capture baseline gate.
+- Remote feature head is still `5c381b50d604c4136de00e3b3c5435a460f07888`; remote `main` remains
   `7256ade54792ff481ffc30517ca2c693f78be198` and must not be merged without authorization.
-- Manifest schema v2 records normalized `build_os` / `build_architecture`, keeps exact schema-v1
-  verification, and rejects partial, unknown, noncanonical, wrong-type, future-schema, and unexpected
-  fields. It records build provenance, not a selected native release target.
-- The schema-v2 base passed local `make check`: 152 Python tests at 100% statement/branch coverage (600 statements /
-  306 branches), 21 Evennia integration tests plus the real two-client journey, 2,716 Godot rule/scene
-  assertions, 330 chapter E2E checks, 169 physical-input checks, 122 browser unit tests at 100%, 53
-  Playwright executions, badges, and reproducible browser output.
-- Its Godot lifecycle passed in `886.56` ms for 20 complete 13-state cycles, one dialogue reveal probe,
-  four settings writes, 114 static / 124 peak nodes, and zero root leaks.
-- Three equal-source Linux runs and independent local worktrees proved that the old 697,160-byte PCK
-  changed across empty import caches even though sequential exports sharing one cache matched. Entry
-  comparison isolated all drift to Godot's generated binary `main.scn`; the other 60 entries matched.
-- The fix sets `editor/export/convert_text_resources_to_binary=false` and extends the package gate to
-  two normal exports plus two independent empty-cache project copies. For the packaged runtime inputs
-  committed in `f5c60e2`, all four local macOS/arm64 PCKs and all four PCKs in each of two independent
-  hosted Linux/x86_64 RPG job attempts match at 709,100 bytes and SHA-256
-  `e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`; strict manifests, 22/9
-  content probing, and headless boot pass. The hosted lifecycle samples were `5,771.41` ms and
-  `5,912.40` ms. This controlled same-input cross-OS PCK observation is not a future identity promise;
-  manifests remain per-build provenance artifacts.
-- Local `make check` is green with the same 152 / 600 / 306 Python coverage and one `929.22` ms
-  lifecycle sample. The implementation has been independently audited for code, scope, tests, and
-  documentation with no blocking findings.
 
 ## Next action
 
-Begin the next unblocked gameplay-density loop after this evidence closeout is pushed and its checks
-are monitored. Keep the ignored package and Draft PR body current while leaving `main` unchanged.
+Audit and stage the complete feature set, commit and push `codex/rpg-foundation`, update Draft PR #7,
+then monitor all hosted checks while leaving `main` unchanged.
 
 ## Blockers
 
@@ -46,7 +44,5 @@ owner decisions for the first platform, templates, signing, icon, license, and d
 ## Exact verification
 
 ```sh
-uv run python -m pytest -q tests/test_rpg_package_manifest.py tests/test_godot_checked.py
-make check-rpg
 make check
 ```

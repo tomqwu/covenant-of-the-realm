@@ -37,6 +37,7 @@ ACTOR_ATLASES = [
     "liangshu.png",
     "huishen.png",
     "tao_xiaoman.png",
+    "cenwei.png",
 ]
 LANDMARK_PROFILES = [
     "tree_celadon",
@@ -118,13 +119,13 @@ def test_map_atlas_accepts_exact_two_row_contract(valid_contract: dict[str, Any]
     assert check_rpg_assets.validate_contract(valid_contract) == []
 
 
-def test_schema_five_accepts_five_actor_atlases_and_tao_xiaoman(
+def test_schema_six_accepts_six_actor_atlases_and_cenwei(
     valid_contract: dict[str, Any],
 ) -> None:
-    assert valid_contract["schema_version"] == 5
+    assert valid_contract["schema_version"] == 6
     assert valid_contract["atlases"] == ACTOR_ATLASES
     assert check_rpg_assets._png_size(
-        check_rpg_assets.ASSET_DIR / "tao_xiaoman.png"
+        check_rpg_assets.ASSET_DIR / "cenwei.png"
     ) == (128, 224)
     assert check_rpg_assets.validate_contract(valid_contract) == []
 
@@ -132,23 +133,23 @@ def test_schema_five_accepts_five_actor_atlases_and_tao_xiaoman(
 def test_actor_atlas_contract_rejects_old_schema_and_changed_roster(
     valid_contract: dict[str, Any],
 ) -> None:
-    valid_contract["schema_version"] = 4
+    valid_contract["schema_version"] = 5
     valid_contract["atlases"] = ACTOR_ATLASES[:-1]
 
     failures = check_rpg_assets.validate_contract(valid_contract)
 
-    assert "schema_version must be 5" in failures
-    assert "atlases must match the five stable actor IDs" in failures
+    assert "schema_version must be 6" in failures
+    assert "atlases must match the six stable actor IDs" in failures
 
 
-def test_actor_atlas_contract_rejects_wrong_tao_xiaoman_dimensions(
+def test_actor_atlas_contract_rejects_wrong_cenwei_dimensions(
     valid_contract: dict[str, Any],
 ) -> None:
-    _write_png(check_rpg_assets.ASSET_DIR / "tao_xiaoman.png", 127, 224)
+    _write_png(check_rpg_assets.ASSET_DIR / "cenwei.png", 127, 224)
 
     failures = check_rpg_assets.validate_contract(valid_contract)
 
-    assert "tao_xiaoman.png: expected (128, 224), got (127, 224)" in failures
+    assert "cenwei.png: expected (128, 224), got (127, 224)" in failures
 
 
 def test_enemy_atlas_accepts_semantic_animation_contract(

@@ -189,6 +189,37 @@ PATROL_MESSAGES = {
     "patrol_unavailable": "陶小满还没有开始巡路，或今天的先后已经定下。",
     "invalid_patrol_response": "这不是此刻可以作出的巡路安排。",
 }
+PATH_KEEPER_ACTION = {
+    "id": "talk_to_path_keeper",
+    "label": "问问岑苇",
+    "possible_targets": ["mountain_path"],
+}
+PATH_KEEPER_MESSAGES = {
+    "path_keeper_after_setback": (
+        "岑苇把被风拨歪的下山签敲正：“退回来不是走错。"
+        "能把下一步带回来，这趟路就没白走。”"
+    ),
+    "path_keeper_basket_returned": (
+        "岑苇见你空着手回来，笑着点头：“篓子回了药圃，"
+        "下一位借用的人就不必从山脚空跑。”"
+    ),
+    "path_keeper_basket_left": (
+        "岑苇往石棚方向望了一眼：“篓子留在背风处正好；"
+        "山上的公用物，也该替山上的人省几步路。”"
+    ),
+    "path_keeper_basket_found": (
+        "岑苇从签筒里抽出一截备用麻绳：“公用篓不怕旧，"
+        "怕的是明明还能用，却没人肯搭一把手。”"
+    ),
+    "path_keeper_spoor_noted": (
+        "岑苇顺着你指出的痕迹，把一枚路签移开半步："
+        "“看清谁从这里走过，路才不只是一条线。”"
+    ),
+    "path_keeper_route_checked": (
+        "岑苇把浸过桐油的竹签插进石缝，退后看了看："
+        "“亮面朝下山。雾一起来，回头的人也不会认反。”"
+    ),
+}
 PATROL_WORKSITE_DIALOGUES = {
     "patrol_boat_priority": {
         "lines": [
@@ -543,6 +574,43 @@ def _validate_patrol_contract(
         )
 
 
+def _validate_path_keeper_contract(
+    story: dict[str, Any],
+    nodes: dict[str, Any],
+    messages: dict[str, Any],
+    source: str,
+    failures: list[str],
+) -> None:
+    """Lock Cen Wei's selectable action and six original progress echoes."""
+    if story.get("story_id") != FIRST_BREATH_STORY_ID:
+        return
+
+    mountain_path = nodes.get("mountain_path")
+    raw_actions = (
+        mountain_path.get("actions") if isinstance(mountain_path, dict) else []
+    )
+    actions = raw_actions if isinstance(raw_actions, list) else []
+    path_keeper_actions = [
+        action
+        for action in actions
+        if isinstance(action, dict) and action.get("id") == PATH_KEEPER_ACTION["id"]
+    ]
+    if not path_keeper_actions:
+        failures.append(
+            f"{source}.nodes.mountain_path.actions is missing path-keeper action "
+            f"'{PATH_KEEPER_ACTION['id']}'"
+        )
+    elif path_keeper_actions != [PATH_KEEPER_ACTION]:
+        failures.append(
+            f"{source}.nodes.mountain_path.actions.{PATH_KEEPER_ACTION['id']} must be "
+            f"{PATH_KEEPER_ACTION!r}"
+        )
+
+    for message_id, expected_text in PATH_KEEPER_MESSAGES.items():
+        if messages.get(message_id) != expected_text:
+            failures.append(f"{source}.messages.{message_id} must be {expected_text!r}")
+
+
 def validate_story(data: Any, source: str = "story") -> list[str]:
     failures: list[str] = []
     story = _mapping(data, source, failures)
@@ -635,6 +703,7 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
         source,
         failures,
     )
+    _validate_path_keeper_contract(story, nodes, messages, source, failures)
 
     if not dialogues:
         failures.append(f"{source}.dialogues must not be empty")

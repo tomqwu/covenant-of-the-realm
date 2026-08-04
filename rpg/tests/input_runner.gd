@@ -106,7 +106,7 @@ func _run() -> void:
 		"真实手柄 A 从暂停菜单循环回标准对话显字"
 	)
 	_expect(game.journey.snapshot() == speed_journey_before and game.dialogue.snapshot() == speed_dialogue_before, "对话显字设置不取得 Journey 或 Dialogue 权威")
-	_expect(FileAccess.get_file_as_string(SAVE_PATH) == speed_save_before, "对话显字设置只写 settings 而不改动 save v16 字节")
+	_expect(FileAccess.get_file_as_string(SAVE_PATH) == speed_save_before, "对话显字设置只写 settings 而不改动 save v17 字节")
 	game.get_node("%ResumeButton").grab_focus()
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(not game.get_node("%PauseOverlay").visible, "手柄恢复后返回同一活动对话")
@@ -163,7 +163,7 @@ func _run() -> void:
 	_expect(game.journey.patrol_response == "herbs_first", "手柄 A 确认先翻药叶选择")
 	_expect(game.patrol.target_index == 2 and game.patrol.route_step == 1, "巡路选择立即重定向确定性路线")
 	var patrol_disk: Dictionary = SaveGameScript.read(SAVE_PATH)
-	_expect(patrol_disk["data"]["save_version"] == SaveGameScript.SAVE_VERSION, "巡路选择写入 save v16")
+	_expect(patrol_disk["data"]["save_version"] == SaveGameScript.SAVE_VERSION, "巡路选择写入 save v17")
 	var stored_patrol: Dictionary = patrol_disk["data"]["patrol"]
 	_expect(
 		is_equal_approx(float(stored_patrol["position_x"]), game.patrol.position.x)
@@ -172,7 +172,7 @@ func _run() -> void:
 		and int(stored_patrol["route_step"]) == game.patrol.route_step
 		and is_equal_approx(float(stored_patrol["dwell_remaining"]), game.patrol.dwell_remaining)
 		and bool(stored_patrol["yielding_to_player"]) == game.patrol.yielding_to_player,
-		"save v16 顶层原子保存巡路位置与目标"
+		"save v17 顶层原子保存巡路位置与目标"
 	)
 	var herbs_distance_before: float = game.patrol.position.distance_to(PatrolStateScript.WAYPOINTS[PatrolStateScript.HERBS_WAYPOINT])
 	game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51})
@@ -207,8 +207,8 @@ func _run() -> void:
 	_expect(game.get_node("%EventLabel").text == str(game.content["messages"]["patrol_herbs_light_checked"]), "手柄确认产生稳定日影回声")
 	_expect(is_zero_approx(game.patrol.dwell_remaining), "工位回应只将当前停留归零")
 	var worksite_disk: Dictionary = SaveGameScript.read(SAVE_PATH)
-	_expect(worksite_disk["data"]["save_version"] == SaveGameScript.SAVE_VERSION and worksite_disk["data"]["dialogue"]["active"] == false, "端点回应原子写入空闲对话 save v16")
-	_expect(_snapshots_match(worksite_disk["data"]["journey"], worksite_journey_before), "端点 save v16 不夹带隐藏奖励")
+	_expect(worksite_disk["data"]["save_version"] == SaveGameScript.SAVE_VERSION and worksite_disk["data"]["dialogue"]["active"] == false, "端点回应原子写入空闲对话 save v17")
+	_expect(_snapshots_match(worksite_disk["data"]["journey"], worksite_journey_before), "端点 save v17 不夹带隐藏奖励")
 	_expect(game.exploration.restore({"map_id": "zhaohe_ferry", "player_x": 0.47, "player_y": 0.51}), "巡路输入验收后返回同行起点")
 	game._render([])
 
@@ -314,6 +314,35 @@ func _run() -> void:
 	await _trigger_action("interact")
 	_expect(game.journey.phase_id() == "mountain_path", "交互动作从山门进入可探索山道")
 	game.get_node("%SceneTransition").finish()
+	var path_input_spawn: Dictionary = game.exploration.snapshot()
+	var path_keeper_visual: Dictionary = game.get_node("%MapCanvas").path_keeper_visual_contract()
+	_expect(path_keeper_visual["visible"] and path_keeper_visual["active"], "进入山道后岑苇巡山角色立即可见")
+	_expect(game.get_node("%PathKeeperSprite").animation_contract()["frame_size"] == Vector2(32, 56), "岑苇像素图集保持四向 32×56 人物合同")
+	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": game.path_keeper.position.x, "player_y": game.path_keeper.position.y}), "输入验收可站到岑苇当前路线位置")
+	game._render([])
+	await _settle()
+	var path_keeper_button := _find_action_button(game, "问问岑苇")
+	_expect(path_keeper_button != null, "岑苇近距行动可由键鼠与手柄共享选择")
+	var path_keeper_journey_before: Dictionary = game.journey.snapshot()
+	if path_keeper_button != null:
+		await _trigger_mouse_click(path_keeper_button.get_global_rect().get_center())
+	_expect(game.get_node("%EventLabel").text.contains("亮面朝下山"), "真实鼠标点击触发岑苇原创巡山回声")
+	_expect(game.journey.snapshot() == path_keeper_journey_before, "鼠标问路不修改 Journey 或取得奖励权威")
+	var mouse_path_keeper_echo: String = game.get_node("%EventLabel").text
+	await _trigger_key(KEY_E)
+	_expect(game.get_node("%EventLabel").text == mouse_path_keeper_echo, "真实键盘 E 重复同一岑苇巡山回声")
+	_expect(game.journey.snapshot() == path_keeper_journey_before, "键盘问路不修改 Journey 或取得奖励权威")
+	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": 0.40, "player_y": 0.30}), "输入验收可离开岑苇礼让半径")
+	game._render([])
+	await _trigger_joy_button(JOY_BUTTON_START)
+	var paused_path_keeper: Dictionary = game.path_keeper.snapshot()
+	await create_timer(0.12).timeout
+	_expect(game.path_keeper.snapshot() == paused_path_keeper, "真实手柄 Start 暂停时冻结岑苇巡山")
+	await _trigger_joy_button(JOY_BUTTON_START)
+	await create_timer(0.12).timeout
+	_expect(game.path_keeper.snapshot() != paused_path_keeper, "真实手柄 Start 恢复后岑苇继续巡山")
+	_expect(game.exploration.restore(path_input_spawn), "岑苇输入验收后恢复山道出生点")
+	game._render([])
 	game.move_player(Vector2.UP, 0.20)
 	game.move_player(Vector2.RIGHT, 1.24)
 	game.move_player(Vector2.DOWN, 0.17)
@@ -384,6 +413,15 @@ func _run() -> void:
 	game._render([])
 	await _trigger_key(KEY_E)
 	_expect(game.journey.phase_id() == "mountain_path", "键盘 E 在支线后重新进入山道")
+	game.get_node("%SceneTransition").finish()
+	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": game.path_keeper.position.x, "player_y": game.path_keeper.position.y}), "支线后可重新接近岑苇")
+	game._render([])
+	await _settle()
+	_expect(_find_action_button(game, "问问岑苇") != null, "药篓归圃后岑苇行动仍可选择")
+	var returned_basket_path_keeper_journey: Dictionary = game.journey.snapshot()
+	await _trigger_joy_button(JOY_BUTTON_A)
+	_expect(game.get_node("%EventLabel").text.contains("篓子回了药圃"), "真实手柄 A 触发岑苇对药篓归圃的进度回声")
+	_expect(game.journey.snapshot() == returned_basket_path_keeper_journey, "手柄问路不修改药篓或主线状态")
 	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": 0.73, "player_y": 0.34}), "输入验收移动到敌人预警区")
 	game._render([])
 	await _trigger_action("interact")
@@ -429,9 +467,14 @@ func _run() -> void:
 	breath_journey.choose("bypass_enemy")
 	var breath_exploration = ExplorationStateScript.new()
 	_expect(breath_exploration.transition_to(ExplorationStateScript.CANGQUAN_SPRING_MAP_ID), "输入验收建立合法藏泉石室地图")
-	_expect(SaveGameScript.write(breath_journey.snapshot(), breath_exploration.snapshot(), SAVE_PATH)["ok"], "输入验收建立未开始的三步引息 save v16 存档")
+	_expect(SaveGameScript.write(breath_journey.snapshot(), breath_exploration.snapshot(), SAVE_PATH)["ok"], "输入验收建立未开始的三步引息 save v17 存档")
 	var breath_disk: Dictionary = SaveGameScript.read(SAVE_PATH)
-	_expect(breath_disk["data"]["save_version"] == SaveGameScript.SAVE_VERSION and typeof(breath_disk["data"].get("patrol")) == TYPE_DICTIONARY, "输入夹具包含 save v16 顶层 patrol 快照")
+	_expect(
+		breath_disk["data"]["save_version"] == SaveGameScript.SAVE_VERSION
+		and typeof(breath_disk["data"].get("patrol")) == TYPE_DICTIONARY
+		and typeof(breath_disk["data"].get("path_keeper")) == TYPE_DICTIONARY,
+		"输入夹具包含 save v17 顶层 patrol 与 path_keeper 快照"
+	)
 
 	game = scene.instantiate()
 	game.configure_save_path(SAVE_PATH)
@@ -459,7 +502,7 @@ func _run() -> void:
 	if listen_button != null:
 		await _trigger_mouse_click(listen_button.get_global_rect().get_center())
 	_expect(game.journey.first_breath_stage == "listened", "真实鼠标点击完成听泉辨脉")
-	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "listened", "鼠标步骤立即写入 v16 存档")
+	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "listened", "鼠标步骤立即写入 v17 存档")
 
 	_expect(game.exploration.restore({
 		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
@@ -470,7 +513,7 @@ func _run() -> void:
 	await _settle()
 	await _trigger_key(KEY_E)
 	_expect(game.journey.first_breath_stage == "warmed" and not game.journey.gathered_moonleaf, "真实键盘 E 完成月芽温脉并消耗灵草")
-	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "warmed", "键盘步骤立即写入 v16 存档")
+	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "warmed", "键盘步骤立即写入 v17 存档")
 
 	_expect(game.exploration.restore({
 		"map_id": ExplorationStateScript.CANGQUAN_SPRING_MAP_ID,
@@ -481,7 +524,7 @@ func _run() -> void:
 	await _settle()
 	await _trigger_joy_button(JOY_BUTTON_A)
 	_expect(game.journey.first_breath_stage == "completed" and game.journey.phase_id() == "complete", "真实手柄 A 完成静坐引息")
-	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "completed", "手柄步骤立即写入 v16 存档")
+	_expect(SaveGameScript.read(SAVE_PATH)["data"]["journey"]["first_breath_stage"] == "completed", "手柄步骤立即写入 v17 存档")
 
 	game.get_node("%AudioManager").set_audio_enabled(false)
 	game.queue_free()

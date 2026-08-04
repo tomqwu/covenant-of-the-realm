@@ -4,6 +4,7 @@ const MapOccluderScript := preload("res://src/ui/map_occluder.gd")
 const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
+const PathKeeperStateScript := preload("res://src/domain/path_keeper_state.gd")
 const LANDMARK_ATLAS := preload("res://assets/pixel/zhaohe_landmarks.png")
 const ACTOR_HEIGHT := 56.0
 const WORLD_SIZE := Vector2(1536.0, 864.0)
@@ -74,6 +75,7 @@ const BATTLE_ROCK_POSITIONS: Array[Vector2] = [
 @onready var ferryman_sprite = %FerrymanSprite
 @onready var herbkeeper_sprite = %HerbkeeperSprite
 @onready var patrol_sprite = %PatrolSprite
+@onready var path_keeper_sprite = %PathKeeperSprite
 @onready var ferry_ground: TileMapLayer = %FerryGround
 @onready var path_ground: TileMapLayer = %PathGround
 @onready var map_detail_layer: TileMapLayer = %MapDetailLayer
@@ -113,6 +115,10 @@ var patrol_motion := Vector2.UP
 var patrol_moving := false
 var patrol_active := false
 var patrol_worksite_id := ""
+var path_keeper_position := PathKeeperStateScript.START_POSITION
+var path_keeper_motion := Vector2.RIGHT
+var path_keeper_moving := false
+var path_keeper_active := false
 
 
 func set_story_state(
@@ -177,6 +183,21 @@ func set_patrol_state(
 			patrol_motion = Vector2.LEFT
 		elif patrol_worksite_id == PatrolStateScript.WORKSITE_HERBS:
 			patrol_motion = Vector2.RIGHT
+	_sync_actor_visuals()
+	queue_redraw()
+
+
+func set_path_keeper_state(
+	next_position: Vector2,
+	next_motion: Vector2,
+	moving: bool,
+	active: bool
+) -> void:
+	path_keeper_position = next_position
+	if not next_motion.is_zero_approx():
+		path_keeper_motion = next_motion
+	path_keeper_moving = moving
+	path_keeper_active = active
 	_sync_actor_visuals()
 	queue_redraw()
 
@@ -293,6 +314,7 @@ func uses_animated_actor_sprites() -> bool:
 		and ferryman_sprite is AnimatedSprite2D
 		and herbkeeper_sprite is AnimatedSprite2D
 		and patrol_sprite is AnimatedSprite2D
+		and path_keeper_sprite is AnimatedSprite2D
 	)
 
 
@@ -438,6 +460,23 @@ func patrol_visual_contract() -> Dictionary:
 	}
 
 
+func path_keeper_visual_contract() -> Dictionary:
+	return {
+		"visible": path_keeper_sprite.visible,
+		"normalized_position": path_keeper_position,
+		"sprite_position": path_keeper_sprite.position,
+		"sprite_depth": path_keeper_sprite.z_index,
+		"motion": path_keeper_motion,
+		"moving": path_keeper_moving,
+		"active": path_keeper_active,
+		"interaction_action": PathKeeperStateScript.TALK_TO_PATH_KEEPER,
+		"collision_authority": false,
+		"quest_authority": false,
+		"battle_authority": false,
+		"reward_authority": false,
+	}
+
+
 func first_breath_visual_contract() -> Dictionary:
 	var completed := _completed_first_breath_actions()
 	return {
@@ -488,6 +527,7 @@ func occlusion_contract() -> Dictionary:
 		"ferryman_depth": ferryman_sprite.z_index,
 		"herbkeeper_depth": herbkeeper_sprite.z_index,
 		"patrol_depth": patrol_sprite.z_index,
+		"path_keeper_depth": path_keeper_sprite.z_index,
 		"map_depth_ceiling": 60,
 	}
 
@@ -515,6 +555,7 @@ func _sync_actor_visuals() -> void:
 		or not is_instance_valid(ferryman_sprite)
 		or not is_instance_valid(herbkeeper_sprite)
 		or not is_instance_valid(patrol_sprite)
+		or not is_instance_valid(path_keeper_sprite)
 		or not is_instance_valid(map_detail_layer)
 	):
 		return
@@ -530,6 +571,7 @@ func _sync_actor_visuals() -> void:
 	ferryman_sprite.visible = phase_id == "riverbank"
 	herbkeeper_sprite.visible = phase_id == "riverbank"
 	patrol_sprite.visible = phase_id == "riverbank" and patrol_active
+	path_keeper_sprite.visible = phase_id == "mountain_path" and path_keeper_active
 	battle_enemy_sprite.set_enemy_id(enemy_id)
 	battle_enemy_sprite.position = Vector2(size.x * 0.66, size.y * 0.49).round()
 	path_rock_enemy_sprite.position = Vector2(size.x * 0.76, size.y * 0.36).round()
@@ -541,6 +583,8 @@ func _sync_actor_visuals() -> void:
 	herbkeeper_sprite.set_motion(Vector2.LEFT, false)
 	patrol_sprite.position = Vector2(size.x * patrol_position.x, size.y * patrol_position.y).round()
 	patrol_sprite.set_motion(patrol_motion, patrol_moving)
+	path_keeper_sprite.position = Vector2(size.x * path_keeper_position.x, size.y * path_keeper_position.y).round()
+	path_keeper_sprite.set_motion(path_keeper_motion, path_keeper_moving)
 	player_sprite.visible = true
 	companion_sprite.visible = true
 	match phase_id:
@@ -596,6 +640,7 @@ func _apply_depth_sort() -> void:
 	ferryman_sprite.z_index = depth_for_y(ferryman_sprite.position.y)
 	herbkeeper_sprite.z_index = depth_for_y(herbkeeper_sprite.position.y)
 	patrol_sprite.z_index = depth_for_y(patrol_sprite.position.y)
+	path_keeper_sprite.z_index = depth_for_y(path_keeper_sprite.position.y)
 
 
 func _sync_occluders(size: Vector2) -> void:
@@ -780,6 +825,11 @@ func _draw_mountain_path() -> void:
 		_draw_interaction_marker(MOSS_SPOOR_POSITION * size, true)
 	if not enemy_intel.has("unbalanced_stone_puppet") and nearby_action == "inspect_puppet_spoor":
 		_draw_interaction_marker(PUPPET_SPOOR_POSITION * size, true)
+	if path_keeper_active:
+		_draw_interaction_marker(
+			path_keeper_position * size,
+			nearby_action == PathKeeperStateScript.TALK_TO_PATH_KEEPER
+		)
 	_draw_interaction_marker(Vector2(size.x * 0.56, size.y * 0.48), nearby_action == "approach_moss_shell")
 	_draw_interaction_marker(Vector2(size.x * 0.73, size.y * 0.34), nearby_action == "approach_enemy")
 	_draw_interaction_marker(Vector2(size.x * 0.80, size.y * 0.25), nearby_action == "approach_stone_puppet")

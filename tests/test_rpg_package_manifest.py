@@ -39,6 +39,7 @@ def test_manifest_round_trip_and_exact_contract(tmp_path: Path) -> None:
     assert written["source_revision"] == REVISION
     assert written["source_tree_state"] == "clean"
     assert written["required_resources"] == [
+        "res://assets/pixel/cenwei.png",
         "res://assets/pixel/enemy_profiles.png",
         "res://assets/pixel/ferry_tiles.png",
         "res://assets/pixel/zhaohe_landmarks.png",
@@ -51,6 +52,7 @@ def test_manifest_round_trip_and_exact_contract(tmp_path: Path) -> None:
         "res://src/domain/enemy_catalog.gd",
         "res://src/domain/exploration_state.gd",
         "res://src/domain/journey_state.gd",
+        "res://src/domain/path_keeper_state.gd",
         "res://src/domain/patrol_state.gd",
         "res://src/domain/save_game.gd",
         "res://src/domain/settings_store.gd",
@@ -259,8 +261,26 @@ def test_verify_supports_exact_v1_and_rejects_invalid_v2_provenance(tmp_path: Pa
         if key not in {"build_os", "build_architecture"}
     }
     legacy["schema_version"] = 1
+    legacy["required_resources"] = list(
+        rpg_package_manifest.SCHEMA_V1_REQUIRED_RESOURCES
+    )
+    legacy["excluded_resources"] = list(
+        rpg_package_manifest.SCHEMA_V1_EXCLUDED_RESOURCES
+    )
+    assert len(legacy["required_resources"]) == 22
+    assert "res://assets/pixel/cenwei.png" not in legacy["required_resources"]
+    assert "res://src/domain/path_keeper_state.gd" not in legacy["required_resources"]
     manifest.write_text(json.dumps(legacy), encoding="utf-8")
     assert rpg_package_manifest.verify_manifest(pack, manifest) == []
+
+    reinterpreted_v1 = legacy.copy()
+    reinterpreted_v1["required_resources"] = list(
+        rpg_package_manifest.REQUIRED_RESOURCES
+    )
+    manifest.write_text(json.dumps(reinterpreted_v1), encoding="utf-8")
+    assert rpg_package_manifest.verify_manifest(pack, manifest) == [
+        "manifest field 'required_resources' does not match the resource pack"
+    ]
 
     invalid_v1_scalar_type = legacy.copy()
     invalid_v1_scalar_type["size_bytes"] = float(legacy["size_bytes"])

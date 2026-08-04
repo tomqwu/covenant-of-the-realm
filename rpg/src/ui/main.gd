@@ -17,6 +17,7 @@ const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
 const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
 const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
+const PathKeeperStateScript := preload("res://src/domain/path_keeper_state.gd")
 
 @onready var map_canvas: Control = %MapCanvas
 @onready var map_frame: Control = %MapFrame
@@ -75,6 +76,7 @@ var journey = JourneyStateScript.new()
 var exploration = ExplorationStateScript.new()
 var dialogue = DialogueStateScript.new()
 var patrol = PatrolStateScript.new()
+var path_keeper = PathKeeperStateScript.new()
 var nearby_action_id := ""
 var save_path := SaveGameScript.DEFAULT_SAVE_PATH
 var settings_path := SettingsStoreScript.DEFAULT_PATH
@@ -176,9 +178,13 @@ func _process(delta: float) -> void:
 	if not is_playing or title_overlay.visible or pause_overlay.visible or not _is_exploration_phase():
 		return
 	var patrol_before: Dictionary = patrol.snapshot()
+	var path_keeper_before: Dictionary = path_keeper.snapshot()
 	if journey.phase_id() == "riverbank" and journey.talked_to_companion:
 		patrol.advance(delta, exploration.player_position, journey.patrol_response)
+	if journey.phase_id() == "mountain_path":
+		path_keeper.advance(delta, exploration.player_position)
 	var patrol_changed := patrol.snapshot() != patrol_before
+	var path_keeper_changed := path_keeper.snapshot() != path_keeper_before
 	var direction := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	var player_moved := false
 	if not direction.is_zero_approx():
@@ -187,9 +193,9 @@ func _process(delta: float) -> void:
 		player_moved = not exploration.player_position.is_equal_approx(before)
 	else:
 		map_canvas.set_player_motion(Vector2.ZERO)
-	if patrol_changed:
+	if patrol_changed or path_keeper_changed:
 		_refresh_nearby_action()
-	# Patrol animation is durable at explicit checkpoints, but it must not turn
+	# Route animation is durable at explicit checkpoints, but it must not turn
 	# presentation ticks into permanent once-per-second disk writes while idle.
 	if player_moved:
 		autosave_elapsed += delta
@@ -300,6 +306,12 @@ func _render(event_ids: Array) -> void:
 		patrol.is_moving(),
 		snapshot["talked_to_companion"],
 		_patrol_worksite_id(snapshot)
+	)
+	map_canvas.set_path_keeper_state(
+		path_keeper.position,
+		path_keeper.motion_direction(),
+		path_keeper.is_moving(),
+		snapshot["phase"] == "mountain_path"
 	)
 	nearby_action_id = _resolved_nearby_action(snapshot)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
@@ -576,6 +588,7 @@ func _on_action(action_id: String) -> void:
 		_sync_exploration_after_action(action_id, result["events"])
 		if action_id == JourneyStateScript.REPLAY_CHAPTER:
 			patrol.reset()
+			path_keeper.reset()
 	_render(result["events"])
 	if result["ok"]:
 		_save_game()
@@ -598,6 +611,12 @@ func move_player(direction: Vector2, delta: float) -> Vector2:
 		patrol.is_moving(),
 		journey.talked_to_companion,
 		_patrol_worksite_id(snapshot)
+	)
+	map_canvas.set_path_keeper_state(
+		path_keeper.position,
+		path_keeper.motion_direction(),
+		path_keeper.is_moving(),
+		snapshot["phase"] == "mountain_path"
 	)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	_sync_world_camera()
@@ -624,13 +643,20 @@ func world_camera_contract() -> Dictionary:
 
 func _refresh_nearby_action() -> void:
 	var previous_action := nearby_action_id
-	nearby_action_id = _resolved_nearby_action(journey.snapshot())
+	var snapshot := journey.snapshot()
+	nearby_action_id = _resolved_nearby_action(snapshot)
 	map_canvas.set_patrol_state(
 		patrol.position,
 		patrol.motion_direction(),
 		patrol.is_moving(),
-		journey.talked_to_companion,
-		_patrol_worksite_id(journey.snapshot())
+		bool(snapshot["talked_to_companion"]),
+		_patrol_worksite_id(snapshot)
+	)
+	map_canvas.set_path_keeper_state(
+		path_keeper.position,
+		path_keeper.motion_direction(),
+		path_keeper.is_moving(),
+		snapshot["phase"] == "mountain_path"
 	)
 	map_canvas.set_nearby_action(nearby_action_id)
 	if nearby_action_id != previous_action:
@@ -650,6 +676,13 @@ func _resolved_nearby_action(snapshot: Dictionary) -> String:
 		)
 		if not patrol_action.is_empty():
 			return patrol_action
+	if snapshot["phase"] == "mountain_path":
+		var path_keeper_action := path_keeper.interaction_action(
+			exploration.player_position,
+			true
+		)
+		if not path_keeper_action.is_empty():
+			return path_keeper_action
 	var fixed_action := exploration.interaction_action(
 		snapshot["gathered_moonleaf"],
 		snapshot["talked_to_companion"],
@@ -938,6 +971,7 @@ func _begin_new_game() -> void:
 	exploration = ExplorationStateScript.new()
 	dialogue = DialogueStateScript.new()
 	patrol = PatrolStateScript.new()
+	path_keeper = PathKeeperStateScript.new()
 	dialogue_history_visible = false
 	journal_page = 0
 	journal_tabs.current_tab = 0
@@ -974,6 +1008,7 @@ func continue_game() -> bool:
 	exploration = decoded["exploration"]
 	dialogue = decoded["dialogue"]
 	patrol = decoded["patrol"]
+	path_keeper = decoded["path_keeper"]
 	save_recovery_pending = loaded["recovered_from_temporary"] or loaded["recovered_from_backup"]
 	is_playing = true
 	autosave_elapsed = 0.0
@@ -1049,7 +1084,8 @@ func _save_game(preserve_existing_backup: bool = false) -> bool:
 		save_path,
 		dialogue.snapshot(),
 		protect_recovery,
-		patrol.snapshot()
+		patrol.snapshot(),
+		path_keeper.snapshot()
 	)
 	if not result["ok"]:
 		event_label.text = "自动存档失败（%s）。当前游戏仍可继续。" % result["reason"]
@@ -1155,6 +1191,11 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 	var restored_patrol = PatrolStateScript.new()
 	if not restored_patrol.restore(loaded["data"]["patrol"]):
 		return {"ok": false, "reason": "存档中的巡路状态无效"}
+	if typeof(loaded["data"].get("path_keeper")) != TYPE_DICTIONARY:
+		return {"ok": false, "reason": "存档中的补签人状态无效"}
+	var restored_path_keeper = PathKeeperStateScript.new()
+	if not restored_path_keeper.restore(loaded["data"]["path_keeper"]):
+		return {"ok": false, "reason": "存档中的补签人状态无效"}
 	if restored_dialogue.active:
 		match restored_dialogue.dialogue_id:
 			DialogueStateScript.COMPANION_BRIEFING:
@@ -1204,6 +1245,7 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 		"exploration": restored_exploration,
 		"dialogue": restored_dialogue,
 		"patrol": restored_patrol,
+		"path_keeper": restored_path_keeper,
 	}
 
 
