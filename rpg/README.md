@@ -1,7 +1,7 @@
 # 《山河有契》RPG 灰盒
 
 这是 Godot 4.7.1 制作的原创单机剧情 RPG 基础。当前灰盒验证数据驱动中文行动、
-确定性回合战斗、陶小满与岑苇两条独立 NPC 日程、一次性资源与“听泉辨脉 → 月芽温脉 → 静坐引息”的三步首次境界突破；
+确定性回合战斗、九形临势签、陶小满与岑苇两条独立 NPC 日程、一次性资源与“听泉辨脉 → 月芽温脉 → 静坐引息”的三步首次境界突破；
 不包含外部小说的受保护内容。
 
 ```sh
@@ -31,7 +31,7 @@ Godot entrypoint. Godot's default export-time TSCN→SCN repack assigned fresh i
 each empty import cache, so sequential exports sharing one cache were stable while equal-source clean
 checkouts were not. The project now keeps text scenes as source text during export. The gate compares
 two normal exports with two independent project copies that each build an empty `.godot` cache, then
-verifies the manifest, probes 24 required and nine excluded `tests/`/`tools/` resources, and boots the
+verifies the manifest, probes 25 required and nine excluded `tests/`/`tools/` resources, and boots the
 pack headlessly. As historical controlled-input evidence, for the packaged runtime inputs committed in `f5c60e2`, four local macOS/arm64
 exports and four exports in each of two independent GitHub-hosted Linux/x86_64 RPG job attempts all
 match at 709,100 bytes and SHA-256
@@ -39,29 +39,33 @@ match at 709,100 bytes and SHA-256
 same-input observation is not inferred from the build tuple and does not promise future
 cross-platform identity; tuples remain coarse, privacy-preserving provenance rather than a
 canonical-hash key or executable ABI. For the current local feature worktree, four macOS/arm64
-exports, including two independent fresh-cache project copies, match at 746,180 bytes and SHA-256
-`16fbb0098326c58d4a651f90e03ab20eb8a53a7dd98b896b79c089e1af974573`; manifest verification,
-the 24-required / nine-excluded resource probe, and packaged boot smoke pass locally, while hosted
-confirmation remains pending.
+exports, including two independent fresh-cache project copies, match at 812,608 bytes and SHA-256
+`aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`. Manifest verification,
+the 25-required / nine-excluded resource probe, and packaged boot smoke all pass locally; no hosted
+build has been run for this current-input evidence. Two consecutive 42-PNG capture batches also
+reproduce the same aggregate SHA-256
+`3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
 A native `.app`/`.exe` is intentionally deferred until the owner selects the first platform and public
 license, then confirms export templates, signing identity, product icon, and distribution target.
 
 The development window has a 1152×648 minimum because that is the validated readable layout.
 Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, battle confirmation,
 and pause/resume are exercised as physical input events by `make test-rpg-input`.
+The current automated Godot evidence is 3,105 rule/scene assertions, 357 complete-chapter E2E
+assertions, and 189 semantic physical-input/focus assertions.
 
 `make test-rpg-performance` executes 100,000 deterministic movement/collision steps, 100,000
 deterministic ferry-runner route steps, 100,000 deterministic path-keeper route steps, 50,000
-bounded companion-footprint updates, 2,000 complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. Lifecycle sampling covers title, path, dialogue choices, active patrol, patrol worksite dialogue, stable battle, immediate and settled post-action frames, the scrollable journal, all three spring stages, and completion. The checked-in
-budget allows 2.5 seconds for each pure-domain workload and 7 seconds for the expanded 13-state lifecycle workload,
-caps the main scene at 125 nodes, and requires every cycle to return the root to its baseline child
-count. The static scene uses 115 nodes; the measured peak is 125, mountain-path exploration uses
-121, active ferry patrol uses 123, worksite dialogue uses 125, each spring ritual stage uses 116,
-the completed scene uses 118, title uses 123, and dialogue plus journal uses 125, with zero root-child leaks. Godot runs the
+bounded companion-footprint updates, 2,000 complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. Lifecycle sampling covers title, path, dialogue choices, active patrol, patrol worksite dialogue, stable battle, immediate and settled post-action frames, immediate and settled regular-enemy replacement frames, the scrollable journal, all three spring stages, and completion. The checked-in
+budget allows 2.5 seconds for each pure-domain workload and 7 seconds for the expanded 15-state lifecycle workload,
+caps the main scene at 126 nodes, and requires every cycle to return the root to its baseline child
+count. The static scene uses 116 nodes; the measured peak is 126, mountain-path exploration uses
+122, active ferry patrol uses 124, worksite dialogue uses 126, each spring ritual stage uses 117,
+the completed scene uses 119, title uses 124, dialogue uses 126, and journal plus both enemy-replacement samples use 125, with zero root-child leaks. Godot runs the
 lifecycle gate on a fixed 60 FPS clock, keeps required focus/deferred-tree settle frames, and
 disables automatic drawing because deterministic PNG captures own pixel verification. The runner
 reports measured times but does not treat one development machine as a release hardware promise.
-The latest samples are 55.46 ms for 100,000 path-keeper advances and 928.60 ms for the complete
+The latest samples are 54.05 ms for 100,000 path-keeper advances and 959.0 ms for the complete
 20-cycle lifecycle workload.
 Every cycle starts, advances, and saves dialogue before traversing the remaining states. The first
 cycle of each complete sample additionally runs standard/fast/instant reveal behavior through four
@@ -105,7 +109,9 @@ settings v2 还保存“标准/快速”战斗表现和“完整/简化”动态
 settings v3 增加“标准/大字”文字大小和“关闭/开启”高对比文字。大字把全部叙事
 阅读文本在场景基准字号上放大 1.25 倍；高对比按明度把每个阅读标签推向不透明的
 深墨或纸白锚点，纸面浅色与深底浅字两种极性都只增强、不反转。两项无障碍设置
-同样只作用于表现层，v1/v2 设置保守迁移为标准字号与普通对比。
+同样只作用于表现层，v1/v2 设置保守迁移为标准字号与普通对比。固定屏幕空间的
+临势签同步采用标准 18/14 px 或大字 23/18 px 层级，并在高对比模式切换到更深墨色
+与更亮纸色；图形、文字等价信息和输入透明性保持不变。
 
 settings v4 增加“对话显字：标准/快速/整句”。标准与快速分别以确定性的 42/84 个
 Unicode 字符每秒显示当前行；整句在新行出现时直接显示全文，但不会自动换行、推进、
@@ -179,15 +185,21 @@ save v17 顶层 `path_keeper` 精确恢复这条路线；v1–v16 从固定起�
 锁死主线；采集字段自 save v9 起保存，并由当前 v17 在章节结算中回显。键盘/手柄单键交互采用稳定的
 旧规默认项，鼠标或行动按钮可以选择任一方式。
 
-三类敌人共享同一战斗解析器，但生命、两回合意图循环和材质弱点不同。抬头目标
-始终会在玩家行动前显示当前敌势与伤害。山道上的岩甲擦痕、泉苔孢痕和石傀拖痕
-可分别调查；识别后，界面才会额外预告后一势并指出本轮反制窗口：镇岩符只在裂石
+三类普通敌人与首领共享同一战斗解析器，但生命、意图循环和材质弱点不同。独立
+`IntentTelegraph` 临势签固定在屏幕空间，在玩家行动前显示当前敌势与伤害；四类
+敌人的九个稳定意图各有唯一图形。山道上的岩甲擦痕、泉苔孢痕和石傀拖痕
+可分别调查；识别后，临势签才会额外预告后一势并指出本轮反制窗口：镇岩符只在裂石
 冲撞时压入甲缝，引气术只在吸潮时吹散湿苔，守势只在失衡摆锤时借力反伤。调查
 只增加信息，不改变伤害、资源、回合或奖励；未调查时碰巧选对行动仍按同一规则
 结算，也不会暗中解锁札记。save v7 会把非默认敌人保存下来；E2E 会在泉苔
-战斗中销毁并重建场景，验证敌人和下一意图都没有改变。
+战斗中销毁并重建场景，验证敌人和下一意图都没有改变。临势签忽略鼠标命中且不进入
+键盘/手柄焦点链，也不拥有规则、伤害、情报、回合、存档或时序权威。
 
 普通敌人退场后，岩甲兽守巢者会从泉室石门出现，但不会切换到另一套解析器。
+每次战斗行动只在返回值中携带瞬时表现上下文：行动前敌人 ID 与已宣告意图 ID；
+地图反馈据此区分已结算意图、退场敌人和替换首领。该上下文不写入 save v17，读档
+会清空旧新身份等瞬时反馈并从 Journey 规则快照重建当前临势签；普通敌替换与终局
+还分别验证新敌身份原子切换和离开战斗时清签。
 守住首领重击会产生两层破甲，后续攻击逐层获得额外伤害；砚青援护会产生两层
 凝息，强化后续术式或符箓。两种状态自 save v8 起明确记录，并由当前 v17 继续保存；完整 E2E 会在
 首领战中断并恢复后继续结算；绕行路线仍可避开普通战与首领战。

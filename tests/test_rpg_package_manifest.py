@@ -58,12 +58,15 @@ def test_manifest_round_trip_and_exact_contract(tmp_path: Path) -> None:
         "res://src/domain/settings_store.gd",
         "res://src/ui/dialogue_portrait.gd",
         "res://src/ui/enemy_sprite.gd",
+        "res://src/ui/intent_telegraph.gd",
         "res://src/ui/main.gd",
         "res://src/ui/main.tscn",
         "res://src/ui/map_detail_layer.gd",
         "res://src/ui/map_occluder.gd",
         "res://src/ui/world_camera.gd",
     ]
+    assert len(written["required_resources"]) == 25
+    assert "res://src/ui/intent_telegraph.gd" in written["required_resources"]
     assert written["excluded_resources"] == [
         "res://tests/e2e_runner.gd",
         "res://tests/input_runner.gd",
@@ -270,6 +273,7 @@ def test_verify_supports_exact_v1_and_rejects_invalid_v2_provenance(tmp_path: Pa
     assert len(legacy["required_resources"]) == 22
     assert "res://assets/pixel/cenwei.png" not in legacy["required_resources"]
     assert "res://src/domain/path_keeper_state.gd" not in legacy["required_resources"]
+    assert "res://src/ui/intent_telegraph.gd" not in legacy["required_resources"]
     manifest.write_text(json.dumps(legacy), encoding="utf-8")
     assert rpg_package_manifest.verify_manifest(pack, manifest) == []
 

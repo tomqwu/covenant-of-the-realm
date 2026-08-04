@@ -406,11 +406,38 @@ func _run() -> void:
 	for battle_actor_path in ["%PlayerSprite", "%CompanionSprite", "%BattleEnemySprite"]:
 		var battle_actor: Node2D = game.get_node(battle_actor_path)
 		_expect(battle_safe_frame.has_point(battle_actor.position - battle_camera["origin"]), "E2E 战斗演员保持在 HUD 与行动纸面之间")
-	var unknown_intent_text: String = game.get_node("%ObjectiveLabel").text
-	_expect(unknown_intent_text.contains("当前敌势") and unknown_intent_text.contains("试探冲撞") and unknown_intent_text.contains("3 伤害"), "E2E 未调查时仍明示当前敌势与伤害")
-	_expect(not unknown_intent_text.contains("后一势") and not unknown_intent_text.contains("破绽窗口"), "E2E 未调查时不剧透后续行止与应对")
+	var unknown_intent: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
+	_expect(
+		unknown_intent["active"]
+		and unknown_intent["enemy_id"] == "rock_armor_young"
+		and unknown_intent["intent_id"] == "rock_probing_charge"
+		and unknown_intent["current_name"] == "试探冲撞"
+		and unknown_intent["current_damage"] == 3
+		and unknown_intent["recognized_intent"]
+		and unknown_intent["shape_id"] == "probing_charge",
+		"E2E 未调查时独立势签明示当前敌势、伤害与稳定图形"
+	)
+	_expect(
+		not unknown_intent["intel_known"]
+		and not unknown_intent["next_intent_visible"]
+		and unknown_intent["next_intent_id"] == ""
+		and unknown_intent["counter_text"] == ""
+		and unknown_intent["second_line"] == "敌迹未辨　｜　后一势与破绽暂不显示",
+		"E2E 未调查时独立势签不剧透后一势与应对"
+	)
 	await _press_action(game, "撤到旧石标")
-	_expect(game.journey.phase_id() == "mountain_path", "E2E 可沿退路撤到山道")
+	var retreat_feedback: Dictionary = game.get_node("%MapCanvas").feedback_contract()
+	_expect(
+		game.journey.phase_id() == "mountain_path"
+		and not retreat_feedback["active"]
+		and retreat_feedback["text"] == ""
+		and retreat_feedback["enemy_id_before"] == ""
+		and retreat_feedback["announced_intent_id"] == ""
+		and retreat_feedback["resolved_intent_id"] == ""
+		and retreat_feedback["outgoing_enemy_id"] == ""
+		and retreat_feedback["replacement_enemy_id"] == "",
+		"E2E 可沿退路撤到山道并清空动作前敌人与意图瞬时上下文"
+	)
 	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": game.path_keeper.position.x, "player_y": game.path_keeper.position.y}), "E2E 撤退后可在当前巡山位置找到岑苇")
 	game._render([])
 	var setback_path_keeper_journey: Dictionary = game.journey.snapshot()
@@ -440,8 +467,23 @@ func _run() -> void:
 	game._render([])
 	await _press_action(game, "触碰泉苔寄壳")
 	_expect(game.journey.enemy_id == "spring_moss_shell", "E2E 非默认遭遇选择泉苔配置")
-	_expect(game.get_node("%ObjectiveLabel").text.contains("吸潮蓄壳"), "E2E 战斗 UI 预告泉苔意图")
-	_expect(game.get_node("%ObjectiveLabel").text.contains("后一势") and game.get_node("%ObjectiveLabel").text.contains("引气术"), "E2E 已读泉苔敌情显示后一势与当前破绽窗口")
+	var known_moss_intent: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
+	_expect(
+		known_moss_intent["active"]
+		and known_moss_intent["enemy_id"] == "spring_moss_shell"
+		and known_moss_intent["intent_id"] == "moss_absorb_tide"
+		and known_moss_intent["shape_id"] == "absorb_tide"
+		and known_moss_intent["intel_known"],
+		"E2E 已读泉苔敌情由独立势签显示当前吸潮势"
+	)
+	_expect(
+		known_moss_intent["next_intent_visible"]
+		and known_moss_intent["next_intent_id"] == "moss_spore_spray"
+		and known_moss_intent["counter_text"] == "引气术"
+		and known_moss_intent["second_line"].contains("喷苔孢雾")
+		and known_moss_intent["second_line"].contains("破绽　引气术"),
+		"E2E 已读泉苔敌情显示后一势与当前破绽"
+	)
 	var saved_intent: String = game.journey.current_enemy_intent()["name"]
 	game.queue_free()
 	await _settle()
@@ -454,6 +496,23 @@ func _run() -> void:
 	_expect(game.journey.enemy_id == "spring_moss_shell", "E2E 战斗恢复保持敌人标识")
 	_expect(game.journey.current_enemy_intent()["name"] == saved_intent, "E2E 战斗恢复保持下一意图")
 	_expect(game.get_node("%BattleEnemySprite").animation == &"idle_spring_moss_shell", "E2E 读档只恢复敌人规则标识，不持久化旧表现姿态")
+	var restored_moss_intent: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
+	_expect(
+		restored_moss_intent["active"]
+		and restored_moss_intent["enemy_id"] == "spring_moss_shell"
+		and restored_moss_intent["intent_id"] == "moss_absorb_tide"
+		and restored_moss_intent["intel_known"],
+		"E2E 读档从规则快照重建泉苔势签"
+	)
+	var restored_moss_feedback: Dictionary = game.get_node("%MapCanvas").feedback_contract()
+	_expect(
+		restored_moss_feedback["enemy_id_before"] == ""
+		and restored_moss_feedback["announced_intent_id"] == ""
+		and restored_moss_feedback["resolved_intent_id"] == ""
+		and restored_moss_feedback["outgoing_enemy_id"] == ""
+		and restored_moss_feedback["replacement_enemy_id"] == "",
+		"E2E 读档不恢复上一场景的瞬时战斗反馈身份"
+	)
 	await _press_action(game, "布置引泉石灯")
 	_expect(game.journey.lamp_turns == 1, "E2E 战术石灯进入持续状态")
 	_expect(game.get_node("%BattleEnemySprite").presentation_contract()["state"] == "attack", "E2E 石灯回合消费敌方攻击语义")
@@ -464,12 +523,66 @@ func _run() -> void:
 	await _press_action(game, "引气术")
 	_expect(game.journey.enemy_id == "rock_armor_warden", "E2E 普通遭遇后进入共享首领战")
 	_expect(game.get_node("%BattleEnemySprite").animation == &"idle_rock_armor_warden", "E2E 换首领抑制旧敌受击并回到首领待机")
-	_expect(game.get_node("%ObjectiveLabel").text.contains("压阵肩撞"), "E2E 首领意图在行动前明示")
-	_expect(game.get_node("%ObjectiveLabel").text.contains("后一势") and game.get_node("%ObjectiveLabel").text.contains("破绽窗口　无"), "E2E 岩甲痕迹也识别同类首领且不误报肩撞窗口")
+	var replacement_feedback: Dictionary = game.get_node("%MapCanvas").feedback_contract()
+	_expect(
+		replacement_feedback["enemy_id_before"] == "spring_moss_shell"
+		and replacement_feedback["announced_intent_id"] == "moss_spore_spray"
+		and replacement_feedback["resolved_intent_id"] == ""
+		and replacement_feedback["outgoing_enemy_id"] == "spring_moss_shell"
+		and replacement_feedback["replacement_enemy_id"] == "rock_armor_warden",
+		"E2E 普通敌退场与首领替换保留同一行动的旧新身份"
+	)
+	var replacement_intent: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
+	_expect(
+		replacement_intent["active"]
+		and replacement_intent["enemy_id"] == "rock_armor_warden"
+		and replacement_intent["intent_id"] == "warden_pressing_charge"
+		and replacement_intent["shape_id"] == "pressing_charge"
+		and replacement_intent["intel_known"]
+		and replacement_intent["next_intent_id"] == "warden_stonebreaking_blow",
+		"E2E 首领替换当帧只显示新敌的稳定势签身份"
+	)
+	_expect(
+		replacement_intent["counter_text"] == ""
+		and replacement_intent["second_line"].contains("本势无特定破绽"),
+		"E2E 岩甲痕迹识别同类首领且不误报肩撞破绽"
+	)
+	game.queue_free()
+	await _settle()
+	game = scene.instantiate()
+	game.configure_save_path(TEST_SAVE_PATH)
+	game.configure_settings_path(TEST_SETTINGS_PATH)
+	root.add_child(game)
+	await _settle()
+	_expect(game.continue_game(), "E2E 可恢复刚完成普通敌替换的首领战")
+	var restored_replacement_feedback: Dictionary = game.get_node("%MapCanvas").feedback_contract()
+	_expect(
+		restored_replacement_feedback["enemy_id_before"] == ""
+		and restored_replacement_feedback["announced_intent_id"] == ""
+		and restored_replacement_feedback["resolved_intent_id"] == ""
+		and restored_replacement_feedback["outgoing_enemy_id"] == ""
+		and restored_replacement_feedback["replacement_enemy_id"] == "",
+		"E2E 首领替换的旧新身份属于瞬时表现且不会写入存档"
+	)
+	var restored_replacement_intent: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
+	_expect(
+		restored_replacement_intent["active"]
+		and restored_replacement_intent["enemy_id"] == "rock_armor_warden"
+		and restored_replacement_intent["intent_id"] == "warden_pressing_charge",
+		"E2E 读档仍从首领规则状态重建当前势签"
+	)
 	await _press_action(game, "守势调息")
 	_expect(game.journey.armor_break_turns == 0, "E2E 守势在压阵肩撞时只做普通防御")
 	_expect(game.get_node("%BattleEnemySprite").presentation_contract()["state"] == "attack", "E2E 首领普通回应呈现攻击姿态")
-	_expect(game.get_node("%ObjectiveLabel").text.contains("崩石重击") and game.get_node("%ObjectiveLabel").text.contains("破绽窗口　守势调息"), "E2E 首领重击回合显示正确守势窗口")
+	var stonebreaking_intent: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
+	_expect(
+		stonebreaking_intent["intent_id"] == "warden_stonebreaking_blow"
+		and stonebreaking_intent["shape_id"] == "stonebreaking_blow"
+		and stonebreaking_intent["next_intent_id"] == "warden_nest_guard"
+		and stonebreaking_intent["counter_text"] == "守势调息"
+		and stonebreaking_intent["second_line"].contains("破绽　守势调息"),
+		"E2E 首领重击回合由势签显示正确后一势与守势破绽"
+	)
 	await _press_action(game, "守势调息")
 	_expect(game.journey.armor_break_turns == 2, "E2E 守势只在首领重击回合施加破甲")
 	_expect(game.get_node("%BattleEnemySprite").presentation_contract()["event_id"] == "weakness_exposed", "E2E 重击破绽优先呈现首领受击")
@@ -491,6 +604,15 @@ func _run() -> void:
 	await _press_action(game, "引气术")
 	await _press_action(game, "引气术")
 	_expect(game.journey.phase_id() == "spring", "E2E 击败首领后打开泉室")
+	var terminal_intent: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
+	_expect(
+		not terminal_intent["active"]
+		and terminal_intent["enemy_id"] == ""
+		and terminal_intent["intent_id"] == ""
+		and terminal_intent["first_line"] == ""
+		and terminal_intent["second_line"] == "",
+		"E2E 终局离开战斗时清空独立势签"
+	)
 	_expect(game.exploration.map_id == ExplorationStateScript.CANGQUAN_SPRING_MAP_ID, "E2E 战斗路线汇入独立藏泉石室地图")
 	_expect(game.journey.first_breath_stage == "unstarted", "E2E 战斗路线从未开始的引息仪轨汇入")
 	game.get_node("%SceneTransition").finish()

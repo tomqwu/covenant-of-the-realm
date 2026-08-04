@@ -427,17 +427,57 @@ func _run() -> void:
 	await _trigger_action("interact")
 	_expect(game.journey.phase_id() == "battle", "交互动作从敌人预警区进入战斗")
 	await _settle()
+	var input_telegraph: Control = game.get_node("%IntentTelegraph")
+	var input_telegraph_contract: Dictionary = input_telegraph.presentation_contract()
+	_expect(
+		input_telegraph_contract["active"]
+		and input_telegraph_contract["enemy_id"] == "rock_armor_young"
+		and input_telegraph_contract["intent_id"] == "rock_probing_charge",
+		"真实输入战斗显示当前敌势签"
+	)
+	_expect(
+		input_telegraph.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and input_telegraph.focus_mode == Control.FOCUS_NONE
+		and input_telegraph_contract["mouse_filter"] == Control.MOUSE_FILTER_IGNORE
+		and input_telegraph_contract["focus_mode"] == Control.FOCUS_NONE
+		and not input_telegraph_contract["blocks_input"],
+		"势签忽略鼠标命中且不进入键盘或手柄焦点链"
+	)
 	var first_focus := root.gui_get_focus_owner()
 	_expect(first_focus is Button and first_focus.text == "引气术", "战斗焦点落在第一项术式")
 	await _trigger_action("ui_right")
 	var moved_focus := root.gui_get_focus_owner()
-	_expect(moved_focus is Button and moved_focus != first_focus, "方向动作在战斗网格中移动焦点")
+	_expect(moved_focus is Button and moved_focus != first_focus and moved_focus != input_telegraph, "方向动作穿过势签在战斗网格中移动焦点")
 	await _trigger_action("ui_accept")
 	_expect(game.journey.round_number == 2, "确认动作执行当前战斗焦点")
 	_expect(game.get_node("%BattleEnemySprite").presentation_contract()["state"] == "react", "真实方向与确认输入触发同一敌人受击语义")
+	var post_action_telegraph: Dictionary = input_telegraph.presentation_contract()
+	var post_action_focus := root.gui_get_focus_owner()
+	_expect(
+		post_action_telegraph["intent_id"] == "rock_rending_charge"
+		and post_action_telegraph["shape_id"] == "rending_charge",
+		"确认战斗行动后势签随规则回合更新"
+	)
+	_expect(
+		post_action_focus is Button
+		and game.get_node("%Actions").is_ancestor_of(post_action_focus)
+		and post_action_focus != input_telegraph,
+		"势签更新后战斗行动网格保持输入焦点"
+	)
 	game.return_to_title()
 	await _settle()
-	_expect(game.get_node("%TitleDialogueSpeedButton").text == "对话显字：快速", "返回标题保留快速对话显字偏好")
+	game._apply_accessibility_settings()
+	var title_feedback: Dictionary = game.get_node("%MapCanvas").feedback_contract()
+	_expect(
+		game.get_node("%TitleDialogueSpeedButton").text == "对话显字：快速"
+		and not input_telegraph.presentation_contract()["active"]
+		and not input_telegraph.visible
+		and not title_feedback["active"]
+		and title_feedback["text"] == ""
+		and title_feedback["enemy_id_before"] == ""
+		and title_feedback["announced_intent_id"] == "",
+		"战斗返回标题保留显字偏好，并在标题设置重刷后仍清除势签与瞬时反馈"
+	)
 	var battle_save_text := FileAccess.get_file_as_string(SAVE_PATH)
 	game.get_node("%NewGameButton").grab_focus()
 	await _trigger_joy_button(JOY_BUTTON_A)

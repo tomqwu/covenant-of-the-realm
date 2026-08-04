@@ -472,6 +472,7 @@ func _choose_riverbank(action_id: String) -> Dictionary:
 
 
 func _choose_battle(action_id: String) -> Dictionary:
+	var presentation_context := _battle_presentation_context()
 	var events: Array[String] = []
 	var guard_amount := 0
 	match action_id:
@@ -513,7 +514,7 @@ func _choose_battle(action_id: String) -> Dictionary:
 			lamp_turns = 0
 			armor_break_turns = 0
 			focus_turns = 0
-			return _result(true, ["retreated"])
+			return _result(true, ["retreated"], presentation_context)
 		_:
 			return _result(false, ["invalid_action"])
 	if action_id in [USE_ART, USE_TALISMAN, GUARD] and EnemyCatalogScript.exposes_weakness(enemy_id, action_id, round_number):
@@ -530,7 +531,7 @@ func _choose_battle(action_id: String) -> Dictionary:
 			armor_break_turns = 0
 			focus_turns = 0
 			events.append("battle_won")
-		return _result(true, events)
+		return _result(true, events, presentation_context)
 	if lamp_turns > 0:
 		guard_amount += 1
 		lamp_turns -= 1
@@ -552,9 +553,9 @@ func _choose_battle(action_id: String) -> Dictionary:
 		armor_break_turns = 0
 		focus_turns = 0
 		events.append("companion_rescue")
-		return _result(true, events)
+		return _result(true, events, presentation_context)
 	round_number += 1
-	return _result(true, events)
+	return _result(true, events, presentation_context)
 
 
 func _choose_first_breath(action_id: String) -> Dictionary:
@@ -592,8 +593,22 @@ func _choose_first_breath(action_id: String) -> Dictionary:
 	return _result(false, ["invalid_action"])
 
 
-func _result(ok: bool, events: Array[String]) -> Dictionary:
-	return {"ok": ok, "events": events, "snapshot": snapshot()}
+func _result(ok: bool, events: Array[String], presentation_context: Dictionary = {}) -> Dictionary:
+	return {
+		"ok": ok,
+		"events": events,
+		"snapshot": snapshot(),
+		"presentation_context": presentation_context.duplicate(true),
+	}
+
+
+func _battle_presentation_context() -> Dictionary:
+	return {
+		"battle": {
+			"enemy_id_before": enemy_id,
+			"announced_intent_id": str(current_enemy_intent().get("id", "")),
+		},
+	}
 
 
 func _record_discovery(discovery_id: String, event_id: String) -> Dictionary:

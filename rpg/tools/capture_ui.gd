@@ -235,6 +235,7 @@ func _capture_flow() -> void:
 	instance.get_node("%SceneTransition").finish()
 	assert(instance.get_node("%BattleEnemySprite").presentation_contract()["state"] == "attack",
 		"攻击参考图必须在真实时间推进前锁定语义姿态")
+	_assert_intent_telegraph(instance, "rock_armor_young", "rock_rending_charge", "rock_probing_charge", "镇岩符", "岩甲战斗")
 	await _save_frame("02-cangquan-battle.png")
 	instance._on_action("use_art")
 	assert(instance.get_node("%BattleEnemySprite").presentation_contract()["state"] == "react",
@@ -244,18 +245,31 @@ func _capture_flow() -> void:
 	instance._on_action("approach_moss_shell")
 	instance.get_node("%SceneTransition").finish()
 	await _settle()
+	_assert_intent_telegraph(instance, "spring_moss_shell", "moss_absorb_tide", "moss_spore_spray", "引气术", "泉苔战斗")
 	await _save_frame("02-cangquan-moss-battle.png")
 	instance._on_action("retreat")
 	instance._on_action("approach_stone_puppet")
 	instance.get_node("%SceneTransition").finish()
 	await _settle()
+	var puppet_journey_before_accessibility: Dictionary = instance.journey.snapshot()
+	instance.toggle_text_scale()
+	instance.toggle_high_contrast()
+	_assert_intent_telegraph(instance, "unbalanced_stone_puppet", "puppet_unbalanced_swing", "puppet_rebalance_step", "守势调息", "石傀大字高对比战斗")
+	var accessible_intent: Dictionary = instance.get_node("%IntentTelegraph").presentation_contract()
+	assert(accessible_intent["large_text"] and accessible_intent["high_contrast"],
+		"石傀参考图必须实际启用大字与高对比签面")
+	assert(instance.journey.snapshot() == puppet_journey_before_accessibility,
+		"签面无障碍偏好不得修改旅程规则")
 	await _save_frame("02-cangquan-puppet-battle.png")
+	instance.toggle_text_scale()
+	instance.toggle_high_contrast()
 
 	instance._on_action("guard")
 	instance._on_action("use_talisman")
 	instance._on_action("use_art")
 	instance.get_node("%SceneTransition").finish()
 	await _settle()
+	_assert_intent_telegraph(instance, "rock_armor_warden", "warden_pressing_charge", "warden_stonebreaking_blow", "", "首领战斗")
 	await _save_frame("02-cangquan-boss.png")
 	instance._on_action("guard")
 	instance._on_action("guard")
@@ -595,6 +609,27 @@ func _assert_tao_dialogue_ready(game, label: String) -> void:
 		"%s参考图必须完整显示陶小满身份条" % label)
 
 
+func _assert_intent_telegraph(
+	game,
+	expected_enemy_id: String,
+	expected_intent_id: String,
+	expected_next_intent_id: String,
+	expected_counter_text: String,
+	label: String
+) -> void:
+	var contract: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
+	assert(contract["active"] and contract["recognized_intent"],
+		"%s参考图必须显示已识别的独立临势签" % label)
+	assert(contract["enemy_id"] == expected_enemy_id and contract["intent_id"] == expected_intent_id,
+		"%s参考图必须显示当前权威敌人与意图" % label)
+	assert(contract["next_intent_id"] == expected_next_intent_id,
+		"%s参考图必须显示已门控的后一势" % label)
+	assert(contract["counter_text"] == expected_counter_text,
+		"%s参考图必须显示已门控的当前破绽" % label)
+	assert(contract["nine_shape_complete"] and not contract["rule_authority"] and not contract["save_authority"],
+		"%s参考图签面必须保持九形完整且没有规则或存档权威" % label)
+
+
 func _normalize_capture_state(
 	preserve_patrol: bool = false,
 	preserve_path_keeper: bool = false
@@ -629,6 +664,11 @@ func _normalize_capture_state(
 		map_canvas.feedback_remaining = map_canvas.feedback_duration * 0.5
 		map_canvas.feedback_phase = 0.0
 		map_canvas.queue_redraw()
+	var intent_telegraph := root.find_child("IntentTelegraph", true, false)
+	if intent_telegraph != null and intent_telegraph.cue_duration > 0.0:
+		intent_telegraph.cue_remaining = intent_telegraph.cue_duration * 0.5
+		intent_telegraph.set_process(false)
+		intent_telegraph.queue_redraw()
 	var transition := root.find_child("SceneTransition", true, false)
 	if transition != null and transition.is_transitioning():
 		transition.elapsed = 0.0

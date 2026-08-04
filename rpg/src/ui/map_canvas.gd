@@ -98,6 +98,11 @@ var feedback_remaining := 0.0
 var feedback_duration := 0.0
 var feedback_motion_enabled := true
 var feedback_phase := 0.0
+var feedback_enemy_id_before := ""
+var feedback_announced_intent_id := ""
+var feedback_resolved_intent_id := ""
+var feedback_outgoing_enemy_id := ""
+var feedback_replacement_enemy_id := ""
 var occluder_nodes: Array[Node] = []
 var occluder_signature := ""
 var companion_trail = CompanionTrailScript.new()
@@ -215,7 +220,23 @@ func set_player_motion(direction: Vector2) -> void:
 		companion_sprite.set_motion(companion_motion, talked_to_companion and not companion_motion.is_zero_approx())
 
 
-func show_battle_feedback(event_ids: Array, fast_mode: bool, reduced_motion: bool) -> void:
+func show_battle_feedback(
+	event_ids: Array,
+	fast_mode: bool,
+	reduced_motion: bool,
+	presentation_context: Dictionary = {}
+) -> void:
+	_clear_feedback_context()
+	var raw_battle_context = presentation_context.get("battle", {})
+	var battle_context: Dictionary = raw_battle_context if raw_battle_context is Dictionary else {}
+	feedback_enemy_id_before = str(battle_context.get("enemy_id_before", ""))
+	feedback_announced_intent_id = str(battle_context.get("announced_intent_id", ""))
+	if event_ids.has("enemy_hit") or event_ids.has("enemy_glanced"):
+		feedback_resolved_intent_id = feedback_announced_intent_id
+	if event_ids.has("regular_enemy_won") or event_ids.has("battle_won"):
+		feedback_outgoing_enemy_id = feedback_enemy_id_before
+	if event_ids.has("boss_arrived"):
+		feedback_replacement_enemy_id = enemy_id
 	if is_instance_valid(battle_enemy_sprite):
 		battle_enemy_sprite.consume_battle_events(event_ids, fast_mode, reduced_motion)
 	var labels := {
@@ -242,6 +263,7 @@ func show_battle_feedback(event_ids: Array, fast_mode: bool, reduced_motion: boo
 		if event_ids.has(event_id):
 			next_text = labels[event_id]
 	if next_text.is_empty():
+		_reset_battle_feedback()
 		return
 	feedback_text = next_text
 	feedback_duration = 0.18 if fast_mode else 0.70
@@ -257,7 +279,36 @@ func feedback_contract() -> Dictionary:
 		"duration": feedback_duration,
 		"motion_enabled": feedback_motion_enabled,
 		"active": feedback_remaining > 0.0,
+		"enemy_id_before": feedback_enemy_id_before,
+		"announced_intent_id": feedback_announced_intent_id,
+		"resolved_intent_id": feedback_resolved_intent_id,
+		"outgoing_enemy_id": feedback_outgoing_enemy_id,
+		"replacement_enemy_id": feedback_replacement_enemy_id,
+		"rule_authority": false,
+		"save_authority": false,
 	}
+
+
+func clear_battle_feedback() -> void:
+	_reset_battle_feedback()
+
+
+func _clear_feedback_context() -> void:
+	feedback_enemy_id_before = ""
+	feedback_announced_intent_id = ""
+	feedback_resolved_intent_id = ""
+	feedback_outgoing_enemy_id = ""
+	feedback_replacement_enemy_id = ""
+
+
+func _reset_battle_feedback() -> void:
+	feedback_text = ""
+	feedback_duration = 0.0
+	feedback_remaining = 0.0
+	feedback_motion_enabled = true
+	feedback_phase = 0.0
+	_clear_feedback_context()
+	queue_redraw()
 
 
 func actor_height_px() -> float:
@@ -544,6 +595,7 @@ func _process(delta: float) -> void:
 	feedback_phase += delta
 	if feedback_remaining <= 0.0:
 		feedback_text = ""
+		_clear_feedback_context()
 	queue_redraw()
 
 

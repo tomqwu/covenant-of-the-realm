@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://src/ui/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://src/ui/map_canvas.gd" id="2_map"]
@@ -18,6 +18,7 @@
 [ext_resource type="Script" path="res://src/ui/dialogue_portrait.gd" id="12_portrait"]
 [ext_resource type="Script" path="res://src/ui/map_detail_layer.gd" id="15_map_detail"]
 [ext_resource type="Script" path="res://src/ui/world_camera.gd" id="17_world_camera"]
+[ext_resource type="Script" path="res://src/ui/intent_telegraph.gd" id="19_intent"]
 
 [sub_resource type="StyleBoxFlat" id="StyleMap"]
 bg_color = Color(0.286, 0.424, 0.38, 1)
@@ -271,6 +272,22 @@ theme_override_font_sizes/font_size = 15
 horizontal_alignment = 2
 vertical_alignment = 1
 autowrap_mode = 2
+
+[node name="IntentTelegraph" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 64
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -560.0
+offset_top = 86.0
+offset_right = -28.0
+offset_bottom = 176.0
+grow_horizontal = 0
+mouse_filter = 2
+script = ExtResource("19_intent")
 
 [node name="JournalButton" type="Button" parent="."]
 unique_name_in_owner = true

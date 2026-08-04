@@ -12,6 +12,7 @@ const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const DialoguePortraitScript := preload("res://src/ui/dialogue_portrait.gd")
 const MapOccluderScript := preload("res://src/ui/map_occluder.gd")
 const WorldCameraScript := preload("res://src/ui/world_camera.gd")
+const IntentTelegraphScript := preload("res://src/ui/intent_telegraph.gd")
 const TEST_SAVE_PATH := "user://automated-test-save.json"
 const TEST_SCENE_SAVE_PATH := "user://automated-scene-save.json"
 const TEST_SETTINGS_PATH := "user://automated-test-settings.json"
@@ -53,6 +54,8 @@ func _run() -> void:
 	_test_enemy_intel()
 	_test_gathering_and_gate()
 	_test_combat_paths()
+	_test_battle_presentation_context()
+	_test_intent_telegraph()
 	_test_enemy_profile_combat()
 	_test_boss_and_statuses()
 	_test_companion_retreat_and_rescue()
@@ -2570,6 +2573,228 @@ func _test_combat_paths() -> void:
 	_expect_true(victory["events"].has("boss_arrived"), "普通战结束返回首领入场事件")
 
 
+func _test_battle_presentation_context() -> void:
+	var nonbattle = JourneyStateScript.new()
+	var nonbattle_result: Dictionary = nonbattle.choose("inspect_boat_repair")
+	_expect_equal(nonbattle_result["presentation_context"], {}, "非战斗动作返回空表现上下文")
+	_expect_false(nonbattle.snapshot().has("presentation_context"), "旅程快照不持久化表现上下文")
+
+	var ordinary = _battle_state()
+	var ordinary_result: Dictionary = ordinary.choose("guard")
+	_expect_equal(
+		ordinary_result["presentation_context"],
+		{
+			"battle": {
+				"enemy_id_before": "rock_armor_young",
+				"announced_intent_id": "rock_probing_charge",
+			},
+		},
+		"非致命回合保留结算前敌人及已公告意图"
+	)
+	_expect_equal(ordinary.current_enemy_intent()["id"], "rock_rending_charge", "结算后领域已推进到下一敌势")
+	_expect_false(ordinary_result["snapshot"].has("presentation_context"), "动作结果快照不混入瞬时表现上下文")
+	var ordinary_after: Dictionary = ordinary.snapshot()
+	ordinary_result["presentation_context"]["battle"]["enemy_id_before"] = "forged_enemy"
+	_expect_equal(ordinary.snapshot(), ordinary_after, "调用方篡改返回上下文不会修改旅程")
+
+	var supplied_context := {
+		"battle": {
+			"enemy_id_before": "rock_armor_young",
+			"announced_intent_id": "rock_probing_charge",
+		},
+	}
+	var test_events: Array[String] = ["test_event"]
+	var copied_result: Dictionary = ordinary.call("_result", true, test_events, supplied_context)
+	supplied_context["battle"]["enemy_id_before"] = "forged_source"
+	_expect_equal(copied_result["presentation_context"]["battle"]["enemy_id_before"], "rock_armor_young", "结果深拷贝调用方提供的嵌套上下文")
+	copied_result["presentation_context"]["battle"]["announced_intent_id"] = "forged_result"
+	_expect_equal(supplied_context["battle"]["announced_intent_id"], "rock_probing_charge", "返回嵌套字典与来源双向隔离")
+
+	var exhausted = _battle_state()
+	exhausted.choose("use_talisman")
+	var before_shortage: Dictionary = exhausted.snapshot()
+	var shortage: Dictionary = exhausted.choose("use_talisman")
+	_expect_false(shortage["ok"], "资源不足动作仍被拒绝")
+	_expect_equal(shortage["presentation_context"], {}, "资源不足不伪造已结算表现上下文")
+	_expect_equal(exhausted.snapshot(), before_shortage, "资源不足保持领域快照不变")
+	var invalid: Dictionary = exhausted.choose("invalid_battle_action")
+	_expect_false(invalid["ok"], "非法战斗动作仍被拒绝")
+	_expect_equal(invalid["presentation_context"], {}, "非法战斗动作返回空表现上下文")
+
+	var replacement_cases := [
+		{
+			"approach": "approach_enemy",
+			"actions": ["guard", "use_talisman", "use_art", "use_art"],
+			"enemy": "rock_armor_young",
+			"intent": "rock_rending_charge",
+		},
+		{
+			"approach": "approach_moss_shell",
+			"actions": ["use_art", "use_art"],
+			"enemy": "spring_moss_shell",
+			"intent": "moss_spore_spray",
+		},
+		{
+			"approach": "approach_stone_puppet",
+			"actions": ["guard", "use_art", "use_art"],
+			"enemy": "unbalanced_stone_puppet",
+			"intent": "puppet_unbalanced_swing",
+		},
+	]
+	for replacement_case in replacement_cases:
+		var candidate = _battle_state(str(replacement_case["approach"]))
+		var replacement: Dictionary = {}
+		for action_id in replacement_case["actions"]:
+			replacement = candidate.choose(str(action_id))
+		_expect_true(replacement["events"].has("regular_enemy_won") and replacement["events"].has("boss_arrived"), "%s 致命回合返回退场与替换事件" % replacement_case["enemy"])
+		_expect_equal(replacement["presentation_context"]["battle"]["enemy_id_before"], replacement_case["enemy"], "%s 致命回合保留被替换档案" % replacement_case["enemy"])
+		_expect_equal(replacement["presentation_context"]["battle"]["announced_intent_id"], replacement_case["intent"], "%s 致命回合保留动作前敌势" % replacement_case["enemy"])
+		_expect_equal(replacement["snapshot"]["enemy_id"], "rock_armor_warden", "%s 结算后快照只保留当前首领档案" % replacement_case["enemy"])
+
+	var boss = _battle_state()
+	for action_id in ["guard", "use_talisman", "use_art", "use_art"]:
+		boss.choose(action_id)
+	for action_id in ["guard", "guard", "use_art", "companion_support", "use_art"]:
+		boss.choose(action_id)
+	var boss_victory: Dictionary = boss.choose("use_art")
+	_expect_true(boss_victory["events"].has("battle_won"), "首领致命回合返回最终胜利事件")
+	_expect_equal(boss_victory["presentation_context"]["battle"]["enemy_id_before"], "rock_armor_warden", "首领胜利保留退场档案")
+	_expect_equal(boss_victory["presentation_context"]["battle"]["announced_intent_id"], "warden_nest_guard", "首领胜利保留动作前已公告敌势")
+	_expect_equal(boss_victory["snapshot"]["phase"], "spring", "首领胜利上下文不阻止领域进入泉室")
+
+	var retreating = _battle_state("approach_stone_puppet")
+	retreating.choose("guard")
+	var retreat: Dictionary = retreating.choose("retreat")
+	_expect_equal(
+		retreat["presentation_context"],
+		{
+			"battle": {
+				"enemy_id_before": "unbalanced_stone_puppet",
+				"announced_intent_id": "puppet_rebalance_step",
+			},
+		},
+		"撤退结果保留动作前已公告敌势但不声称其已攻击"
+	)
+	_expect_equal(retreat["snapshot"]["phase"], "mountain_path", "撤退表现上下文不改变原有领域结果")
+
+
+func _test_intent_telegraph() -> void:
+	var telegraph = IntentTelegraphScript.new()
+	root.add_child(telegraph)
+	var cases := [
+		{"enemy": "rock_armor_young", "intent": "rock_probing_charge", "shape": "probing_charge", "name": "试探冲撞", "damage": 3, "next_id": "rock_rending_charge", "next": "裂石冲撞", "next_damage": 4, "counter": ""},
+		{"enemy": "rock_armor_young", "intent": "rock_rending_charge", "shape": "rending_charge", "name": "裂石冲撞", "damage": 4, "next_id": "rock_probing_charge", "next": "试探冲撞", "next_damage": 3, "counter": "镇岩符"},
+		{"enemy": "spring_moss_shell", "intent": "moss_absorb_tide", "shape": "absorb_tide", "name": "吸潮蓄壳", "damage": 2, "next_id": "moss_spore_spray", "next": "喷苔孢雾", "next_damage": 3, "counter": "引气术"},
+		{"enemy": "spring_moss_shell", "intent": "moss_spore_spray", "shape": "spore_spray", "name": "喷苔孢雾", "damage": 3, "next_id": "moss_absorb_tide", "next": "吸潮蓄壳", "next_damage": 2, "counter": ""},
+		{"enemy": "unbalanced_stone_puppet", "intent": "puppet_unbalanced_swing", "shape": "unbalanced_swing", "name": "失衡摆锤", "damage": 4, "next_id": "puppet_rebalance_step", "next": "踏地回正", "next_damage": 2, "counter": "守势调息"},
+		{"enemy": "unbalanced_stone_puppet", "intent": "puppet_rebalance_step", "shape": "rebalance_step", "name": "踏地回正", "damage": 2, "next_id": "puppet_unbalanced_swing", "next": "失衡摆锤", "next_damage": 4, "counter": ""},
+		{"enemy": "rock_armor_warden", "intent": "warden_pressing_charge", "shape": "pressing_charge", "name": "压阵肩撞", "damage": 3, "next_id": "warden_stonebreaking_blow", "next": "崩石重击", "next_damage": 5, "counter": ""},
+		{"enemy": "rock_armor_warden", "intent": "warden_stonebreaking_blow", "shape": "stonebreaking_blow", "name": "崩石重击", "damage": 5, "next_id": "warden_nest_guard", "next": "回身护巢", "next_damage": 2, "counter": "守势调息"},
+		{"enemy": "rock_armor_warden", "intent": "warden_nest_guard", "shape": "nest_guard", "name": "回身护巢", "damage": 2, "next_id": "warden_pressing_charge", "next": "压阵肩撞", "next_damage": 3, "counter": ""},
+	]
+	var seen_shapes: Array[String] = []
+	var expected_intents: Array[String] = []
+	for intent_case in cases:
+		telegraph.clear_battle_intent_presentation()
+		var payload := {
+			"active": true,
+			"current_id": intent_case["intent"],
+			"current_name": intent_case["name"],
+			"current_damage": intent_case["damage"],
+			"intel_known": true,
+			"next_id": intent_case["next_id"],
+			"next_name": intent_case["next"],
+			"next_damage": intent_case["next_damage"],
+			"counter_text": intent_case["counter"],
+		}
+		var original_payload: Dictionary = payload.duplicate(true)
+		_expect_true(telegraph.set_presentation(payload, intent_case["enemy"]), "%s 可进入临势签" % intent_case["intent"])
+		var contract: Dictionary = telegraph.presentation_contract()
+		_expect_equal(payload, original_payload, "%s 临势签不修改调用方数据" % intent_case["intent"])
+		_expect_equal(contract["enemy_id"], intent_case["enemy"], "%s 保留所属敌人标识" % intent_case["intent"])
+		_expect_equal(contract["intent_id"], intent_case["intent"], "%s 保留当前稳定意图标识" % intent_case["intent"])
+		_expect_equal(contract["next_intent_id"], intent_case["next_id"], "%s 保留下一稳定意图标识" % intent_case["intent"])
+		_expect_equal(contract["shape_id"], intent_case["shape"], "%s 使用独立无色轮廓" % intent_case["intent"])
+		_expect_true(contract["recognized_intent"], "%s 与所属档案组合可识别" % intent_case["intent"])
+		_expect_true(contract["first_line"].contains(intent_case["name"]) and contract["first_line"].contains("伤害 %d" % intent_case["damage"]), "%s 第一行同时提供名称与数字伤害" % intent_case["intent"])
+		_expect_true(contract["second_line"].contains(intent_case["next"]), "%s 已辨敌迹显示后一势文字" % intent_case["intent"])
+		if str(intent_case["counter"]).is_empty():
+			_expect_true(contract["second_line"].contains("本势无特定破绽"), "%s 无反制回合给出明确文字" % intent_case["intent"])
+		else:
+			_expect_true(contract["second_line"].contains("破绽　%s" % intent_case["counter"]), "%s 显示已门控反制文字" % intent_case["intent"])
+		_expect_true(contract["text_equivalent"].contains(intent_case["name"]), "%s 轮廓具有等价可读文字" % intent_case["intent"])
+		seen_shapes.append(str(contract["shape_id"]))
+		expected_intents.append(str(intent_case["intent"]))
+	seen_shapes.sort()
+	expected_intents.sort()
+	var supported_intents: Array = telegraph.presentation_contract()["supported_intent_ids"].duplicate()
+	supported_intents.sort()
+	var unique_shapes: Array[String] = []
+	for seen_shape in seen_shapes:
+		if not unique_shapes.has(seen_shape):
+			unique_shapes.append(seen_shape)
+	_expect_equal(seen_shapes.size(), 9, "四类敌人共九项意图都有轮廓")
+	_expect_equal(unique_shapes.size(), 9, "九项意图即使关闭颜色仍有九种不同轮廓")
+	_expect_equal(supported_intents, expected_intents, "临势签映射集合与领域九项稳定意图完全相等")
+
+	var hidden_payload := {
+		"active": true,
+		"current_id": "moss_absorb_tide",
+		"current_name": "吸潮蓄壳",
+		"current_damage": 2,
+		"intel_known": false,
+		"next_id": "forged_next",
+		"next_name": "不应泄露",
+		"next_damage": 999,
+		"counter_text": "不应泄露",
+	}
+	_expect_true(telegraph.set_presentation(hidden_payload, "spring_moss_shell"), "未辨敌迹仍可显示当前可行动信息")
+	var hidden_contract: Dictionary = telegraph.presentation_contract()
+	_expect_equal(hidden_contract["next_intent_id"], "", "组件二次清洗未辨敌迹的后一势标识")
+	_expect_equal(hidden_contract["counter_text"], "", "组件二次清洗未辨敌迹的反制文字")
+	_expect_true(hidden_contract["second_line"].contains("敌迹未辨") and not hidden_contract["second_line"].contains("不应泄露"), "未辨敌迹使用明确遮蔽等价文字")
+
+	_expect_true(telegraph.set_presentation({"active": true, "current_id": "unknown_intent", "current_name": "未明来势", "current_damage": 1, "intel_known": false}, "missing_enemy"), "未知组合使用安全表现回退")
+	var neutral_contract: Dictionary = telegraph.presentation_contract()
+	_expect_false(neutral_contract["recognized_intent"], "未知组合不伪装为受支持意图")
+	_expect_equal(neutral_contract["shape_id"], "neutral", "未知组合清除上一意图轮廓并使用中性菱形")
+	_expect_equal(neutral_contract["profile_edge"], "neutral", "未知档案不复用上一敌人边纹")
+	_expect_false(telegraph.set_presentation({"active": true, "current_id": "bad", "current_name": "坏数据", "current_damage": -1, "intel_known": false}, "missing_enemy"), "非法伤害被原子拒绝")
+	_expect_false(telegraph.presentation_contract()["active"], "非法数据清空而不残留上一签面")
+
+	for preferences in [
+		{"fast": false, "reduced": false, "duration": 0.70, "motion": true},
+		{"fast": true, "reduced": false, "duration": 0.18, "motion": true},
+		{"fast": false, "reduced": true, "duration": 0.70, "motion": false},
+		{"fast": true, "reduced": true, "duration": 0.18, "motion": false},
+	]:
+		telegraph.clear_battle_intent_presentation()
+		_expect_true(telegraph.set_presentation({"active": true, "current_id": "rock_probing_charge", "current_name": "试探冲撞", "current_damage": 3, "intel_known": false}, "rock_armor_young", false, false, preferences["reduced"], preferences["fast"]), "四种偏好组合均接受同一门控数据")
+		var preference_contract: Dictionary = telegraph.presentation_contract()
+		_expect_equal(preference_contract["cue_duration"], preferences["duration"], "速度偏好只选择固定表现时长")
+		_expect_equal(preference_contract["motion_enabled"], preferences["motion"], "简化动态只降级签面运动")
+		var journey_probe = _battle_state()
+		var journey_before: Dictionary = journey_probe.snapshot()
+		telegraph.call("_process", preferences["duration"])
+		_expect_equal(journey_probe.snapshot(), journey_before, "签面计时不推进独立旅程规则")
+		_expect_equal(telegraph.presentation_contract()["intent_id"], "rock_probing_charge", "瞬时描画结束后当前敌势仍持续可读")
+
+	telegraph.clear_battle_intent_presentation()
+	_expect_true(telegraph.set_presentation({"active": true, "current_id": "warden_nest_guard", "current_name": "回身护巢", "current_damage": 2, "intel_known": false}, "rock_armor_warden", true, true, true, true), "大字高对比简化动态可组合")
+	var accessible_contract: Dictionary = telegraph.presentation_contract()
+	_expect_equal(accessible_contract["panel_size"], Vector2(532, 90), "临势签使用固定屏幕安全尺寸")
+	_expect_equal(accessible_contract["primary_font_size"], 23, "大字模式放大当前势文字")
+	_expect_equal(accessible_contract["secondary_font_size"], 18, "大字模式放大辅助文字")
+	_expect_equal(accessible_contract["paper_color"], Color("fdfaf1"), "高对比使用纸白底色")
+	_expect_equal(accessible_contract["ink_color"], Color("131a17"), "高对比使用深墨文字与轮廓")
+	_expect_true(accessible_contract["fixed_screen_space"] and accessible_contract["screen_space_parent_required"], "合同要求固定屏幕空间父节点")
+	_expect_equal(accessible_contract["mouse_filter"], Control.MOUSE_FILTER_IGNORE, "临势签不截获鼠标")
+	_expect_equal(accessible_contract["focus_mode"], Control.FOCUS_NONE, "临势签不进入键盘手柄焦点")
+	for authority_key in ["rule_authority", "damage_authority", "round_authority", "counter_authority", "save_authority", "input_authority"]:
+		_expect_false(accessible_contract[authority_key], "临势签明确不拥有 %s" % authority_key)
+	telegraph.queue_free()
+
+
 func _test_enemy_profile_combat() -> void:
 	var moss = _battle_state("approach_moss_shell")
 	_expect_equal(moss.enemy_id, "spring_moss_shell", "泉苔接近行动选择对应配置")
@@ -2798,6 +3023,7 @@ func _test_scene_smoke() -> void:
 	_expect_equal(instance.get_node("%TitleDialogueSpeedButton").text, "对话显字：标准", "标题默认显示标准对话显字速度")
 	_expect_equal(instance.get_node("%PauseDialogueSpeedButton").text, "对话显字：标准", "标题与暂停默认对话显字速度同步")
 	var transition: Control = instance.get_node("%SceneTransition")
+	var intent_telegraph: Control = instance.get_node("%IntentTelegraph")
 	_expect_true(instance.get_node("%JournalOverlay").z_index > instance.get_node("%DialogueOverlay").z_index, "行旅札记覆盖对话以下的游戏层")
 	_expect_true(instance.get_node("%JournalOverlay").z_index < instance.get_node("%TitleOverlay").z_index, "标题界面始终高于行旅札记")
 	_expect_true(instance.get_node("%JournalOverlay").z_index < instance.get_node("%PauseOverlay").z_index, "暂停模态始终高于行旅札记")
@@ -2822,6 +3048,31 @@ func _test_scene_smoke() -> void:
 	_expect_equal(standard_feedback["text"], "受到冲击", "标准反馈映射战斗语义事件")
 	_expect_equal(standard_feedback["duration"], 0.70, "标准反馈保留完整可读时长")
 	_expect_true(standard_feedback["motion_enabled"], "完整动态允许反馈脉冲")
+	instance.get_node("%MapCanvas").show_battle_feedback(["enemy_hit"], false, false, {"battle": "malformed"})
+	var malformed_feedback: Dictionary = instance.get_node("%MapCanvas").feedback_contract()
+	_expect_true(
+		malformed_feedback["enemy_id_before"] == "" and malformed_feedback["resolved_intent_id"] == "",
+		"表现层安全忽略非字典战斗上下文且不会伪造已结算敌势"
+	)
+	instance.get_node("%MapCanvas").show_battle_feedback(
+		["retreated"],
+		false,
+		false,
+		{"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}
+	)
+	var interrupted_feedback: Dictionary = instance.get_node("%MapCanvas").feedback_contract()
+	_expect_true(
+		not interrupted_feedback["active"]
+		and interrupted_feedback["text"] == ""
+		and interrupted_feedback["duration"] == 0.0
+		and interrupted_feedback["motion_enabled"]
+		and interrupted_feedback["enemy_id_before"] == ""
+		and interrupted_feedback["announced_intent_id"] == ""
+		and interrupted_feedback["resolved_intent_id"] == ""
+		and interrupted_feedback["outgoing_enemy_id"] == ""
+		and interrupted_feedback["replacement_enemy_id"] == "",
+		"活动攻击反馈后立即撤退会原子清除计时、文字与全部瞬时身份"
+	)
 	instance.get_node("%TitleAudioButton").pressed.emit()
 	await process_frame
 	_expect_equal(instance.get_node("%TitleAudioButton").text, "环境音：开启", "标题可以开启原创环境音")
@@ -3718,10 +3969,32 @@ func _test_scene_smoke() -> void:
 	_expect_equal(enemy_sprite.animation, &"idle_rock_armor_young", "战斗节点播放岩甲双帧待机动画")
 	_expect_false(instance.get_node("%PathRockEnemySprite").visible, "战斗阶段隐藏探索用敌人轮廓")
 	_expect_equal(instance.get_node("%MapCanvas").occlusion_contract()["count"], 4, "战斗镜头重建四处可排序树冠前景")
-	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("试探冲撞"), "战斗目标预告下一项敌方意图")
-	_expect_false(instance.get_node("%ObjectiveLabel").text.contains("破绽窗口"), "未调查岩甲擦痕时战斗目标不泄露反制窗口")
+	_expect_equal(instance.get_node("%ObjectiveLabel").text, "当前目标　看清敌势，选择行动或撤退", "战斗目标保持短句并把敌势交给独立签面")
+	var unknown_rock_telegraph: Dictionary = intent_telegraph.presentation_contract()
+	_expect_true(unknown_rock_telegraph["active"], "战斗阶段显示固定屏幕临势签")
+	_expect_equal(unknown_rock_telegraph["enemy_id"], "rock_armor_young", "签面读取结算后的权威敌人标识")
+	_expect_equal(unknown_rock_telegraph["intent_id"], "rock_probing_charge", "战斗签面预告当前试探冲撞")
+	_expect_equal(unknown_rock_telegraph["next_intent_id"], "", "未调查岩甲擦痕时签面不泄露后一势")
+	_expect_false(unknown_rock_telegraph["intel_known"], "未调查敌迹保持情报遮蔽")
+	_expect_true(unknown_rock_telegraph["second_line"].contains("敌迹未辨"), "遮蔽状态提供可理解中文提示")
+	_expect_true(unknown_rock_telegraph["high_contrast"] and unknown_rock_telegraph["large_text"], "战斗签面立即应用已选大字高对比偏好")
+	_expect_true(unknown_rock_telegraph["reduced_motion"] and unknown_rock_telegraph["fast_mode"], "战斗签面立即应用快速简化动态偏好")
+	var large_status_rect := Rect2(instance.get_node("StatusHud").position, instance.get_node("StatusHud").size)
+	var large_intent_rect := Rect2(intent_telegraph.position, intent_telegraph.size)
+	_expect_false(large_status_rect.intersects(large_intent_rect), "1152×648 大字状态栏与临势签保持固定间距而不重叠")
 	await _press_action(instance, "撤到旧石标")
-	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉山道", "场景撤退返回山道")
+	var retreat_feedback: Dictionary = instance.get_node("%MapCanvas").feedback_contract()
+	_expect_true(
+		instance.get_node("%LocationLabel").text == "藏泉山道"
+		and not retreat_feedback["active"]
+		and retreat_feedback["text"] == ""
+		and retreat_feedback["enemy_id_before"] == ""
+		and retreat_feedback["announced_intent_id"] == ""
+		and retreat_feedback["resolved_intent_id"] == ""
+		and retreat_feedback["outgoing_enemy_id"] == ""
+		and retreat_feedback["replacement_enemy_id"] == "",
+		"场景撤退返回山道并原子清除全部瞬时战斗反馈"
+	)
 	_expect_true(map_detail.map_contract()["visible"], "撤退回山道后复用并显示缓存细节")
 	_expect_equal(map_detail.map_contract()["rebuild_count"], 4, "战斗返回同一山道不重建细节")
 	_expect_true(instance.get_node("%EventLabel").text.contains("旧石标"), "场景说明撤退路线与敌人重置")
@@ -3741,6 +4014,10 @@ func _test_scene_smoke() -> void:
 	_expect_equal(fast_feedback["text"], "石灯护阵", "战斗语义事件触发对应画面反馈")
 	_expect_equal(fast_feedback["duration"], 0.18, "快速模式缩短反馈持续时间")
 	_expect_false(fast_feedback["motion_enabled"], "简化动态关闭反馈脉冲")
+	_expect_equal(fast_feedback["enemy_id_before"], "rock_armor_young", "反馈上下文保留结算前敌人档案")
+	_expect_equal(fast_feedback["announced_intent_id"], "rock_probing_charge", "反馈上下文保留动作前已公告敌势")
+	_expect_equal(fast_feedback["resolved_intent_id"], "rock_probing_charge", "实际敌方回应才标记该势已结算")
+	_expect_equal(intent_telegraph.presentation_contract()["intent_id"], "rock_rending_charge", "同一帧持久签面已经显示结算后的下一势")
 	var fast_enemy_cue: Dictionary = enemy_sprite.presentation_contract()
 	_expect_equal(fast_enemy_cue["state"], "attack", "石灯结算后的敌方反击触发攻击姿态")
 	_expect_equal(fast_enemy_cue["event_id"], "enemy_glanced", "攻击姿态消费实际格挡后的敌方事件")
@@ -3764,12 +4041,20 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("成熟岩甲"), "场景显示不剧透的首领短描述")
 	_expect_false(instance.get_node("%DescriptionLabel").text.contains("重击落空") or instance.get_node("%DescriptionLabel").text.contains("腹甲错开"), "未调查首领描述不泄露精确反制")
 	_expect_false(instance.get_node("%EventLabel").text.contains("守住重击") or instance.get_node("%EventLabel").text.contains("腹甲错位"), "未调查首领入场事件不替玩家解题")
-	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("压阵肩撞"), "首领第一招在行动前明示")
-	_expect_false(instance.get_node("%ObjectiveLabel").text.contains("后一势") or instance.get_node("%ObjectiveLabel").text.contains("破绽窗口"), "未调查岩甲痕迹时首领目标不显示后续或反制")
+	var replacement_feedback: Dictionary = instance.get_node("%MapCanvas").feedback_contract()
+	_expect_equal(replacement_feedback["enemy_id_before"], "rock_armor_young", "普通敌人致命回合仍指向退场档案")
+	_expect_equal(replacement_feedback["announced_intent_id"], "rock_probing_charge", "致命回合保留被打断的已公告敌势")
+	_expect_equal(replacement_feedback["resolved_intent_id"], "", "致命回合没有敌方回应便不谎称敌势已结算")
+	_expect_equal(replacement_feedback["outgoing_enemy_id"], "rock_armor_young", "反馈合同明确旧敌档案")
+	_expect_equal(replacement_feedback["replacement_enemy_id"], "rock_armor_warden", "反馈合同明确结算后的替换首领")
+	var unknown_boss_telegraph: Dictionary = intent_telegraph.presentation_contract()
+	_expect_equal(unknown_boss_telegraph["intent_id"], "warden_pressing_charge", "首领第一招在独立签面明示")
+	_expect_equal(unknown_boss_telegraph["next_intent_id"], "", "未调查岩甲痕迹时首领签面不显示后续")
+	_expect_false(unknown_boss_telegraph["intel_known"], "未调查首领不显示反制")
 	await _press_action(instance, "守势调息")
 	_expect_false(instance.get_node("%StatusLabel").text.contains("破甲"), "压阵肩撞期间守势不会提前破甲")
 	_expect_equal(enemy_sprite.presentation_contract()["state"], "attack", "首领压阵回应触发自身攻击姿态")
-	_expect_true(instance.get_node("%ObjectiveLabel").text.contains("崩石重击"), "首领第二回合明示真正重击窗口")
+	_expect_equal(intent_telegraph.presentation_contract()["intent_id"], "warden_stonebreaking_blow", "首领第二回合签面明示真正重击窗口")
 	await _press_action(instance, "守势调息")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("破甲 2"), "守住崩石重击后状态栏显示破甲")
 	_expect_equal(enemy_sprite.presentation_contract()["state"], "react", "首领破绽事件优先触发受击姿态")
@@ -3780,6 +4065,7 @@ func _test_scene_smoke() -> void:
 	await _press_action(instance, "引气术")
 	await _press_action(instance, "引气术")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉石室", "胜利进入泉室")
+	_expect_false(intent_telegraph.presentation_contract()["active"], "首领胜利后固定签面立即清空")
 	_expect_equal(instance.get_node("%MapCanvas").occlusion_contract()["count"], 0, "泉室不残留上一地图的树冠节点")
 	_expect_false(map_detail.map_contract()["visible"], "泉室不残留山道细节画面")
 	_expect_equal(instance.exploration.map_id, "cangquan_spring", "胜利后切换到独立泉室探索地图")

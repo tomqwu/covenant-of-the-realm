@@ -10,7 +10,7 @@ const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const BUDGET_PATH := "res://tests/performance_budget.json"
 const PERFORMANCE_SAVE_PATH := "user://performance-save.json"
 const PERFORMANCE_SETTINGS_PATH := "user://performance-settings.json"
-const EXPECTED_STATIC_MAIN_SCENE_NODES := 115
+const EXPECTED_STATIC_MAIN_SCENE_NODES := 116
 const LIFECYCLE_CONFIRMATION_POLICY_CHECKS := 6
 const DIRECTIONS := [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]
 const COMPLETE_BATTLE_ACTIONS := [
@@ -309,6 +309,8 @@ func _benchmark_scene_lifecycle_sample(budget: Dictionary) -> Dictionary:
 		"battle": 0,
 		"battle_action_immediate": 0,
 		"battle_action_stable": 0,
+		"battle_replacement_immediate": 0,
+		"battle_replacement_stable": 0,
 		"journal": 0,
 		"spring_unstarted": 0,
 		"spring_listened": 0,
@@ -485,6 +487,38 @@ func _benchmark_scene_lifecycle_sample(budget: Dictionary) -> Dictionary:
 		await process_frame
 		await process_frame
 		state_peaks["battle_action_stable"] = maxi(int(state_peaks["battle_action_stable"]), _count_nodes(instance))
+		instance._on_action("use_talisman")
+		instance._on_action("use_art")
+		instance._on_action("use_art")
+		state_peaks["battle_replacement_immediate"] = maxi(
+			int(state_peaks["battle_replacement_immediate"]),
+			_count_nodes(instance)
+		)
+		var replacement_feedback: Dictionary = instance.get_node("%MapCanvas").feedback_contract()
+		var replacement_intent: Dictionary = instance.get_node("%IntentTelegraph").presentation_contract()
+		if (
+			instance.journey.enemy_id != "rock_armor_warden"
+			or replacement_feedback["enemy_id_before"] != "rock_armor_young"
+			or replacement_feedback["announced_intent_id"] != "rock_rending_charge"
+			or replacement_feedback["resolved_intent_id"] != ""
+			or replacement_feedback["outgoing_enemy_id"] != "rock_armor_young"
+			or replacement_feedback["replacement_enemy_id"] != "rock_armor_warden"
+		):
+			failures.append("生命周期必须真实击败普通敌人并保留替换行动的旧新身份")
+		if (
+			not replacement_intent["active"]
+			or replacement_intent["enemy_id"] != "rock_armor_warden"
+			or replacement_intent["intent_id"] != "warden_pressing_charge"
+			or replacement_intent["shape_id"] != "pressing_charge"
+		):
+			failures.append("生命周期普通敌替换后必须同步呈现首领当前势签")
+		instance.get_node("%SceneTransition").finish()
+		await process_frame
+		await process_frame
+		state_peaks["battle_replacement_stable"] = maxi(
+			int(state_peaks["battle_replacement_stable"]),
+			_count_nodes(instance)
+		)
 
 		instance.open_journal()
 		await process_frame

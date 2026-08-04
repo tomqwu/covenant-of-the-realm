@@ -43,6 +43,7 @@ REQUIRED_RESOURCES = [
     "res://src/domain/settings_store.gd",
     "res://src/ui/dialogue_portrait.gd",
     "res://src/ui/enemy_sprite.gd",
+    "res://src/ui/intent_telegraph.gd",
     "res://src/ui/main.gd",
     "res://src/ui/main.tscn",
     "res://src/ui/map_detail_layer.gd",

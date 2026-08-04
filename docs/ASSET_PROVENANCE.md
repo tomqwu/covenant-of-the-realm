@@ -79,7 +79,30 @@ drawing code.
 runtime controls at the production dialogue size. The capture-only 3×2 board adds no packaged scene,
 runtime asset, or alternate art source. It is regenerated with the other functional screenshots;
 two complete 42-image passes have aggregate SHA-256
-`f56422804793b50d4ee20e5b9a733bb7a5d61a4599771648a0a3028f2fb51bb7`.
+`3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
+
+## 2026-08-03 · Code-drawn Zhaohe battle-intent telegraph
+
+`rpg/src/ui/intent_telegraph.gd` draws the fixed-screen “照禾临势签” directly through Godot
+CanvasItem primitives. Its warm-paper panel, four profile edge patterns, Chinese copy, and nine
+distinct silhouettes map the exact nine stable intent IDs exposed by the presentation schema.
+Current and next display facts come from Journey-gated presentation data; the action-result context
+supplies only the pre-resolution enemy and announced intent IDs. No raster or vector input, model output, concept-image crop, stock UI kit,
+external font file, plugin, game screenshot, or third-party drawing code is used.
+
+The control receives already gated display names, damage values, next-intent data, and counter text;
+it does not read the enemy catalog, choose or advance an intent, calculate damage, translate an
+action ID, or write journey state. Unknown IDs use a neutral shape, and unstudied context discards
+any supplied next-intent or counter display fields. The component owns no combat, profile,
+intelligence, timing, input, reward, or save authority. High-contrast mode uses the existing paper
+and ink anchors, reduced motion preserves the same static text and geometry, and the large-text
+capture remains presentation-only.
+
+The five current battle screenshots—`02-cangquan-battle.png`,
+`02-cangquan-battle-react.png`, `02-cangquan-moss-battle.png`,
+`02-cangquan-puppet-battle.png`, and `02-cangquan-boss.png`—show this same runtime control.
+`02-cangquan-puppet-battle.png` is the committed large-text plus high-contrast evidence; it is not a
+separate asset or alternate rendering source.
 
 ## 2026-08-03 · Deterministic Zhaohe landmark atlas
 
@@ -171,4 +194,4 @@ and readability decisions; the runtime-drawn shapes are placeholders rather than
 tiles, portraits, textures, or promotional art. The current set includes
 `02-path-keeper-route.png`, a direct runtime capture of 岑苇 on the mountain route. Two consecutive
 42-image passes have aggregate SHA-256
-`f56422804793b50d4ee20e5b9a733bb7a5d61a4599771648a0a3028f2fb51bb7`.
+`3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.

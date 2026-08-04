@@ -4,6 +4,41 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — Battle presentation uses an ID-only settled-action context
+
+Every successful battle action returns a deep-copied `presentation_context.battle` containing only
+`enemy_id_before` and `announced_intent_id`, captured before combat mutates health, round, phase,
+or enemy profile. Failed and non-battle results return an empty context. The context is not a second
+battle record: semantic `events` decide what resolved, and the settled result `snapshot` remains
+authoritative. `enemy_hit` or `enemy_glanced` marks the announced intent as resolved;
+`regular_enemy_won` or `battle_won` makes the pre-action profile outgoing; and `boss_arrived`
+identifies the settled snapshot's enemy as its replacement. A lethal player action therefore
+preserves the interrupted announced intent without claiming that the enemy executed it.
+
+The context contains no name, damage, counter, reward, animation, duration, or callback. Mutating
+the returned nested dictionary cannot mutate Journey or its source object. It is absent from
+`JourneyState.snapshot()`, restore validation, replay state, and save JSON, so save v17 and all
+v1–v16 migrations remain unchanged. Loading reconstructs current intent presentation from the saved
+enemy ID and round and clears any previous outgoing/replacement context.
+
+The new `IntentTelegraph` is a fixed 532×90 screen-space paper tag. It draws nine distinct,
+code-native silhouettes for the nine stable intent IDs and four profile-specific edges. Every player
+sees the current intent name and damage; only a previously investigated enemy profile reveals the
+next intent and current counter window. Unknown intel receives the explicit text equivalent
+“敌迹未辨”, while unknown or mismatched IDs use a neutral silhouette. Large text, high contrast,
+standard/fast cues, and reduced motion preserve the same information. The control ignores mouse and
+focus input, never blocks the next action, and has no rule, damage, intent, profile, intelligence,
+round, counter, gameplay-timing, or save authority.
+
+The current local gate is 3,105 Godot unit/scene assertions, 357 chapter E2E checks, and 189
+physical-input checks. The structural boundary is 116 static / 126 peak nodes. The package contract
+is 25 required / nine excluded resources. Four local macOS/arm64 exports, including two fresh-cache
+copies, match at 812,608 bytes and SHA-256
+`aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`; manifest verification,
+the resource probe, and packaged boot pass. Two 42-PNG capture passes reproduce aggregate SHA-256
+`3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
+These are local feature-loop results; no hosted result is asserted for this loop.
+
 ### 2026-08-03 — Cen Wei is a saved path presence, not a quest authority
 
 岑苇 follows four authored, publicly walkable points on 藏泉山道 at 0.075 normalized units per
@@ -163,9 +198,11 @@ The standard 0.70-second and fast 0.18-second cue lifetimes are presentation-onl
 motion freezes a readable semantic first frame; invalid deltas and unknown events reject atomically,
 and expiration returns to the profile's idle animation. No animation callback decides or delays
 damage, intent, round progression, input, phase transition, persistence, or available actions.
-Journey and save remain v15, and loading derives an idle pose solely from the saved stable enemy ID.
-Intent-specific attacks and visible outgoing-enemy death sequences remain deferred because current
-semantic event IDs intentionally do not carry the resolved intent or replaced enemy profile.
+Journey and save remained v15 at that decision point, and loading derived an idle pose solely from
+the saved stable enemy ID. Intent-specific attacks and visible outgoing-enemy death sequences were
+deferred because semantic event IDs intentionally did not carry the resolved intent or replaced
+enemy profile. The later ID-only action-result context closes that presentation-data gap without
+changing the event IDs or this rule/timing boundary.
 
 ### 2026-08-03 — Expanded maps use one deterministic bounded world camera
 

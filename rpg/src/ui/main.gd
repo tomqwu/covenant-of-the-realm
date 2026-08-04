@@ -6,12 +6,18 @@ const DIALOGUE_REVEAL_STANDARD_RATE := 42.0
 const DIALOGUE_REVEAL_FAST_RATE := 84.0
 const HIGH_CONTRAST_INK := Color("131a17")
 const HIGH_CONTRAST_PAPER := Color("fdfaf1")
+const STATUS_HUD_STANDARD_BOTTOM := 78.0
+const STATUS_HUD_LARGE_BOTTOM := 102.0
+const INTENT_TELEGRAPH_STANDARD_TOP := 86.0
+const INTENT_TELEGRAPH_LARGE_TOP := 110.0
+const INTENT_TELEGRAPH_HEIGHT := 90.0
 const ENEMY_NOTE_IDS := [
 	"rock_armor_young",
 	"spring_moss_shell",
 	"unbalanced_stone_puppet",
 ]
 const JourneyStateScript := preload("res://src/domain/journey_state.gd")
+const EnemyCatalogScript := preload("res://src/domain/enemy_catalog.gd")
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
@@ -27,6 +33,8 @@ const PathKeeperStateScript := preload("res://src/domain/path_keeper_state.gd")
 @onready var location_label: Label = %LocationLabel
 @onready var description_label: Label = %DescriptionLabel
 @onready var status_label: Label = %StatusLabel
+@onready var status_hud: Control = $StatusHud
+@onready var intent_telegraph: Control = %IntentTelegraph
 @onready var event_label: Label = %EventLabel
 @onready var actions: GridContainer = %Actions
 @onready var input_hint: Label = %InputHint
@@ -267,7 +275,7 @@ func _load_content() -> Dictionary:
 	return parsed
 
 
-func _render(event_ids: Array) -> void:
+func _render(event_ids: Array, presentation_context: Dictionary = {}) -> void:
 	if content.is_empty():
 		return
 	var previous_phase: String = map_canvas.current_visual_mode()
@@ -285,7 +293,7 @@ func _render(event_ids: Array) -> void:
 	if journal_overlay.visible:
 		_render_journal()
 	status_label.text = _status_text(snapshot)
-	event_label.text = _event_text(event_ids)
+	event_label.text = _event_text(event_ids, presentation_context)
 	map_canvas.set_story_state(
 		snapshot["phase"],
 		snapshot["gathered_moonleaf"],
@@ -316,10 +324,12 @@ func _render(event_ids: Array) -> void:
 	nearby_action_id = _resolved_nearby_action(snapshot)
 	map_canvas.set_exploration_state(exploration.player_position, nearby_action_id)
 	_sync_world_camera()
+	_refresh_battle_intent_presentation(snapshot)
 	map_canvas.show_battle_feedback(
 		event_ids,
 		settings["battle_speed"] == "fast",
-		settings["reduced_motion"]
+		settings["reduced_motion"],
+		presentation_context
 	)
 	_build_actions(node)
 	_render_dialogue_overlay()
@@ -394,22 +404,7 @@ func _objective_text(snapshot: Dictionary) -> String:
 				return "当前目标　前往月芽田准备护脉灵草"
 			return "当前目标　沿石路寻找藏泉山门"
 		"battle":
-			var visible_intents: Array = journey.visible_enemy_intents()
-			var intent: Dictionary = visible_intents[0] if not visible_intents.is_empty() else {}
-			var intent_text := "当前敌势　%s（%d 伤害）" % [
-				intent.get("name", "未知"),
-				intent.get("damage", 0),
-			]
-			if not journey.knows_enemy_intel(str(snapshot["enemy_id"])):
-				return intent_text
-			var next_intent := _next_visible_intent(visible_intents, intent)
-			if not next_intent.is_empty():
-				intent_text += "　后一势　%s（%d 伤害）" % [next_intent.get("name", "未知"), next_intent.get("damage", 0)]
-			var counter_action := str(intent.get("counter_action", ""))
-			var counter_text := "无"
-			if not counter_action.is_empty():
-				counter_text = _battle_action_display_name(counter_action)
-			return "%s　破绽窗口　%s" % [intent_text, counter_text]
+			return "当前目标　看清敌势，选择行动或撤退"
 		"mountain_path":
 			return "当前目标　沿石标探查碎甲声，随时可以折返"
 		"spring":
@@ -446,13 +441,61 @@ func _battle_action_display_name(action_id: String) -> String:
 	}.get(action_id, "未知应对")
 
 
-func _event_text(event_ids: Array) -> String:
+func _battle_intent_presentation_data(snapshot: Dictionary) -> Dictionary:
+	if str(snapshot.get("phase", "")) != "battle":
+		return {"active": false}
+	var visible_intents: Array = journey.visible_enemy_intents()
+	if visible_intents.is_empty():
+		return {"active": false}
+	var current_intent: Dictionary = visible_intents[0]
+	var intel_known := journey.knows_enemy_intel(str(snapshot.get("enemy_id", "")))
+	var next_intent := _next_visible_intent(visible_intents, current_intent) if intel_known else {}
+	var counter_text := ""
+	if intel_known:
+		var counter_action := str(current_intent.get("counter_action", ""))
+		if not counter_action.is_empty():
+			counter_text = _battle_action_display_name(counter_action)
+	return {
+		"active": true,
+		"current_id": str(current_intent.get("id", "")),
+		"current_name": str(current_intent.get("name", "未知")),
+		"current_damage": int(current_intent.get("damage", 0)),
+		"intel_known": intel_known,
+		"next_id": str(next_intent.get("id", "")),
+		"next_name": str(next_intent.get("name", "")),
+		"next_damage": int(next_intent.get("damage", 0)),
+		"counter_text": counter_text,
+	}
+
+
+func _refresh_battle_intent_presentation(snapshot: Dictionary = journey.snapshot()) -> void:
+	if not is_instance_valid(intent_telegraph):
+		return
+	if not is_playing:
+		intent_telegraph.clear_battle_intent_presentation()
+		return
+	intent_telegraph.set_presentation(
+		_battle_intent_presentation_data(snapshot),
+		str(snapshot.get("enemy_id", "")),
+		bool(settings.get("high_contrast", false)),
+		str(settings.get("text_scale", "standard")) == "large",
+		bool(settings.get("reduced_motion", false)),
+		str(settings.get("battle_speed", "standard")) == "fast"
+	)
+
+
+func _event_text(event_ids: Array, presentation_context: Dictionary = {}) -> String:
 	if event_ids.is_empty():
 		if journey.phase_id() == "riverbank":
 			return "沿路寻找发光的月芽草；金色圆环会提示可交互地点。"
 		return "选择行动。所有结果由确定性规则结算。"
 	var messages: Array[String] = []
 	var enemy_name := str(journey.current_enemy_profile().get("name", "山道灵物"))
+	var raw_battle_context = presentation_context.get("battle", {})
+	var battle_context: Dictionary = raw_battle_context if raw_battle_context is Dictionary else {}
+	var enemy_id_before := str(battle_context.get("enemy_id_before", ""))
+	if EnemyCatalogScript.supports(enemy_id_before):
+		enemy_name = str(EnemyCatalogScript.profile(enemy_id_before).get("name", enemy_name))
 	for event_id in event_ids:
 		messages.append(str(content["messages"].get(event_id, event_id)).replace("{enemy}", enemy_name))
 	return "\n".join(messages)
@@ -589,7 +632,7 @@ func _on_action(action_id: String) -> void:
 		if action_id == JourneyStateScript.REPLAY_CHAPTER:
 			patrol.reset()
 			path_keeper.reset()
-	_render(result["events"])
+	_render(result["events"], result.get("presentation_context", {}))
 	if result["ok"]:
 		_save_game()
 	if result["ok"] and action_id == JourneyStateScript.RETURN_TO_TITLE:
@@ -721,7 +764,7 @@ func interact() -> Dictionary:
 	var result: Dictionary = journey.choose(nearby_action_id)
 	if result["ok"]:
 		_sync_exploration_after_action(nearby_action_id, result["events"])
-	_render(result["events"])
+	_render(result["events"], result.get("presentation_context", {}))
 	if result["ok"]:
 		_save_game()
 	return result
@@ -901,7 +944,8 @@ func _capture_reading_baseline() -> void:
 
 
 func _apply_accessibility_settings() -> void:
-	var scale_text := "文字大小：大字" if settings["text_scale"] == "large" else "文字大小：标准"
+	var large_text: bool = str(settings["text_scale"]) == "large"
+	var scale_text := "文字大小：大字" if large_text else "文字大小：标准"
 	var contrast_text := "高对比：开启" if settings["high_contrast"] else "高对比：关闭"
 	var dialogue_speed_labels: Dictionary = {
 		"fast": "对话显字：快速",
@@ -921,11 +965,15 @@ func _apply_accessibility_settings() -> void:
 		var size_key := _reading_font_size_key(reading_control)
 		var color_key := _reading_font_color_key(reading_control)
 		var base_size := int(base_reading_font_sizes[reading_control])
-		var next_size := ceili(float(base_size) * LARGE_TEXT_SCALE) if settings["text_scale"] == "large" else base_size
+		var next_size := ceili(float(base_size) * LARGE_TEXT_SCALE) if large_text else base_size
 		reading_control.add_theme_font_size_override(size_key, next_size)
 		var base_color: Color = base_reading_font_colors[reading_control]
 		var next_color := _high_contrast_color(base_color) if settings["high_contrast"] else base_color
 		reading_control.add_theme_color_override(color_key, next_color)
+	status_hud.offset_bottom = STATUS_HUD_LARGE_BOTTOM if large_text else STATUS_HUD_STANDARD_BOTTOM
+	intent_telegraph.offset_top = INTENT_TELEGRAPH_LARGE_TOP if large_text else INTENT_TELEGRAPH_STANDARD_TOP
+	intent_telegraph.offset_bottom = intent_telegraph.offset_top + INTENT_TELEGRAPH_HEIGHT
+	_refresh_battle_intent_presentation()
 
 
 func _reading_font_size_key(reading_control: Control) -> StringName:
@@ -1066,6 +1114,8 @@ func return_to_title() -> void:
 	dialogue_overlay.hide()
 	journal_overlay.hide()
 	journal_button.hide()
+	intent_telegraph.clear_battle_intent_presentation()
+	map_canvas.clear_battle_feedback()
 	_refresh_title_state()
 	title_overlay.show()
 	if continue_button.disabled:
@@ -1447,7 +1497,7 @@ func _choose_dialogue_response(response_id: String) -> void:
 		patrol = staged_patrol
 	dialogue_history_visible = false
 	dialogue_overlay.hide()
-	_render(result["events"])
+	_render(result["events"], result.get("presentation_context", {}))
 	_save_game()
 
 

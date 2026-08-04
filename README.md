@@ -11,6 +11,10 @@
 MUD 与单人 PWA 作为可运行研究原型保留。标题与暂停页还提供标准、快速、整句三档
 对话显字偏好；整句模式只关闭逐字揭示，不会自动推进或代选回应。
 
+战斗中另有固定屏幕“照禾临势签”：九项稳定敌势分别使用不同线形，当前伤害始终
+可读，已调查敌迹才显示后一势与破绽；动作前敌人与意图只进入瞬时表现上下文，
+不会写入 save v17 或成为第二套战斗权威。
+
 ## Play the RPG graybox
 
 Requires Godot 4.7.1. On macOS, `make setup-rpg` verifies an existing Homebrew install；
@@ -82,8 +86,8 @@ make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
 The repository pytest gate passes 155 tests at 100% statement and branch coverage (621 statements /
-316 branches). Godot behavior is covered by 2,906 headless rule/scene assertions plus an independent
-350-check chapter E2E and 185-check physical-input/focus path. Nine committed pixel atlases are
+316 branches). Godot behavior is covered by 3,105 headless rule/scene assertions plus an independent
+357-check chapter E2E and 189-check physical-input/focus path. Nine committed pixel atlases are
 regenerated twice and must match the Git index byte for byte. With pinned Godot 4.7.1 and export-time
 text-to-binary scene conversion disabled, the package gate compares two normal exports plus exports
 from two independent clean import caches. As historical controlled-input evidence, for the packaged runtime inputs committed in `f5c60e2`,
@@ -93,11 +97,11 @@ RPG job attempts all match at 709,100 bytes and SHA-256
 This is controlled same-input evidence, not a future cross-platform guarantee: the normalized build
 tuple remains provenance rather than a canonical-hash key or executable ABI. The probe requires 22
 runtime resources for that historical input. For the current local feature worktree, four macOS/arm64
-exports, including two fresh-cache project copies, match at 746,180 bytes and SHA-256
-`16fbb0098326c58d4a651f90e03ab20eb8a53a7dd98b896b79c089e1af974573`; manifest verification,
-the 24-required / nine-excluded resource probe, and packaged boot smoke pass locally, while hosted
-confirmation remains pending. Two consecutive 42-PNG capture runs produce aggregate SHA-256
-`f56422804793b50d4ee20e5b9a733bb7a5d61a4599771648a0a3028f2fb51bb7`.
+exports, including two fresh-cache project copies, match at 812,608 bytes and SHA-256
+`aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`; manifest verification,
+the 25-required / nine-excluded resource probe, and packaged boot smoke pass locally, while this
+loop's hosted confirmation remains pending. Two consecutive 42-PNG capture runs produce aggregate
+SHA-256 `3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
 The MUD adapter has
 isolated Evennia tests, and its release path
 is exercised through two real concurrent Telnet clients. The preserved browser prototype retains
