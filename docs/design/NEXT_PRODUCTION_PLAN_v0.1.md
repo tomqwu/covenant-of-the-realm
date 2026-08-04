@@ -28,10 +28,11 @@ Godot 规则/场景断言、357 项完整章节 E2E、189 项原始鼠标/键盘
 独立 GitHub-hosted Linux/x86_64 RPG job 中各自的四个 PCK，均为 709,100 bytes，
 SHA-256 为 `e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`；这是同输入的
 受控观察，不是未来跨平台保证。manifest v2 按每次构建另记录规范化构建元组，但元组不是
-canonical hash 键或可执行 ABI。当前本地 feature worktree 的四个 macOS/arm64 PCK（含
-两个独立 fresh cache）均为 812,608 bytes，SHA-256 为
+canonical hash 键或可执行 ABI。当前临势签输入的四个本地 macOS/arm64 PCK 与 GitHub
+run `30869981829` 的四个 Linux/x86_64 PCK（各含两个独立 fresh cache）均为 812,608 bytes，SHA-256 为
 `aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`；manifest、启动 smoke
-和 25 项运行资源 / 9 项开发资源排除均已通过，本轮当前输入尚未运行 hosted 构建。两轮
+和 25 项运行资源 / 9 项开发资源排除在本地与 hosted 均已通过。该 run 的 RPG、MUD、多人
+E2E 与浏览器原型四项任务全绿。两轮
 连续 42 张 PNG 的聚合 SHA-256 均为
 `3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`。
 现阶段最大缺口不再是底层闭环，而是正式人物精修、探索密度和内容时长。

@@ -96,11 +96,12 @@ RPG job attempts all match at 709,100 bytes and SHA-256
 `e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`.
 This is controlled same-input evidence, not a future cross-platform guarantee: the normalized build
 tuple remains provenance rather than a canonical-hash key or executable ABI. The probe requires 22
-runtime resources for that historical input. For the current local feature worktree, four macOS/arm64
-exports, including two fresh-cache project copies, match at 812,608 bytes and SHA-256
+runtime resources for that historical input. For the current intent-telegraph input, four local
+macOS/arm64 exports and four GitHub-hosted Linux/x86_64 exports from run `30869981829`, each including
+two fresh-cache project copies, all match at 812,608 bytes and SHA-256
 `aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`; manifest verification,
-the 25-required / nine-excluded resource probe, and packaged boot smoke pass locally, while this
-loop's hosted confirmation remains pending. Two consecutive 42-PNG capture runs produce aggregate
+the 25-required / nine-excluded resource probe, and packaged boot smoke pass locally and hosted.
+Two consecutive 42-PNG capture runs produce aggregate
 SHA-256 `3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
 The MUD adapter has
 isolated Evennia tests, and its release path

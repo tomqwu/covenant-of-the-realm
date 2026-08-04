@@ -45,9 +45,10 @@ The current local contract is covered by 3,105 Godot unit/scene assertions, 357 
 189 physical-input checks, a 116-node static scene and 126-node peak, a 25-required / nine-excluded
 package boundary, and the 42-capture aggregate
 `3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
-Four local macOS/arm64 exports, including two fresh-cache copies, match at 812,608 bytes and SHA-256
+Four local macOS/arm64 exports and four GitHub-hosted Linux/x86_64 exports from run `30869981829`,
+each including two fresh-cache copies, match at 812,608 bytes and SHA-256
 `aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`; manifest verification,
-the 25/9 resource probe, and packaged boot pass. No hosted result is asserted for this loop.
+the 25/9 resource probe, and packaged boot pass locally and hosted.
 
 ## Preserved multiplayer prototype
 

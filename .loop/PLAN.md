@@ -13,7 +13,7 @@
   claim that the announced enemy intent resolved.
 - [x] Prove controller/keyboard/mouse focus, all speed/motion combinations, reload/retreat/rescue/win
   cleanup, deterministic captures, lifecycle budgets, and package contents without a save migration.
-- [ ] Run `make check`, audit secrets and unrelated files, commit, push, and update/monitor Draft PR #7
+- [x] Run `make check`, audit secrets and unrelated files, commit, push, and update/monitor Draft PR #7
   without merging `main`.
 
 ## Recently completed

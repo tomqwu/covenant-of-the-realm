@@ -30,14 +30,15 @@ standard/fast cues, and reduced motion preserve the same information. The contro
 focus input, never blocks the next action, and has no rule, damage, intent, profile, intelligence,
 round, counter, gameplay-timing, or save authority.
 
-The current local gate is 3,105 Godot unit/scene assertions, 357 chapter E2E checks, and 189
+The current gate is 3,105 Godot unit/scene assertions, 357 chapter E2E checks, and 189
 physical-input checks. The structural boundary is 116 static / 126 peak nodes. The package contract
-is 25 required / nine excluded resources. Four local macOS/arm64 exports, including two fresh-cache
-copies, match at 812,608 bytes and SHA-256
+is 25 required / nine excluded resources. Four local macOS/arm64 exports and four GitHub-hosted
+Linux/x86_64 exports from run `30869981829`, each including two fresh-cache copies, match at 812,608
+bytes and SHA-256
 `aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`; manifest verification,
-the resource probe, and packaged boot pass. Two 42-PNG capture passes reproduce aggregate SHA-256
+the resource probe, and packaged boot pass locally and hosted. Two 42-PNG capture passes reproduce aggregate SHA-256
 `3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
-These are local feature-loop results; no hosted result is asserted for this loop.
+The same run is green across RPG quality, MUD quality, Multiplayer E2E, and Journey prototype.
 
 ### 2026-08-03 — Cen Wei is a saved path presence, not a quest authority
 

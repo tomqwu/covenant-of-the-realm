@@ -38,11 +38,12 @@ match at 709,100 bytes and SHA-256
 `e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`. This controlled
 same-input observation is not inferred from the build tuple and does not promise future
 cross-platform identity; tuples remain coarse, privacy-preserving provenance rather than a
-canonical-hash key or executable ABI. For the current local feature worktree, four macOS/arm64
-exports, including two independent fresh-cache project copies, match at 812,608 bytes and SHA-256
+canonical-hash key or executable ABI. For the current intent-telegraph input, four local macOS/arm64
+exports and four GitHub-hosted Linux/x86_64 exports from run `30869981829`, each including two
+independent fresh-cache project copies, all match at 812,608 bytes and SHA-256
 `aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`. Manifest verification,
-the 25-required / nine-excluded resource probe, and packaged boot smoke all pass locally; no hosted
-build has been run for this current-input evidence. Two consecutive 42-PNG capture batches also
+the 25-required / nine-excluded resource probe, and packaged boot smoke all pass locally and hosted.
+Two consecutive 42-PNG capture batches also
 reproduce the same aggregate SHA-256
 `3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
 A native `.app`/`.exe` is intentionally deferred until the owner selects the first platform and public
@@ -65,7 +66,7 @@ the completed scene uses 119, title uses 124, dialogue uses 126, and journal plu
 lifecycle gate on a fixed 60 FPS clock, keeps required focus/deferred-tree settle frames, and
 disables automatic drawing because deterministic PNG captures own pixel verification. The runner
 reports measured times but does not treat one development machine as a release hardware promise.
-The latest samples are 54.05 ms for 100,000 path-keeper advances and 959.0 ms for the complete
+One checked sample measured 54.05 ms for 100,000 path-keeper advances and 959.0 ms for the complete
 20-cycle lifecycle workload.
 Every cycle starts, advances, and saves dialogue before traversing the remaining states. The first
 cycle of each complete sample additionally runs standard/fast/instant reveal behavior through four
