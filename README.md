@@ -7,13 +7,14 @@
 
 **《山河有契》**（英文工作名：**Covenant of the Realm**）正在发展为一款原创、
 中文优先、章节式的 2D 修仙剧情 RPG。Godot 可玩章节已经串联自由移动、碰撞、
-双地图地表、第三张藏泉石室微地图与原创像素细节层、可恢复分支与章节余波对话、明亮纸绘头像、可选择“见闻/灵物志”的行旅札记、脚印式同伴跟随、陶小满六点送件巡路及船架/竹架两端点回响、岑苇四点巡山与六类进度回声、持久环境见闻、三痕辨势、守堤与药篓双结果支线、补船木架/晾晒竹架/避雨石棚三处可重复生活叙事、近距离采集、三类意图窗口敌人、守巢首领、事件驱动的四敌攻击/受击像素动画、可撤退回合战斗、同伴援护、save v17 版本化存档和“听泉辨脉 → 月芽温脉 → 静坐引息”的首次境界突破；现有多人
+双地图地表、第三张藏泉石室微地图与原创像素细节层、可恢复分支与章节余波对话、明亮纸绘头像、可选择“见闻/灵物志”的行旅札记、脚印式同伴跟随、陶小满六点送件巡路及船架/竹架两端点回响、岑苇四点巡山与六类进度回声、持久环境见闻、三痕辨势、守堤与药篓双结果支线、补船木架/晾晒竹架/避雨石棚三处可重复生活叙事、近距离采集、三类意图窗口敌人、守巢首领、事件驱动的四敌攻击/受击/败退像素动画、可撤退回合战斗、同伴援护、save v17 版本化存档和“听泉辨脉 → 月芽温脉 → 静坐引息”的首次境界突破；现有多人
 MUD 与单人 PWA 作为可运行研究原型保留。标题与暂停页还提供标准、快速、整句三档
 对话显字偏好；整句模式只关闭逐字揭示，不会自动推进或代选回应。
 
 战斗中另有固定屏幕“照禾临势签”：九项稳定敌势分别使用不同线形，当前伤害始终
 可读，已调查敌迹才显示后一势与破绽；动作前敌人与意图只进入瞬时表现上下文，
-不会写入 save v17 或成为第二套战斗权威。
+不会写入 save v17 或成为第二套战斗权威。普通敌致命回合会在守巢者已成为当前
+规则敌人的同一帧留下短暂败退旧影；旧影不阻断下一次键盘、鼠标或手柄行动。
 
 ## Play the RPG graybox
 
@@ -85,9 +86,9 @@ make check                   # RPG, MUD, and preserved PWA gates
 make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
-The repository pytest gate passes 155 tests at 100% statement and branch coverage (621 statements /
-316 branches). Godot behavior is covered by 3,105 headless rule/scene assertions plus an independent
-357-check chapter E2E and 189-check physical-input/focus path. Nine committed pixel atlases are
+The repository pytest gate passes 159 tests at 100% statement and branch coverage (621 statements /
+316 branches). Godot behavior is covered by 3,202 headless rule/scene assertions plus an independent
+360-check chapter E2E and 192-check physical-input/focus path. Nine committed pixel atlases are
 regenerated twice and must match the Git index byte for byte. With pinned Godot 4.7.1 and export-time
 text-to-binary scene conversion disabled, the package gate compares two normal exports plus exports
 from two independent clean import caches. As historical controlled-input evidence, for the packaged runtime inputs committed in `f5c60e2`,
@@ -96,13 +97,16 @@ RPG job attempts all match at 709,100 bytes and SHA-256
 `e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`.
 This is controlled same-input evidence, not a future cross-platform guarantee: the normalized build
 tuple remains provenance rather than a canonical-hash key or executable ABI. The probe requires 22
-runtime resources for that historical input. For the current intent-telegraph input, four local
+runtime resources for that historical input. For the previous intent-telegraph input, four local
 macOS/arm64 exports and four GitHub-hosted Linux/x86_64 exports from run `30869981829`, each including
 two fresh-cache project copies, all match at 812,608 bytes and SHA-256
 `aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`; manifest verification,
 the 25-required / nine-excluded resource probe, and packaged boot smoke pass locally and hosted.
-Two consecutive 42-PNG capture runs produce aggregate
-SHA-256 `3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
+For the current outgoing-defeat input, four local macOS/arm64 exports match at 824,432 bytes and
+SHA-256 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`;
+manifest verification, the unchanged 25/9 probe, and packaged boot pass. Two consecutive 43-PNG
+capture runs are byte-identical and produce aggregate SHA-256
+`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
 The MUD adapter has
 isolated Evennia tests, and its release path
 is exercised through two real concurrent Telnet clients. The preserved browser prototype retains

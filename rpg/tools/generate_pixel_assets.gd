@@ -4,7 +4,7 @@ const OUTPUT_DIR := "res://assets/pixel"
 const FRAME_SIZE := Vector2i(32, 56)
 const ATLAS_SIZE := Vector2i(128, 224)
 const ENEMY_FRAME_SIZE := Vector2i(64, 64)
-const ENEMY_ATLAS_SIZE := Vector2i(384, 256)
+const ENEMY_ATLAS_SIZE := Vector2i(512, 256)
 const LANDMARK_FRAME_SIZE := Vector2i(192, 128)
 const LANDMARK_ATLAS_SIZE := Vector2i(2112, 128)
 const LANDMARK_PROFILES := [
@@ -91,7 +91,7 @@ func _generate_enemy_atlas() -> void:
 	var image := Image.create(ENEMY_ATLAS_SIZE.x, ENEMY_ATLAS_SIZE.y, false, Image.FORMAT_RGBA8)
 	image.fill(TRANSPARENT)
 	for row in range(4):
-		for column in range(6):
+		for column in range(8):
 			var origin := Vector2i(column * ENEMY_FRAME_SIZE.x, row * ENEMY_FRAME_SIZE.y)
 			_draw_enemy_pose(image, origin, row, floori(float(column) / 2.0), column % 2)
 	var output_path := _asset_output_path("enemy_profiles.png")
@@ -309,6 +309,12 @@ func _draw_enemy_pose(image: Image, origin: Vector2i, profile_row: int, pose: in
 		pose_origin += Vector2i(-1 if frame == 0 else -2, 1 if frame == 0 else 0)
 	elif pose == 2:
 		pose_origin += Vector2i(2 if frame == 0 else -2, 1)
+	elif pose == 3:
+		# The outgoing-only defeat cells keep the stable foot anchor but lower the
+		# silhouette before breaking it apart. Both offsets leave a transparent
+		# one-pixel gutter around the 64 px cell, so no debris can bleed into a
+		# neighbouring profile or animation frame.
+		pose_origin += Vector2i(-2 if frame == 0 else 2, 2)
 	match profile_row:
 		0:
 			_draw_rock_armor_young(image, pose_origin, frame)
@@ -322,6 +328,8 @@ func _draw_enemy_pose(image: Image, origin: Vector2i, profile_row: int, pose: in
 		_draw_enemy_attack_marks(image, origin, frame)
 	elif pose == 2:
 		_draw_enemy_reaction_marks(image, origin, frame)
+	elif pose == 3:
+		_draw_enemy_defeat_marks(image, origin, profile_row, frame)
 
 
 func _draw_enemy_attack_marks(image: Image, origin: Vector2i, frame: int) -> void:
@@ -339,6 +347,49 @@ func _draw_enemy_reaction_marks(image: Image, origin: Vector2i, frame: int) -> v
 	_fill(image, Rect2i(origin.x + 9, origin.y + 39 + spark_shift, 4, 2), Color("c6764f"))
 	_fill(image, Rect2i(origin.x + 50, origin.y + 14 - spark_shift, 2, 5), Color("f2e6cb"))
 	_fill(image, Rect2i(origin.x + 31, origin.y + 12, 3, 6), Color("c6764f"))
+
+
+func _draw_enemy_defeat_marks(image: Image, origin: Vector2i, profile_row: int, frame: int) -> void:
+	var body_color := Color("60766f")
+	var accent_color := Color("829a8f")
+	match profile_row:
+		1:
+			body_color = Color("6d837c")
+			accent_color = Color("8ebb83")
+		2:
+			body_color = Color("6d837c")
+			accent_color = Color("c6764f")
+		3:
+			body_color = Color("526963")
+			accent_color = Color("829a8f")
+
+	if frame == 0:
+		# First beat: the centre line gives way while recognizable profile masses
+		# remain on both sides. Detached pieces already fall toward the foot line.
+		_fill(image, Rect2i(origin.x + 27, origin.y + 18, 3, 27), TRANSPARENT)
+		_fill(image, Rect2i(origin.x + 36, origin.y + 30, 3, 19), TRANSPARENT)
+		_fill(image, Rect2i(origin.x + 17, origin.y + 39, 7, 6), TRANSPARENT)
+		_fill(image, Rect2i(origin.x + 6, origin.y + 36, 6, 5), body_color)
+		_fill(image, Rect2i(origin.x + 9, origin.y + 32, 3, 3), accent_color)
+		_fill(image, Rect2i(origin.x + 51, origin.y + 43, 7, 5), INK.lightened(0.08))
+		_fill(image, Rect2i(origin.x + 55, origin.y + 38, 4, 3), accent_color)
+		_fill(image, Rect2i(origin.x + 28, origin.y + 51, 8, 5), body_color)
+		_fill(image, Rect2i(origin.x + 31, origin.y + 48, 4, 3), GOLD.darkened(0.12))
+	else:
+		# Second beat: erase the standing upper mass and redraw a low, asymmetric
+		# pile. Widely separated shards make this frame readable without relying on
+		# hue, while every rectangle remains inside the cell's 1 px gutter.
+		_fill(image, Rect2i(origin.x + 4, origin.y + 3, 56, 39), TRANSPARENT)
+		_fill(image, Rect2i(origin.x + 12, origin.y + 40, 40, 13), TRANSPARENT)
+		_fill(image, Rect2i(origin.x + 12, origin.y + 48, 17, 8), INK)
+		_fill(image, Rect2i(origin.x + 16, origin.y + 45, 14, 9), body_color)
+		_fill(image, Rect2i(origin.x + 29, origin.y + 50, 20, 7), INK.lightened(0.08))
+		_fill(image, Rect2i(origin.x + 33, origin.y + 46, 17, 9), accent_color)
+		_fill(image, Rect2i(origin.x + 22, origin.y + 42, 12, 7), body_color.lightened(0.10))
+		_fill(image, Rect2i(origin.x + 4, origin.y + 35, 6, 5), body_color)
+		_fill(image, Rect2i(origin.x + 7, origin.y + 30, 3, 3), accent_color)
+		_fill(image, Rect2i(origin.x + 54, origin.y + 40, 7, 5), body_color.darkened(0.12))
+		_fill(image, Rect2i(origin.x + 57, origin.y + 35, 4, 3), GOLD.darkened(0.12))
 
 
 func _draw_rock_armor_young(image: Image, origin: Vector2i, frame: int) -> void:

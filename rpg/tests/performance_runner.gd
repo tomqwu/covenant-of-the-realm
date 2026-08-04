@@ -10,7 +10,7 @@ const CompanionTrailScript := preload("res://src/ui/companion_trail.gd")
 const BUDGET_PATH := "res://tests/performance_budget.json"
 const PERFORMANCE_SAVE_PATH := "user://performance-save.json"
 const PERFORMANCE_SETTINGS_PATH := "user://performance-settings.json"
-const EXPECTED_STATIC_MAIN_SCENE_NODES := 116
+const EXPECTED_STATIC_MAIN_SCENE_NODES := 117
 const LIFECYCLE_CONFIRMATION_POLICY_CHECKS := 6
 const DIRECTIONS := [Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT, Vector2.UP]
 const COMPLETE_BATTLE_ACTIONS := [
@@ -496,6 +496,7 @@ func _benchmark_scene_lifecycle_sample(budget: Dictionary) -> Dictionary:
 		)
 		var replacement_feedback: Dictionary = instance.get_node("%MapCanvas").feedback_contract()
 		var replacement_intent: Dictionary = instance.get_node("%IntentTelegraph").presentation_contract()
+		var outgoing_defeat: Dictionary = instance.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
 		if (
 			instance.journey.enemy_id != "rock_armor_warden"
 			or replacement_feedback["enemy_id_before"] != "rock_armor_young"
@@ -512,13 +513,43 @@ func _benchmark_scene_lifecycle_sample(budget: Dictionary) -> Dictionary:
 			or replacement_intent["shape_id"] != "pressing_charge"
 		):
 			failures.append("生命周期普通敌替换后必须同步呈现首领当前势签")
+		if (
+			not outgoing_defeat["active"]
+			or not instance.get_node("%OutgoingEnemySprite").visible
+			or outgoing_defeat["enemy_id"] != "rock_armor_young"
+			or outgoing_defeat["state"] != "defeat"
+			or outgoing_defeat["role"] != "outgoing"
+			or outgoing_defeat["duration"] != 0.70
+			or not outgoing_defeat["motion_enabled"]
+			or bool(outgoing_defeat["rule_authority"])
+			or bool(outgoing_defeat["timing_authority"])
+			or bool(outgoing_defeat["save_authority"])
+			or bool(outgoing_defeat["blocks_input"])
+		):
+			failures.append("生命周期普通敌替换即时帧必须显示零权威旧敌退场姿态")
 		instance.get_node("%SceneTransition").finish()
+		var replacement_map_canvas = instance.get_node("%MapCanvas")
+		replacement_map_canvas._process(float(replacement_feedback["duration"]))
 		await process_frame
 		await process_frame
 		state_peaks["battle_replacement_stable"] = maxi(
 			int(state_peaks["battle_replacement_stable"]),
 			_count_nodes(instance)
 		)
+		var expired_defeat: Dictionary = instance.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+		if (
+			expired_defeat["active"]
+			or instance.get_node("%OutgoingEnemySprite").visible
+			or expired_defeat["enemy_id"] != ""
+			or expired_defeat["state"] != "idle"
+			or expired_defeat["event_id"] != ""
+			or expired_defeat["outgoing_enemy_id"] != ""
+			or expired_defeat["replacement_enemy_id"] != ""
+			or instance.journey.enemy_id != "rock_armor_warden"
+			or instance.get_node("%BattleEnemySprite").enemy_id != "rock_armor_warden"
+			or instance.get_node("%IntentTelegraph").presentation_contract()["enemy_id"] != "rock_armor_warden"
+		):
+			failures.append("生命周期普通敌替换稳定帧必须清退旧档案并保留首领权威表现")
 
 		instance.open_journal()
 		await process_frame

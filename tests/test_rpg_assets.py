@@ -62,6 +62,7 @@ ENEMY_ANIMATIONS = {
     "idle": {"columns": [0, 1], "fps": 2.5, "loop": True},
     "attack": {"columns": [2, 3], "fps": 8.0, "loop": False},
     "react": {"columns": [4, 5], "fps": 7.0, "loop": False},
+    "defeat": {"columns": [6, 7], "fps": 6.0, "loop": False},
 }
 
 
@@ -91,10 +92,28 @@ def _write_png(
     )
 
 
+def _write_rgba_png(path: Path, width: int, height: int, pixels: bytes) -> None:
+    stride = width * 4
+    assert len(pixels) == stride * height
+    rows = b"".join(b"\x00" + pixels[row * stride : (row + 1) * stride] for row in range(height))
+    _write_png(path, width, height, compressed_data=zlib.compress(rows))
+
+
+def _copy_enemy_cell(
+    pixels: bytearray,
+    atlas_width: int,
+    source_column: int,
+    target_column: int,
+    row: int,
+) -> None:
+    for local_y in range(64):
+        source = ((row * 64 + local_y) * atlas_width + source_column * 64) * 4
+        target = ((row * 64 + local_y) * atlas_width + target_column * 64) * 4
+        pixels[target : target + 64 * 4] = pixels[source : source + 64 * 4]
+
+
 @pytest.fixture
-def valid_contract(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> dict[str, Any]:
+def valid_contract(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     source_asset_dir = check_rpg_assets.ASSET_DIR
     data = json.loads(check_rpg_assets.CONTRACT_PATH.read_text(encoding="utf-8"))
     data["map_atlas"] = {
@@ -119,26 +138,24 @@ def test_map_atlas_accepts_exact_two_row_contract(valid_contract: dict[str, Any]
     assert check_rpg_assets.validate_contract(valid_contract) == []
 
 
-def test_schema_six_accepts_six_actor_atlases_and_cenwei(
+def test_schema_seven_accepts_six_actor_atlases_and_cenwei(
     valid_contract: dict[str, Any],
 ) -> None:
-    assert valid_contract["schema_version"] == 6
+    assert valid_contract["schema_version"] == 7
     assert valid_contract["atlases"] == ACTOR_ATLASES
-    assert check_rpg_assets._png_size(
-        check_rpg_assets.ASSET_DIR / "cenwei.png"
-    ) == (128, 224)
+    assert check_rpg_assets._png_size(check_rpg_assets.ASSET_DIR / "cenwei.png") == (128, 224)
     assert check_rpg_assets.validate_contract(valid_contract) == []
 
 
 def test_actor_atlas_contract_rejects_old_schema_and_changed_roster(
     valid_contract: dict[str, Any],
 ) -> None:
-    valid_contract["schema_version"] = 5
+    valid_contract["schema_version"] = 6
     valid_contract["atlases"] = ACTOR_ATLASES[:-1]
 
     failures = check_rpg_assets.validate_contract(valid_contract)
 
-    assert "schema_version must be 6" in failures
+    assert "schema_version must be 7" in failures
     assert "atlases must match the six stable actor IDs" in failures
 
 
@@ -159,10 +176,66 @@ def test_enemy_atlas_accepts_semantic_animation_contract(
 
     assert enemy_atlas["profiles"] == ENEMY_PROFILES
     assert enemy_atlas["animations"] == ENEMY_ANIMATIONS
-    assert check_rpg_assets._png_size(
-        check_rpg_assets.ASSET_DIR / "enemy_profiles.png"
-    ) == (384, 256)
+    assert check_rpg_assets._png_size(check_rpg_assets.ASSET_DIR / "enemy_profiles.png") == (
+        512,
+        256,
+    )
+    assert enemy_atlas["outgoing_presentation"] == {
+        "animation": "defeat",
+        "events": ["regular_enemy_won"],
+        "rule_authority": False,
+        "gameplay_timing_authority": False,
+        "save_authority": False,
+    }
     assert check_rpg_assets.validate_contract(valid_contract) == []
+
+
+def test_enemy_atlas_rejects_identical_defeat_frames(
+    valid_contract: dict[str, Any],
+) -> None:
+    path = check_rpg_assets.ASSET_DIR / "enemy_profiles.png"
+    width, height, raw_pixels = check_rpg_assets._png_rgba_pixels(path)
+    pixels = bytearray(raw_pixels)
+    _copy_enemy_cell(pixels, width, 6, 7, 0)
+    _write_rgba_png(path, width, height, pixels)
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "enemy defeat frames for rock_armor_young must be visibly distinct" in failures
+
+
+def test_enemy_atlas_rejects_empty_defeat_frame(
+    valid_contract: dict[str, Any],
+) -> None:
+    path = check_rpg_assets.ASSET_DIR / "enemy_profiles.png"
+    width, height, raw_pixels = check_rpg_assets._png_rgba_pixels(path)
+    pixels = bytearray(raw_pixels)
+    for local_y in range(64):
+        start = ((2 * 64 + local_y) * width + 6 * 64) * 4
+        pixels[start : start + 64 * 4] = bytes(64 * 4)
+    _write_rgba_png(path, width, height, pixels)
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert "enemy defeat frame unbalanced_stone_puppet:0 must remain visibly populated" in failures
+
+
+def test_enemy_atlas_rejects_defeat_cell_spill(
+    valid_contract: dict[str, Any],
+) -> None:
+    path = check_rpg_assets.ASSET_DIR / "enemy_profiles.png"
+    width, height, raw_pixels = check_rpg_assets._png_rgba_pixels(path)
+    pixels = bytearray(raw_pixels)
+    boundary = ((1 * 64 + 32) * width + 6 * 64 + 63) * 4
+    pixels[boundary : boundary + 4] = bytes((255, 255, 255, 255))
+    _write_rgba_png(path, width, height, pixels)
+
+    failures = check_rpg_assets.validate_contract(valid_contract)
+
+    assert (
+        "enemy defeat frame spring_moss_shell:0 must keep a transparent one-pixel cell border"
+        in failures
+    )
 
 
 def test_enemy_atlas_requires_an_object(valid_contract: dict[str, Any]) -> None:
@@ -178,12 +251,12 @@ def test_enemy_atlas_requires_an_object(valid_contract: dict[str, Any]) -> None:
     [
         ("frame_size_px", [32, 64], "enemy_atlas.frame_size_px must be [64, 64]"),
         ("foot_anchor_px", [31, 56], "enemy_atlas.foot_anchor_px must be [32, 56]"),
-        ("columns", 5, "enemy_atlas.columns must be 6"),
+        ("columns", 6, "enemy_atlas.columns must be 8"),
         ("rows", 3, "enemy_atlas.rows must be 4"),
         (
             "animations",
             {"idle": ENEMY_ANIMATIONS["idle"]},
-            "enemy_atlas.animations must match idle, attack, and react slots",
+            "enemy_atlas.animations must match idle, attack, react, and defeat slots",
         ),
         (
             "semantic_events",
@@ -194,6 +267,11 @@ def test_enemy_atlas_requires_an_object(valid_contract: dict[str, Any]) -> None:
             "terminal_suppression",
             ["battle_won"],
             "enemy_atlas.terminal_suppression must match battle transitions",
+        ),
+        (
+            "outgoing_presentation",
+            {"animation": "react", "events": ["regular_enemy_won"]},
+            "enemy_atlas.outgoing_presentation must keep defeat presentation-only",
         ),
         ("texture_filter", "linear", "enemy_atlas.texture_filter must be nearest"),
         ("pixel_snap", False, "enemy_atlas.pixel_snap must be true"),
@@ -237,7 +315,7 @@ def test_enemy_atlas_rejects_a_missing_file(valid_contract: dict[str, Any]) -> N
     assert "missing enemy atlas: missing_enemy.png" in failures
 
 
-@pytest.mark.parametrize(("width", "height"), [(383, 256), (384, 255)])
+@pytest.mark.parametrize(("width", "height"), [(511, 256), (512, 255)])
 def test_enemy_atlas_rejects_wrong_png_dimensions(
     valid_contract: dict[str, Any], width: int, height: int
 ) -> None:
@@ -249,7 +327,7 @@ def test_enemy_atlas_rejects_wrong_png_dimensions(
 
     failures = check_rpg_assets.validate_contract(valid_contract)
 
-    assert f"enemy_profiles.png: expected (384, 256), got {(width, height)}" in failures
+    assert f"enemy_profiles.png: expected (512, 256), got {(width, height)}" in failures
 
 
 def test_map_atlas_rejects_wrong_row_layout(valid_contract: dict[str, Any]) -> None:
@@ -398,10 +476,7 @@ def test_landmark_atlas_rejects_wrong_png_dimensions(
 
     failures = check_rpg_assets.validate_contract(valid_contract)
 
-    assert (
-        f"zhaohe_landmarks.png: expected (2112, 128), got {(width, height)}"
-        in failures
-    )
+    assert f"zhaohe_landmarks.png: expected (2112, 128), got {(width, height)}" in failures
 
 
 def test_landmark_atlas_rejects_an_invalid_png(valid_contract: dict[str, Any]) -> None:

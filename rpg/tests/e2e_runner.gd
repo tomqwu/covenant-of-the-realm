@@ -547,6 +547,26 @@ func _run() -> void:
 		and replacement_intent["second_line"].contains("本势无特定破绽"),
 		"E2E 岩甲痕迹识别同类首领且不误报肩撞破绽"
 	)
+	var outgoing_replacement: Dictionary = game.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	_expect(
+		outgoing_replacement["active"]
+		and outgoing_replacement["visible"]
+		and outgoing_replacement["enemy_id"] == "spring_moss_shell"
+		and outgoing_replacement["state"] == "defeat"
+		and outgoing_replacement["event_id"] == "regular_enemy_won"
+		and outgoing_replacement["role"] == "outgoing"
+		and outgoing_replacement["duration"] == 0.70
+		and outgoing_replacement["motion_enabled"]
+		and not outgoing_replacement["motion_skipped"]
+		and not outgoing_replacement["rule_authority"]
+		and not outgoing_replacement["timing_authority"]
+		and not outgoing_replacement["save_authority"]
+		and not outgoing_replacement["blocks_input"]
+		and game.journey.enemy_id == "rock_armor_warden"
+		and game.get_node("%BattleEnemySprite").enemy_id == "rock_armor_warden"
+		and replacement_intent["enemy_id"] == "rock_armor_warden",
+		"E2E 标准动态让旧泉苔独立退场，同时首领与当前势签保持唯一规则身份"
+	)
 	game.queue_free()
 	await _settle()
 	game = scene.instantiate()
@@ -571,9 +591,27 @@ func _run() -> void:
 		and restored_replacement_intent["intent_id"] == "warden_pressing_charge",
 		"E2E 读档仍从首领规则状态重建当前势签"
 	)
+	var restored_outgoing_replacement: Dictionary = game.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	_expect(
+		not restored_outgoing_replacement["active"]
+		and not restored_outgoing_replacement["visible"]
+		and restored_outgoing_replacement["enemy_id"] == ""
+		and restored_outgoing_replacement["state"] == "idle"
+		and restored_outgoing_replacement["event_id"] == "",
+		"E2E 重新实例化与继续游戏都不恢复上一场旧敌退场姿态"
+	)
 	await _press_action(game, "守势调息")
 	_expect(game.journey.armor_break_turns == 0, "E2E 守势在压阵肩撞时只做普通防御")
 	_expect(game.get_node("%BattleEnemySprite").presentation_contract()["state"] == "attack", "E2E 首领普通回应呈现攻击姿态")
+	var post_guard_outgoing: Dictionary = game.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	_expect(
+		not post_guard_outgoing["active"]
+		and not post_guard_outgoing["visible"]
+		and post_guard_outgoing["enemy_id"] == ""
+		and game.journey.enemy_id == "rock_armor_warden"
+		and game.get_node("%BattleEnemySprite").enemy_id == "rock_armor_warden",
+		"E2E 读档后的下一行动只推进当前首领，不重播已清退旧敌"
+	)
 	var stonebreaking_intent: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
 	_expect(
 		stonebreaking_intent["intent_id"] == "warden_stonebreaking_blow"

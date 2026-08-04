@@ -20,10 +20,10 @@ LANDMARK_ATLAS_COLUMNS = 11
 LANDMARK_ATLAS_ROWS = 1
 LANDMARK_FRAME_SIZE_PX = (192, 128)
 LANDMARK_ATLAS_SIZE_PX = (2112, 128)
-ENEMY_ATLAS_COLUMNS = 6
+ENEMY_ATLAS_COLUMNS = 8
 ENEMY_ATLAS_ROWS = 4
 ENEMY_FRAME_SIZE_PX = (64, 64)
-ENEMY_ATLAS_SIZE_PX = (384, 256)
+ENEMY_ATLAS_SIZE_PX = (512, 256)
 MAP_BASE_TILE_NAMES = [
     "grass",
     "water",
@@ -141,12 +141,134 @@ def _png_size(path: Path) -> tuple[int, int]:
     return size
 
 
+def _paeth_predictor(left: int, above: int, upper_left: int) -> int:
+    estimate = left + above - upper_left
+    left_distance = abs(estimate - left)
+    above_distance = abs(estimate - above)
+    upper_left_distance = abs(estimate - upper_left)
+    if left_distance <= above_distance and left_distance <= upper_left_distance:
+        return left
+    if above_distance <= upper_left_distance:
+        return above
+    return upper_left
+
+
+def _png_rgba_pixels(path: Path) -> tuple[int, int, bytes]:
+    """Decode a validated non-interlaced RGBA8 PNG into row-major pixels."""
+
+    data = path.read_bytes()
+    offset = len(PNG_SIGNATURE)
+    width = 0
+    height = 0
+    compressed_rows: list[bytes] = []
+    while offset < len(data):
+        chunk_length = struct.unpack(">I", data[offset : offset + 4])[0]
+        chunk_type = data[offset + 4 : offset + 8]
+        chunk_data = data[offset + 8 : offset + 8 + chunk_length]
+        if chunk_type == b"IHDR":
+            width, height = struct.unpack(">II", chunk_data[:8])
+        elif chunk_type == b"IDAT":
+            compressed_rows.append(chunk_data)
+        elif chunk_type == b"IEND":
+            break
+        offset += 12 + chunk_length
+
+    try:
+        encoded_rows = zlib.decompress(b"".join(compressed_rows))
+    except zlib.error as error:
+        raise ValueError("invalid PNG image data") from error
+    stride = width * 4
+    if width <= 0 or height <= 0 or len(encoded_rows) != (stride + 1) * height:
+        raise ValueError("invalid PNG image data")
+
+    decoded = bytearray()
+    previous = bytearray(stride)
+    for row_index in range(height):
+        row_offset = row_index * (stride + 1)
+        filter_type = encoded_rows[row_offset]
+        filtered = encoded_rows[row_offset + 1 : row_offset + stride + 1]
+        row = bytearray(stride)
+        for index, value in enumerate(filtered):
+            left = row[index - 4] if index >= 4 else 0
+            above = previous[index]
+            upper_left = previous[index - 4] if index >= 4 else 0
+            if filter_type == 0:
+                predictor = 0
+            elif filter_type == 1:
+                predictor = left
+            elif filter_type == 2:
+                predictor = above
+            elif filter_type == 3:
+                predictor = (left + above) // 2
+            elif filter_type == 4:
+                predictor = _paeth_predictor(left, above, upper_left)
+            else:
+                raise ValueError("invalid PNG image data")
+            row[index] = (value + predictor) & 0xFF
+        decoded.extend(row)
+        previous = row
+    return width, height, bytes(decoded)
+
+
+def _rgba_cell(
+    pixels: bytes,
+    atlas_width: int,
+    column: int,
+    row: int,
+) -> bytes:
+    cell = bytearray()
+    start_x = column * ENEMY_FRAME_SIZE_PX[0]
+    start_y = row * ENEMY_FRAME_SIZE_PX[1]
+    for local_y in range(ENEMY_FRAME_SIZE_PX[1]):
+        start = ((start_y + local_y) * atlas_width + start_x) * 4
+        cell.extend(pixels[start : start + ENEMY_FRAME_SIZE_PX[0] * 4])
+    return bytes(cell)
+
+
+def _defeat_frame_failures(path: Path, profiles: list[str]) -> list[str]:
+    failures: list[str] = []
+    width, _, pixels = _png_rgba_pixels(path)
+    frame_width, frame_height = ENEMY_FRAME_SIZE_PX
+    for row, profile_id in enumerate(profiles):
+        first = _rgba_cell(pixels, width, 6, row)
+        second = _rgba_cell(pixels, width, 7, row)
+        first_react = _rgba_cell(pixels, width, 4, row)
+        second_react = _rgba_cell(pixels, width, 5, row)
+        for frame_index, frame in enumerate((first, second)):
+            visible_pixels = sum(
+                frame[pixel_offset + 3] > 0 for pixel_offset in range(0, len(frame), 4)
+            )
+            if visible_pixels < 64:
+                failures.append(
+                    f"enemy defeat frame {profile_id}:{frame_index} must remain visibly populated"
+                )
+            border_alpha: list[int] = []
+            for x in range(frame_width):
+                border_alpha.append(frame[(x * 4) + 3])
+                border_alpha.append(frame[((frame_height - 1) * frame_width + x) * 4 + 3])
+            for y in range(1, frame_height - 1):
+                border_alpha.append(frame[(y * frame_width) * 4 + 3])
+                border_alpha.append(frame[(y * frame_width + frame_width - 1) * 4 + 3])
+            if any(border_alpha):
+                failures.append(
+                    "enemy defeat frame "
+                    f"{profile_id}:{frame_index} must keep a transparent one-pixel cell border"
+                )
+        if first == second:
+            failures.append(f"enemy defeat frames for {profile_id} must be visibly distinct")
+        if first == first_react or second == second_react:
+            failures.append(
+                f"enemy defeat frames for {profile_id} must not duplicate reaction frames"
+            )
+    return failures
+
+
 def validate_contract(data: Any) -> list[str]:
     failures: list[str] = []
     if not isinstance(data, dict):
         return ["asset contract must be an object"]
     expected = {
-        "schema_version": 6,
+        "schema_version": 7,
         "origin": "original",
         "tile_grid_px": 32,
         "actor_frame_px": [32, 56],
@@ -219,16 +341,19 @@ def validate_contract(data: Any) -> list[str]:
         if enemy_atlas.get("foot_anchor_px") != [32, 56]:
             failures.append("enemy_atlas.foot_anchor_px must be [32, 56]")
         if enemy_atlas.get("columns") != ENEMY_ATLAS_COLUMNS:
-            failures.append("enemy_atlas.columns must be 6")
+            failures.append("enemy_atlas.columns must be 8")
         if enemy_atlas.get("rows") != ENEMY_ATLAS_ROWS:
             failures.append("enemy_atlas.rows must be 4")
         expected_enemy_animations = {
             "idle": {"columns": [0, 1], "fps": 2.5, "loop": True},
             "attack": {"columns": [2, 3], "fps": 8.0, "loop": False},
             "react": {"columns": [4, 5], "fps": 7.0, "loop": False},
+            "defeat": {"columns": [6, 7], "fps": 6.0, "loop": False},
         }
         if enemy_atlas.get("animations") != expected_enemy_animations:
-            failures.append("enemy_atlas.animations must match idle, attack, and react slots")
+            failures.append(
+                "enemy_atlas.animations must match idle, attack, react, and defeat slots"
+            )
         expected_semantic_events = {
             "react": ["weakness_exposed", "art_hit", "talisman_hit"],
             "attack": ["enemy_hit", "enemy_glanced"],
@@ -244,6 +369,15 @@ def validate_contract(data: Any) -> list[str]:
         ]
         if enemy_atlas.get("terminal_suppression") != expected_terminal_events:
             failures.append("enemy_atlas.terminal_suppression must match battle transitions")
+        expected_outgoing_presentation = {
+            "animation": "defeat",
+            "events": ["regular_enemy_won"],
+            "rule_authority": False,
+            "gameplay_timing_authority": False,
+            "save_authority": False,
+        }
+        if enemy_atlas.get("outgoing_presentation") != expected_outgoing_presentation:
+            failures.append("enemy_atlas.outgoing_presentation must keep defeat presentation-only")
         if enemy_atlas.get("texture_filter") != "nearest":
             failures.append("enemy_atlas.texture_filter must be nearest")
         if enemy_atlas.get("pixel_snap") is not True:
@@ -266,6 +400,8 @@ def validate_contract(data: Any) -> list[str]:
                         failures.append(
                             f"{enemy_file}: expected {ENEMY_ATLAS_SIZE_PX}, got {actual}"
                         )
+                    else:
+                        failures.extend(_defeat_frame_failures(path, expected_enemy_profiles))
                 except ValueError as error:
                     failures.append(f"{enemy_file}: {error}")
     map_atlas = data.get("map_atlas")
@@ -292,9 +428,7 @@ def validate_contract(data: Any) -> list[str]:
         if len(tile_names) != expected_tile_count:
             failures.append(f"map_atlas.tiles must name all {expected_tile_count} atlas cells")
         if tile_names[:MAP_ATLAS_COLUMNS] != MAP_BASE_TILE_NAMES:
-            failures.append(
-                f"map_atlas.tiles row 0 must preserve {MAP_BASE_TILE_NAMES!r}"
-            )
+            failures.append(f"map_atlas.tiles row 0 must preserve {MAP_BASE_TILE_NAMES!r}")
         if tile_names[MAP_ATLAS_COLUMNS:] != MAP_DETAIL_TILE_NAMES:
             failures.append(f"map_atlas.tiles row 1 must be {MAP_DETAIL_TILE_NAMES!r}")
     map_file = map_atlas.get("file")
@@ -308,9 +442,7 @@ def validate_contract(data: Any) -> list[str]:
             try:
                 actual = _png_size(path)
                 if actual != MAP_ATLAS_SIZE_PX:
-                    failures.append(
-                        f"{map_file}: expected {MAP_ATLAS_SIZE_PX}, got {actual}"
-                    )
+                    failures.append(f"{map_file}: expected {MAP_ATLAS_SIZE_PX}, got {actual}")
             except ValueError as error:
                 failures.append(f"{map_file}: {error}")
     landmark_atlas = data.get("landmark_atlas")
@@ -334,9 +466,7 @@ def validate_contract(data: Any) -> list[str]:
     if landmark_atlas.get("profiles") != LANDMARK_PROFILES:
         failures.append("landmark_atlas.profiles must match the eleven stable landmark IDs")
     if landmark_atlas.get("occluding_profiles") != OCCLUDING_LANDMARK_PROFILES:
-        failures.append(
-            "landmark_atlas.occluding_profiles must contain only tree and house IDs"
-        )
+        failures.append("landmark_atlas.occluding_profiles must contain only tree and house IDs")
     landmark_file = landmark_atlas.get("file")
     if not isinstance(landmark_file, str) or Path(landmark_file).name != landmark_file:
         failures.append("landmark_atlas.file must be a local file name")

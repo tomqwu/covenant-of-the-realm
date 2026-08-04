@@ -464,10 +464,53 @@ func _run() -> void:
 		and post_action_focus != input_telegraph,
 		"势签更新后战斗行动网格保持输入焦点"
 	)
+	for _finishing_round in range(3):
+		await _trigger_action("ui_accept")
+	var input_outgoing_defeat: Dictionary = game.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	var replacement_focus := root.gui_get_focus_owner()
+	var replacement_input_intent: Dictionary = input_telegraph.presentation_contract()
+	_expect(
+		input_outgoing_defeat["active"]
+		and input_outgoing_defeat["visible"]
+		and input_outgoing_defeat["enemy_id"] == "rock_armor_young"
+		and input_outgoing_defeat["state"] == "defeat"
+		and input_outgoing_defeat["event_id"] == "regular_enemy_won"
+		and input_outgoing_defeat["role"] == "outgoing"
+		and input_outgoing_defeat["duration"] == 0.18
+		and not input_outgoing_defeat["motion_enabled"]
+		and input_outgoing_defeat["motion_skipped"]
+		and game.journey.enemy_id == "rock_armor_warden"
+		and game.get_node("%BattleEnemySprite").enemy_id == "rock_armor_warden"
+		and replacement_input_intent["enemy_id"] == "rock_armor_warden",
+		"真实确认输入按快速简化偏好显示旧幼兽静态退场，同时切换当前首领与势签"
+	)
+	_expect(
+		replacement_focus is Button
+		and game.get_node("%Actions").is_ancestor_of(replacement_focus)
+		and not input_outgoing_defeat["blocks_input"]
+		and not input_outgoing_defeat["rule_authority"]
+		and not input_outgoing_defeat["timing_authority"]
+		and not input_outgoing_defeat["save_authority"],
+		"旧敌退场不接管焦点，也不阻断首领行动网格的下一次输入"
+	)
+	var replacement_round: int = int(game.journey.round_number)
+	await _trigger_joy_button(JOY_BUTTON_A)
+	var post_replacement_input_defeat: Dictionary = game.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	_expect(
+		game.journey.enemy_id == "rock_armor_warden"
+		and game.journey.round_number == replacement_round + 1
+		and not post_replacement_input_defeat["active"]
+		and not post_replacement_input_defeat["visible"]
+		and post_replacement_input_defeat["enemy_id"] == ""
+		and root.gui_get_focus_owner() is Button
+		and game.get_node("%Actions").is_ancestor_of(root.gui_get_focus_owner()),
+		"退场出现后的下一次独立手柄 A 会立即结算首领回合并清除旧敌，不发生输入穿透或等待"
+	)
 	game.return_to_title()
 	await _settle()
 	game._apply_accessibility_settings()
 	var title_feedback: Dictionary = game.get_node("%MapCanvas").feedback_contract()
+	var title_outgoing_defeat: Dictionary = game.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
 	_expect(
 		game.get_node("%TitleDialogueSpeedButton").text == "对话显字：快速"
 		and not input_telegraph.presentation_contract()["active"]
@@ -475,7 +518,12 @@ func _run() -> void:
 		and not title_feedback["active"]
 		and title_feedback["text"] == ""
 		and title_feedback["enemy_id_before"] == ""
-		and title_feedback["announced_intent_id"] == "",
+		and title_feedback["announced_intent_id"] == ""
+		and not title_outgoing_defeat["active"]
+		and not title_outgoing_defeat["visible"]
+		and title_outgoing_defeat["enemy_id"] == ""
+		and title_outgoing_defeat["state"] == "idle"
+		and title_outgoing_defeat["event_id"] == "",
 		"战斗返回标题保留显字偏好，并在标题设置重刷后仍清除势签与瞬时反馈"
 	)
 	var battle_save_text := FileAccess.get_file_as_string(SAVE_PATH)

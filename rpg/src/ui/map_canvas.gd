@@ -69,6 +69,12 @@ const BATTLE_ROCK_POSITIONS: Array[Vector2] = [
 	Vector2(0.898, 0.633),
 	Vector2(0.269, 0.664),
 ]
+const OUTGOING_ENEMY_OFFSET := Vector2(-72, 0)
+const REGULAR_ENEMY_IDS := [
+	"rock_armor_young",
+	"spring_moss_shell",
+	"unbalanced_stone_puppet",
+]
 
 @onready var player_sprite = %PlayerSprite
 @onready var companion_sprite = %CompanionSprite
@@ -80,6 +86,7 @@ const BATTLE_ROCK_POSITIONS: Array[Vector2] = [
 @onready var path_ground: TileMapLayer = %PathGround
 @onready var map_detail_layer: TileMapLayer = %MapDetailLayer
 @onready var battle_enemy_sprite: AnimatedSprite2D = %BattleEnemySprite
+@onready var outgoing_enemy_sprite: AnimatedSprite2D = %OutgoingEnemySprite
 @onready var path_rock_enemy_sprite: AnimatedSprite2D = %PathRockEnemySprite
 @onready var path_moss_enemy_sprite: AnimatedSprite2D = %PathMossEnemySprite
 @onready var path_puppet_enemy_sprite: AnimatedSprite2D = %PathPuppetEnemySprite
@@ -140,6 +147,8 @@ func set_story_state(
 	next_enemy_intel: Array = [],
 	next_first_breath_stage: String = "unstarted"
 ) -> void:
+	if next_phase != "battle" and is_instance_valid(outgoing_enemy_sprite):
+		outgoing_enemy_sprite.clear_outgoing_defeat()
 	if next_phase != phase_id or talked != talked_to_companion:
 		companion_trail_needs_reset = true
 	phase_id = next_phase
@@ -226,6 +235,8 @@ func show_battle_feedback(
 	reduced_motion: bool,
 	presentation_context: Dictionary = {}
 ) -> void:
+	if is_instance_valid(outgoing_enemy_sprite):
+		outgoing_enemy_sprite.clear_outgoing_defeat()
 	_clear_feedback_context()
 	var raw_battle_context = presentation_context.get("battle", {})
 	var battle_context: Dictionary = raw_battle_context if raw_battle_context is Dictionary else {}
@@ -239,6 +250,22 @@ func show_battle_feedback(
 		feedback_replacement_enemy_id = enemy_id
 	if is_instance_valid(battle_enemy_sprite):
 		battle_enemy_sprite.consume_battle_events(event_ids, fast_mode, reduced_motion)
+	var has_regular_replacement := (
+		phase_id == "battle"
+		and event_ids.has("regular_enemy_won")
+		and event_ids.has("boss_arrived")
+		and feedback_enemy_id_before in REGULAR_ENEMY_IDS
+		and feedback_enemy_id_before != enemy_id
+		and enemy_id == "rock_armor_warden"
+		and feedback_replacement_enemy_id == enemy_id
+	)
+	if has_regular_replacement and is_instance_valid(outgoing_enemy_sprite):
+		outgoing_enemy_sprite.start_outgoing_defeat(
+			feedback_enemy_id_before,
+			fast_mode,
+			reduced_motion,
+			battle_enemy_sprite.position + OUTGOING_ENEMY_OFFSET
+		)
 	var labels := {
 		"enemy_hit": "受到冲击",
 		"enemy_glanced": "化开冲势",
@@ -246,7 +273,7 @@ func show_battle_feedback(
 		"companion_supported": "砚青凝息",
 		"weakness_exposed": "识破弱点",
 		"regular_enemy_won": "灵物退开",
-		"boss_arrived": "首领现身",
+		"boss_arrived": "守巢者现",
 		"battle_won": "道路已开",
 	}
 	var next_text := ""
@@ -262,6 +289,8 @@ func show_battle_feedback(
 	]:
 		if event_ids.has(event_id):
 			next_text = labels[event_id]
+	if has_regular_replacement:
+		next_text = "灵物退开 · 守巢者现"
 	if next_text.is_empty():
 		_reset_battle_feedback()
 		return
@@ -289,6 +318,22 @@ func feedback_contract() -> Dictionary:
 	}
 
 
+func outgoing_enemy_defeat_contract() -> Dictionary:
+	var contract := {
+		"enemy_id": "",
+		"active": false,
+		"visible": false,
+		"blocks_input": false,
+		"rule_authority": false,
+		"save_authority": false,
+	}
+	if is_instance_valid(outgoing_enemy_sprite):
+		contract = outgoing_enemy_sprite.presentation_contract()
+	contract["outgoing_enemy_id"] = feedback_outgoing_enemy_id
+	contract["replacement_enemy_id"] = feedback_replacement_enemy_id
+	return contract
+
+
 func clear_battle_feedback() -> void:
 	_reset_battle_feedback()
 
@@ -307,6 +352,8 @@ func _reset_battle_feedback() -> void:
 	feedback_remaining = 0.0
 	feedback_motion_enabled = true
 	feedback_phase = 0.0
+	if is_instance_valid(outgoing_enemy_sprite):
+		outgoing_enemy_sprite.clear_outgoing_defeat()
 	_clear_feedback_context()
 	queue_redraw()
 
@@ -417,6 +464,7 @@ func landmark_visual_contract() -> Dictionary:
 func uses_animated_enemy_sprites() -> bool:
 	return (
 		battle_enemy_sprite is AnimatedSprite2D
+		and outgoing_enemy_sprite is AnimatedSprite2D
 		and path_rock_enemy_sprite is AnimatedSprite2D
 		and path_moss_enemy_sprite is AnimatedSprite2D
 		and path_puppet_enemy_sprite is AnimatedSprite2D
@@ -594,8 +642,8 @@ func _process(delta: float) -> void:
 	feedback_remaining = maxf(0.0, feedback_remaining - delta)
 	feedback_phase += delta
 	if feedback_remaining <= 0.0:
-		feedback_text = ""
-		_clear_feedback_context()
+		_reset_battle_feedback()
+		return
 	queue_redraw()
 
 
@@ -608,6 +656,7 @@ func _sync_actor_visuals() -> void:
 		or not is_instance_valid(herbkeeper_sprite)
 		or not is_instance_valid(patrol_sprite)
 		or not is_instance_valid(path_keeper_sprite)
+		or not is_instance_valid(outgoing_enemy_sprite)
 		or not is_instance_valid(map_detail_layer)
 	):
 		return
@@ -617,6 +666,8 @@ func _sync_actor_visuals() -> void:
 	path_ground.visible = phase_id == "mountain_path"
 	map_detail_layer.set_context(phase_id)
 	battle_enemy_sprite.visible = phase_id == "battle"
+	if phase_id != "battle":
+		outgoing_enemy_sprite.clear_outgoing_defeat()
 	path_rock_enemy_sprite.visible = phase_id == "mountain_path"
 	path_moss_enemy_sprite.visible = phase_id == "mountain_path"
 	path_puppet_enemy_sprite.visible = phase_id == "mountain_path"
@@ -626,6 +677,8 @@ func _sync_actor_visuals() -> void:
 	path_keeper_sprite.visible = phase_id == "mountain_path" and path_keeper_active
 	battle_enemy_sprite.set_enemy_id(enemy_id)
 	battle_enemy_sprite.position = Vector2(size.x * 0.66, size.y * 0.49).round()
+	if not bool(outgoing_enemy_sprite.presentation_contract()["active"]):
+		outgoing_enemy_sprite.set_outgoing_anchor(battle_enemy_sprite.position + OUTGOING_ENEMY_OFFSET)
 	path_rock_enemy_sprite.position = Vector2(size.x * 0.76, size.y * 0.36).round()
 	path_moss_enemy_sprite.position = Vector2(size.x * 0.54, size.y * 0.52).round()
 	path_puppet_enemy_sprite.position = Vector2(size.x * 0.81, size.y * 0.31).round()
@@ -686,6 +739,7 @@ func _apply_depth_sort() -> void:
 	player_sprite.z_index = depth_for_y(player_sprite.position.y)
 	companion_sprite.z_index = depth_for_y(companion_sprite.position.y)
 	battle_enemy_sprite.z_index = depth_for_y(battle_enemy_sprite.position.y)
+	outgoing_enemy_sprite.z_index = depth_for_y(outgoing_enemy_sprite.position.y) - 1
 	path_rock_enemy_sprite.z_index = depth_for_y(path_rock_enemy_sprite.position.y)
 	path_moss_enemy_sprite.z_index = depth_for_y(path_moss_enemy_sprite.position.y)
 	path_puppet_enemy_sprite.z_index = depth_for_y(path_puppet_enemy_sprite.position.y)
@@ -1165,13 +1219,15 @@ func _draw_battle_feedback() -> void:
 	var pulse := 1.0
 	if feedback_motion_enabled:
 		pulse = 0.88 + sin(feedback_phase * 18.0) * 0.12
-	var center := Vector2(size.x * 0.54, size.y * 0.20)
-	var panel_size := Vector2(210, 54) * pulse
+	# The battle camera crops the upper world band; keep semantic feedback below
+	# the fixed HUD and intent tag so the complete Chinese label remains visible.
+	var center := Vector2(size.x * 0.42, size.y * 0.44)
+	var font := ThemeDB.fallback_font
+	var text_width := font.get_string_size(feedback_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 23).x
+	var panel_size := Vector2(maxf(210.0, text_width + 36.0), 54) * pulse
 	var panel := Rect2(center - panel_size * 0.5, panel_size)
 	draw_rect(panel, Color(0.15, 0.19, 0.18, 0.72 * progress), true)
 	draw_rect(panel, Color(0.89, 0.76, 0.43, 0.88 * progress), false, 3.0)
-	var font := ThemeDB.fallback_font
-	var text_width := font.get_string_size(feedback_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 23).x
 	draw_string(
 		font,
 		center + Vector2(-text_width * 0.5, 8),

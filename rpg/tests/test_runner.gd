@@ -3054,6 +3054,77 @@ func _test_scene_smoke() -> void:
 		malformed_feedback["enemy_id_before"] == "" and malformed_feedback["resolved_intent_id"] == "",
 		"表现层安全忽略非字典战斗上下文且不会伪造已结算敌势"
 	)
+	var feedback_map_canvas = instance.get_node("%MapCanvas")
+	feedback_map_canvas.show_battle_feedback(
+		["regular_enemy_won"],
+		false,
+		false,
+		{"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}
+	)
+	var incomplete_replacement_defeat: Dictionary = feedback_map_canvas.outgoing_enemy_defeat_contract()
+	_expect_true(
+		not incomplete_replacement_defeat["active"]
+		and not incomplete_replacement_defeat["visible"]
+		and incomplete_replacement_defeat["enemy_id"] == "",
+		"只有普通敌胜利事件而没有首领入场时不会伪造旧敌退场节点"
+	)
+	feedback_map_canvas.show_battle_feedback(
+		["battle_won"],
+		false,
+		false,
+		{"battle": {"enemy_id_before": "rock_armor_warden", "announced_intent_id": "warden_nest_guard"}}
+	)
+	var boss_victory_defeat: Dictionary = feedback_map_canvas.outgoing_enemy_defeat_contract()
+	_expect_true(
+		not boss_victory_defeat["active"]
+		and not boss_victory_defeat["visible"]
+		and boss_victory_defeat["enemy_id"] == "",
+		"首领胜利反馈记录结算身份但不会播放普通敌退场姿态"
+	)
+	feedback_map_canvas.show_battle_feedback(
+		["regular_enemy_won", "boss_arrived"],
+		false,
+		false,
+		{"battle": "malformed"}
+	)
+	var malformed_replacement_defeat: Dictionary = feedback_map_canvas.outgoing_enemy_defeat_contract()
+	_expect_true(
+		not malformed_replacement_defeat["active"]
+		and not malformed_replacement_defeat["visible"]
+		and malformed_replacement_defeat["enemy_id"] == "",
+		"缺失结构化旧敌上下文时事件对不会猜测退场档案"
+	)
+	feedback_map_canvas.clear_battle_feedback()
+	var explicitly_cleared_defeat: Dictionary = feedback_map_canvas.outgoing_enemy_defeat_contract()
+	_expect_true(
+		not explicitly_cleared_defeat["active"]
+		and not explicitly_cleared_defeat["visible"]
+		and explicitly_cleared_defeat["enemy_id"] == ""
+		and explicitly_cleared_defeat["state"] == "idle"
+		and explicitly_cleared_defeat["event_id"] == "",
+		"显式清理战斗反馈同时清除独立退场节点的全部瞬时身份"
+	)
+	instance.get_node("%OutgoingEnemySprite").start_outgoing_defeat(
+		"rock_armor_young",
+		false,
+		false,
+		Vector2(420, 220)
+	)
+	feedback_map_canvas.show_battle_feedback(
+		["companion_rescue"],
+		false,
+		false,
+		{"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_rending_charge"}}
+	)
+	var rescue_cleared_defeat: Dictionary = feedback_map_canvas.outgoing_enemy_defeat_contract()
+	_expect_true(
+		not rescue_cleared_defeat["active"]
+		and not rescue_cleared_defeat["visible"]
+		and rescue_cleared_defeat["enemy_id"] == ""
+		and rescue_cleared_defeat["outgoing_enemy_id"] == ""
+		and rescue_cleared_defeat["replacement_enemy_id"] == "",
+		"同伴救援事件会原子清除活动旧敌节点及其复合反馈身份"
+	)
 	instance.get_node("%MapCanvas").show_battle_feedback(
 		["retreated"],
 		false,
@@ -3061,6 +3132,7 @@ func _test_scene_smoke() -> void:
 		{"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}
 	)
 	var interrupted_feedback: Dictionary = instance.get_node("%MapCanvas").feedback_contract()
+	var interrupted_defeat: Dictionary = instance.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
 	_expect_true(
 		not interrupted_feedback["active"]
 		and interrupted_feedback["text"] == ""
@@ -3072,6 +3144,14 @@ func _test_scene_smoke() -> void:
 		and interrupted_feedback["outgoing_enemy_id"] == ""
 		and interrupted_feedback["replacement_enemy_id"] == "",
 		"活动攻击反馈后立即撤退会原子清除计时、文字与全部瞬时身份"
+	)
+	_expect_true(
+		not interrupted_defeat["active"]
+		and not interrupted_defeat["visible"]
+		and interrupted_defeat["enemy_id"] == ""
+		and interrupted_defeat["state"] == "idle"
+		and interrupted_defeat["event_id"] == "",
+		"撤退反馈也不会留下可见旧敌退场姿态"
 	)
 	instance.get_node("%TitleAudioButton").pressed.emit()
 	await process_frame
@@ -3161,14 +3241,14 @@ func _test_scene_smoke() -> void:
 	var enemy_sprite_contract: Dictionary = enemy_sprite.animation_contract()
 	_expect_equal(enemy_sprite_contract["frame_size"], Vector2(64, 64), "敌人图集使用 64×64 像素帧")
 	_expect_equal(enemy_sprite_contract["foot_anchor"], Vector2(32, 56), "四类敌人共享固定脚底锚点")
-	_expect_equal(enemy_sprite_contract["frames_per_state"], 2, "每类敌人的待机、攻击与受击姿态各使用两帧")
-	_expect_equal(enemy_sprite_contract["animations_per_profile"], 3, "每类敌人提供三种稳定语义姿态")
+	_expect_equal(enemy_sprite_contract["frames_per_state"], 2, "每类敌人的待机、攻击、受击与退场姿态各使用两帧")
+	_expect_equal(enemy_sprite_contract["animations_per_profile"], 4, "每类敌人提供四种稳定语义姿态")
 	_expect_equal(enemy_sprite_contract["filter"], CanvasItem.TEXTURE_FILTER_NEAREST, "敌人纹理使用最近邻过滤")
 	_expect_false(enemy_sprite_contract["damage_authority"], "敌人动画不决定伤害")
 	_expect_false(enemy_sprite_contract["intent_authority"], "敌人动画不决定意图")
 	_expect_false(enemy_sprite_contract["gameplay_timing_authority"], "敌人动画不推进规则时间")
 	_expect_false(enemy_sprite_contract["save_authority"], "敌人动画不写入存档")
-	_expect_equal(enemy_sprite.sprite_frames.get_animation_names().size(), 12, "四个稳定敌人标识各提供三种动画")
+	_expect_equal(enemy_sprite.sprite_frames.get_animation_names().size(), 16, "四个稳定敌人标识各提供四种动画")
 	_expect_equal(enemy_sprite.sprite_frames.get_frame_count("idle_rock_armor_warden"), 2, "首领使用独立双帧图集行")
 	var enemy_rows := {
 		"rock_armor_young": 0,
@@ -3176,12 +3256,12 @@ func _test_scene_smoke() -> void:
 		"unbalanced_stone_puppet": 2,
 		"rock_armor_warden": 3,
 	}
-	var enemy_state_columns := {"idle": 0, "attack": 2, "react": 4}
-	var enemy_state_fps := {"idle": 2.5, "attack": 8.0, "react": 7.0}
+	var enemy_state_columns := {"idle": 0, "attack": 2, "react": 4, "defeat": 6}
+	var enemy_state_fps := {"idle": 2.5, "attack": 8.0, "react": 7.0, "defeat": 6.0}
 	var enemy_atlas_image: Image = enemy_sprite.atlas_texture.get_image()
-	_expect_equal(enemy_atlas_image.get_size(), Vector2i(384, 256), "敌人源图集严格使用六列四行")
+	_expect_equal(enemy_atlas_image.get_size(), Vector2i(512, 256), "敌人源图集严格使用八列四行")
 	for profile_row in range(4):
-		for atlas_column in range(6):
+		for atlas_column in range(8):
 			var opaque_pixels := 0
 			var opaque_border_pixels := 0
 			for frame_y in range(64):
@@ -3265,6 +3345,107 @@ func _test_scene_smoke() -> void:
 	_expect_equal(enemy_sprite.presentation_contract(), stable_warden_contract, "非法表现标识原子保留当前首领状态")
 	_expect_equal(instance.journey.snapshot(), journey_before_enemy_presentation, "敌人表现测试不会改变领域快照")
 	_expect_true(enemy_sprite.set_enemy_id("rock_armor_young"), "后续场景测试恢复默认敌人表现行")
+	var outgoing_enemy_sprite: AnimatedSprite2D = instance.get_node("%OutgoingEnemySprite")
+	var initial_outgoing_contract: Dictionary = outgoing_enemy_sprite.presentation_contract()
+	_expect_true(
+		not initial_outgoing_contract["active"]
+		and not initial_outgoing_contract["visible"]
+		and initial_outgoing_contract["enemy_id"] == ""
+		and initial_outgoing_contract["state"] == "idle"
+		and initial_outgoing_contract["event_id"] == ""
+		and initial_outgoing_contract["role"] == "outgoing",
+		"旧敌退场节点从隐藏、无档案且零规则权威的待机状态开始"
+	)
+	var outgoing_anchor := Vector2(421.4, 226.6)
+	var rounded_outgoing_anchor := outgoing_anchor.round()
+	for outgoing_profile_id in ["rock_armor_young", "spring_moss_shell", "unbalanced_stone_puppet"]:
+		_expect_true(outgoing_enemy_sprite.start_outgoing_defeat(outgoing_profile_id, false, false, outgoing_anchor), "%s 可启动独立旧敌退场姿态" % outgoing_profile_id)
+		var profile_defeat: Dictionary = outgoing_enemy_sprite.presentation_contract()
+		_expect_true(
+			profile_defeat["active"]
+			and profile_defeat["visible"]
+			and profile_defeat["enemy_id"] == outgoing_profile_id
+			and profile_defeat["state"] == "defeat"
+			and profile_defeat["event_id"] == "regular_enemy_won"
+			and profile_defeat["animation"] == "defeat_%s" % outgoing_profile_id,
+			"%s 使用自身退场双帧且保留稳定语义身份" % outgoing_profile_id
+		)
+		_expect_true(
+			profile_defeat["role"] == "outgoing"
+			and profile_defeat["anchor"] == rounded_outgoing_anchor
+			and profile_defeat["offset"] == Vector2.ZERO
+			and outgoing_enemy_sprite.position == rounded_outgoing_anchor
+			and profile_defeat["alpha"] == 1.0,
+			"%s 从固定脚点以全不透明零偏移开始退场" % outgoing_profile_id
+		)
+	var outgoing_modes := [
+		{"fast": false, "reduced": false, "duration": 0.70, "motion": true, "label": "标准完整"},
+		{"fast": false, "reduced": true, "duration": 0.70, "motion": false, "label": "标准简化"},
+		{"fast": true, "reduced": false, "duration": 0.18, "motion": true, "label": "快速完整"},
+		{"fast": true, "reduced": true, "duration": 0.18, "motion": false, "label": "快速简化"},
+	]
+	for outgoing_mode in outgoing_modes:
+		_expect_true(outgoing_enemy_sprite.start_outgoing_defeat("rock_armor_young", outgoing_mode["fast"], outgoing_mode["reduced"], outgoing_anchor), "%s偏好可启动旧敌退场" % outgoing_mode["label"])
+		var mode_defeat: Dictionary = outgoing_enemy_sprite.presentation_contract()
+		_expect_true(
+			mode_defeat["duration"] == outgoing_mode["duration"]
+			and mode_defeat["remaining"] == outgoing_mode["duration"]
+			and mode_defeat["motion_enabled"] == outgoing_mode["motion"]
+			and mode_defeat["motion_skipped"] == outgoing_mode["reduced"]
+			and outgoing_enemy_sprite.frame == 0,
+			"%s偏好只组合固定时长与动作降级，不改变首帧" % outgoing_mode["label"]
+		)
+		_expect_true(
+			not mode_defeat["rule_authority"]
+			and not mode_defeat["timing_authority"]
+			and not mode_defeat["save_authority"]
+			and not mode_defeat["blocks_input"],
+			"%s退场姿态不拥有规则、回合、存档或输入权威" % outgoing_mode["label"]
+		)
+	_expect_true(outgoing_enemy_sprite.start_outgoing_defeat("spring_moss_shell", false, false, outgoing_anchor), "非法档案测试前建立活动退场姿态")
+	var stable_outgoing_defeat: Dictionary = outgoing_enemy_sprite.presentation_contract()
+	for rejected_outgoing_profile in ["rock_armor_warden", "unknown_enemy", ""]:
+		_expect_false(outgoing_enemy_sprite.start_outgoing_defeat(rejected_outgoing_profile, false, false, outgoing_anchor), "退场节点原子拒绝非法或首领档案『%s』" % rejected_outgoing_profile)
+		_expect_equal(outgoing_enemy_sprite.presentation_contract(), stable_outgoing_defeat, "拒绝『%s』不会擦除正在播放的合法退场" % rejected_outgoing_profile)
+	for rejected_outgoing_anchor in [Vector2(NAN, 1.0), Vector2(1.0, INF)]:
+		_expect_false(outgoing_enemy_sprite.start_outgoing_defeat("rock_armor_young", false, false, rejected_outgoing_anchor), "退场节点拒绝非有限脚点")
+		_expect_equal(outgoing_enemy_sprite.presentation_contract(), stable_outgoing_defeat, "非法脚点不会部分覆盖活动退场")
+	for rejected_outgoing_delta in [0.0, -0.1, NAN]:
+		_expect_false(outgoing_enemy_sprite.advance_presentation(rejected_outgoing_delta), "退场节点拒绝非法表现步长")
+		_expect_equal(outgoing_enemy_sprite.presentation_contract(), stable_outgoing_defeat, "非法表现步长不会污染活动退场")
+	outgoing_enemy_sprite.frame = 1
+	_expect_true(outgoing_enemy_sprite.start_outgoing_defeat("unbalanced_stone_puppet", true, false, Vector2(500, 240)), "新退场事件可替换尚未结束的旧档案")
+	var restarted_outgoing: Dictionary = outgoing_enemy_sprite.presentation_contract()
+	_expect_true(
+		restarted_outgoing["enemy_id"] == "unbalanced_stone_puppet"
+		and restarted_outgoing["animation"] == "defeat_unbalanced_stone_puppet"
+		and restarted_outgoing["duration"] == 0.18
+		and restarted_outgoing["remaining"] == 0.18
+		and restarted_outgoing["anchor"] == Vector2(500, 240)
+		and outgoing_enemy_sprite.frame == 0,
+		"替换退场会原子重启新档案、时钟、脚点与首帧"
+	)
+	_expect_true(outgoing_enemy_sprite.advance_presentation(0.09), "退场表现可推进到精确中点")
+	var mid_outgoing: Dictionary = outgoing_enemy_sprite.presentation_contract()
+	_expect_true(
+		mid_outgoing["active"]
+		and mid_outgoing["remaining"] > 0.0
+		and mid_outgoing["remaining"] < mid_outgoing["duration"]
+		and mid_outgoing["anchor"] == Vector2(500, 240),
+		"中点退场仍保留档案与固定规则脚点"
+	)
+	_expect_true(outgoing_enemy_sprite.advance_presentation(float(mid_outgoing["remaining"])), "精确剩余时长收束退场姿态")
+	var expired_outgoing: Dictionary = outgoing_enemy_sprite.presentation_contract()
+	_expect_true(
+		not expired_outgoing["active"]
+		and not expired_outgoing["visible"]
+		and expired_outgoing["enemy_id"] == ""
+		and expired_outgoing["state"] == "idle"
+		and expired_outgoing["event_id"] == ""
+		and expired_outgoing["remaining"] == 0.0,
+		"退场到时原子隐藏节点并清除旧档案、事件与时钟"
+	)
+	outgoing_enemy_sprite.clear_outgoing_defeat()
 	var map_canvas = instance.get_node("%MapCanvas")
 	var world_root: Node2D = instance.get_node("%WorldRoot")
 	var map_frame: Control = instance.get_node("%MapFrame")
@@ -4035,7 +4216,15 @@ func _test_scene_smoke() -> void:
 	await _press_action(instance, "引气术")
 	await _press_action(instance, "引气术")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("岩甲兽守巢者 14/14"), "普通敌人后无缝进入首领配置")
-	_expect_equal(transition.transition_contract()["label"], "守巢者现 · 临势应战", "未调查时首领入场转场保持中性")
+	var replacement_action_focus := root.gui_get_focus_owner()
+	_expect_true(
+		not transition.is_transitioning()
+		and instance.journey.enemy_id == "rock_armor_warden"
+		and enemy_sprite.enemy_id == "rock_armor_warden"
+		and replacement_action_focus is Button
+		and instance.get_node("%Actions").is_ancestor_of(replacement_action_focus),
+		"首领替换不启动遮挡输入的全屏转场，并立即保留首领权威与行动焦点"
+	)
 	_expect_equal(enemy_sprite.enemy_id, "rock_armor_warden", "首领入场立即切换正式像素图集行")
 	_expect_equal(enemy_sprite.animation, &"idle_rock_armor_warden", "首领播放独立双帧待机动画")
 	_expect_true(instance.get_node("%DescriptionLabel").text.contains("成熟岩甲"), "场景显示不剧透的首领短描述")
@@ -4047,6 +4236,34 @@ func _test_scene_smoke() -> void:
 	_expect_equal(replacement_feedback["resolved_intent_id"], "", "致命回合没有敌方回应便不谎称敌势已结算")
 	_expect_equal(replacement_feedback["outgoing_enemy_id"], "rock_armor_young", "反馈合同明确旧敌档案")
 	_expect_equal(replacement_feedback["replacement_enemy_id"], "rock_armor_warden", "反馈合同明确结算后的替换首领")
+	var replacement_defeat: Dictionary = instance.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	_expect_true(
+		replacement_defeat["active"]
+		and replacement_defeat["visible"]
+		and replacement_defeat["enemy_id"] == "rock_armor_young"
+		and replacement_defeat["state"] == "defeat"
+		and replacement_defeat["event_id"] == "regular_enemy_won"
+		and replacement_defeat["role"] == "outgoing",
+		"普通敌致命回合以独立节点保留旧敌退场姿态，新首领节点不回放旧敌受击"
+	)
+	_expect_true(
+		replacement_defeat["duration"] == 0.18
+		and not replacement_defeat["motion_enabled"]
+		and replacement_defeat["motion_skipped"]
+		and replacement_defeat["anchor"] == enemy_sprite.position + Vector2(-72, 0)
+		and replacement_defeat["offset"] == Vector2.ZERO
+		and replacement_defeat["alpha"] == 1.0,
+		"场景快速简化偏好冻结旧敌退场首帧并锁定独立脚点"
+	)
+	_expect_true(
+		instance.journey.enemy_id == "rock_armor_warden"
+		and enemy_sprite.enemy_id == "rock_armor_warden"
+		and not replacement_defeat["rule_authority"]
+		and not replacement_defeat["timing_authority"]
+		and not replacement_defeat["save_authority"]
+		and not replacement_defeat["blocks_input"],
+		"旧敌退场不覆盖首领规则身份且不阻断下一行动"
+	)
 	var unknown_boss_telegraph: Dictionary = intent_telegraph.presentation_contract()
 	_expect_equal(unknown_boss_telegraph["intent_id"], "warden_pressing_charge", "首领第一招在独立签面明示")
 	_expect_equal(unknown_boss_telegraph["next_intent_id"], "", "未调查岩甲痕迹时首领签面不显示后续")
@@ -4055,6 +4272,17 @@ func _test_scene_smoke() -> void:
 	_expect_false(instance.get_node("%StatusLabel").text.contains("破甲"), "压阵肩撞期间守势不会提前破甲")
 	_expect_equal(enemy_sprite.presentation_contract()["state"], "attack", "首领压阵回应触发自身攻击姿态")
 	_expect_equal(intent_telegraph.presentation_contract()["intent_id"], "warden_stonebreaking_blow", "首领第二回合签面明示真正重击窗口")
+	var next_action_defeat: Dictionary = instance.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	_expect_true(
+		not next_action_defeat["active"]
+		and not next_action_defeat["visible"]
+		and next_action_defeat["enemy_id"] == ""
+		and next_action_defeat["state"] == "idle"
+		and next_action_defeat["event_id"] == ""
+		and instance.journey.enemy_id == "rock_armor_warden"
+		and enemy_sprite.enemy_id == "rock_armor_warden",
+		"玩家无需等待退场时钟即可行动，下一首领回合会清退旧节点并保持当前权威敌人"
+	)
 	await _press_action(instance, "守势调息")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("破甲 2"), "守住崩石重击后状态栏显示破甲")
 	_expect_equal(enemy_sprite.presentation_contract()["state"], "react", "首领破绽事件优先触发受击姿态")
@@ -4066,6 +4294,15 @@ func _test_scene_smoke() -> void:
 	await _press_action(instance, "引气术")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉石室", "胜利进入泉室")
 	_expect_false(intent_telegraph.presentation_contract()["active"], "首领胜利后固定签面立即清空")
+	var boss_victory_outgoing: Dictionary = instance.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	_expect_true(
+		not boss_victory_outgoing["active"]
+		and not boss_victory_outgoing["visible"]
+		and boss_victory_outgoing["enemy_id"] == ""
+		and boss_victory_outgoing["state"] == "idle"
+		and boss_victory_outgoing["event_id"] == "",
+		"首领胜利切入泉室时不复用普通敌退场节点"
+	)
 	_expect_equal(instance.get_node("%MapCanvas").occlusion_contract()["count"], 0, "泉室不残留上一地图的树冠节点")
 	_expect_false(map_detail.map_contract()["visible"], "泉室不残留山道细节画面")
 	_expect_equal(instance.exploration.map_id, "cangquan_spring", "胜利后切换到独立泉室探索地图")
@@ -4191,6 +4428,15 @@ func _test_scene_smoke() -> void:
 	_expect_true(resumed.get_node("%EventLabel").text.contains("本地存档恢复"), "恢复存档提供中文反馈")
 	await _press_action(resumed, "重游序章（重置进度）")
 	_expect_equal(resumed.get_node("%LocationLabel").text, "照禾渡口", "结算页可重游序章")
+	var replay_outgoing_defeat: Dictionary = resumed.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	_expect_true(
+		not replay_outgoing_defeat["active"]
+		and not replay_outgoing_defeat["visible"]
+		and replay_outgoing_defeat["enemy_id"] == ""
+		and replay_outgoing_defeat["outgoing_enemy_id"] == ""
+		and replay_outgoing_defeat["replacement_enemy_id"] == "",
+		"章节重游不会把上一轮任何旧敌退场身份带回渡口"
+	)
 	_expect_equal(resumed.get_node("%MapCanvas").current_visual_mode(), "riverbank", "重游恢复渡口地图")
 	_expect_equal(resumed.exploration.player_position, ExplorationStateScript.START_POSITION, "重游重置玩家位置")
 	_expect_equal(resumed.journey.discoveries, [], "重游清空上一轮环境见闻")

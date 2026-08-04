@@ -41,14 +41,30 @@ behavior. Its short cue clock is non-blocking and has no damage, intent, profile
 round, counter, input, gameplay-timing, or save authority. Save v17 is unchanged: loading derives a
 fresh tag from the restored enemy ID and round and never resumes old action-result context.
 
-The current local contract is covered by 3,105 Godot unit/scene assertions, 357 chapter E2E checks,
-189 physical-input checks, a 116-node static scene and 126-node peak, a 25-required / nine-excluded
-package boundary, and the 42-capture aggregate
-`3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
-Four local macOS/arm64 exports and four GitHub-hosted Linux/x86_64 exports from run `30869981829`,
-each including two fresh-cache copies, match at 812,608 bytes and SHA-256
-`aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`; manifest verification,
-the 25/9 resource probe, and packaged boot pass locally and hosted.
+### Outgoing regular-enemy presentation
+
+`MapCanvas` owns one hidden `OutgoingEnemySprite` beside the canonical `BattleEnemySprite`. It arms
+only when `regular_enemy_won` and `boss_arrived` arrive together, the transient pre-action ID is one
+of the three regular profiles, and the settled enemy is `rock_armor_warden`. The settled snapshot is
+synchronized first, so Journey, status, the canonical sprite, and `IntentTelegraph` all identify the
+warden while the old profile is visible only through the outgoing role. Unknown, malformed, lone,
+boss-victory, or mismatched facts cannot arm it.
+
+The shared schema-v7 512×256 atlas has two explicit defeat frames after idle, attack, and reaction
+for every profile. The outgoing role accepts only regular profiles, starts from an integer anchor,
+and uses a local 0.70/0.18-second clock. Full motion shifts and fades the debris; reduced motion
+freezes the first defeat frame. Expiry, the next action, title, load, retreat, rescue, final victory,
+replay, or any non-battle phase hides the node and clears its ID. It never enters camera focus,
+Journey, save v17, content, damage, round timing, or input. Boss arrival no longer starts a same-phase
+full-screen transition, so the cue cannot be hidden and the next focused action remains available.
+
+The current local contract is covered by 3,202 Godot unit/scene assertions, 360 chapter E2E checks,
+192 physical-input checks, a 117-node static scene and 127-node peak, a 25-required / nine-excluded
+package boundary, and the 43-capture aggregate
+`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
+Four local macOS/arm64 exports, including two fresh-cache copies, match at 824,432 bytes and SHA-256
+`6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
+the 25/9 resource probe, and packaged boot pass locally.
 
 ## Preserved multiplayer prototype
 

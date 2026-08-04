@@ -1,7 +1,7 @@
 # 《山河有契》RPG 灰盒
 
 这是 Godot 4.7.1 制作的原创单机剧情 RPG 基础。当前灰盒验证数据驱动中文行动、
-确定性回合战斗、九形临势签、陶小满与岑苇两条独立 NPC 日程、一次性资源与“听泉辨脉 → 月芽温脉 → 静坐引息”的三步首次境界突破；
+确定性回合战斗、九形临势签、非阻断旧敌败退、陶小满与岑苇两条独立 NPC 日程、一次性资源与“听泉辨脉 → 月芽温脉 → 静坐引息”的三步首次境界突破；
 不包含外部小说的受保护内容。
 
 ```sh
@@ -38,35 +38,37 @@ match at 709,100 bytes and SHA-256
 `e8308c22cda27e45b73fcf35e4fbb37587a266ead18d7be5c277c0864d74d351`. This controlled
 same-input observation is not inferred from the build tuple and does not promise future
 cross-platform identity; tuples remain coarse, privacy-preserving provenance rather than a
-canonical-hash key or executable ABI. For the current intent-telegraph input, four local macOS/arm64
+canonical-hash key or executable ABI. For the previous intent-telegraph input, four local macOS/arm64
 exports and four GitHub-hosted Linux/x86_64 exports from run `30869981829`, each including two
 independent fresh-cache project copies, all match at 812,608 bytes and SHA-256
 `aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`. Manifest verification,
 the 25-required / nine-excluded resource probe, and packaged boot smoke all pass locally and hosted.
-Two consecutive 42-PNG capture batches also
-reproduce the same aggregate SHA-256
-`3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
+For the current outgoing-defeat input, four local macOS/arm64 exports match at 824,432 bytes and
+SHA-256 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`;
+manifest verification, the unchanged 25/9 resource probe, and packaged boot pass. Two consecutive
+43-PNG capture batches are byte-identical and reproduce aggregate SHA-256
+`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
 A native `.app`/`.exe` is intentionally deferred until the owner selects the first platform and public
 license, then confirms export templates, signing identity, product icon, and distribution target.
 
 The development window has a 1152×648 minimum because that is the validated readable layout.
 Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, battle confirmation,
 and pause/resume are exercised as physical input events by `make test-rpg-input`.
-The current automated Godot evidence is 3,105 rule/scene assertions, 357 complete-chapter E2E
-assertions, and 189 semantic physical-input/focus assertions.
+The current automated Godot evidence is 3,202 rule/scene assertions, 360 complete-chapter E2E
+assertions, and 192 semantic physical-input/focus assertions.
 
 `make test-rpg-performance` executes 100,000 deterministic movement/collision steps, 100,000
 deterministic ferry-runner route steps, 100,000 deterministic path-keeper route steps, 50,000
 bounded companion-footprint updates, 2,000 complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. Lifecycle sampling covers title, path, dialogue choices, active patrol, patrol worksite dialogue, stable battle, immediate and settled post-action frames, immediate and settled regular-enemy replacement frames, the scrollable journal, all three spring stages, and completion. The checked-in
 budget allows 2.5 seconds for each pure-domain workload and 7 seconds for the expanded 15-state lifecycle workload,
-caps the main scene at 126 nodes, and requires every cycle to return the root to its baseline child
-count. The static scene uses 116 nodes; the measured peak is 126, mountain-path exploration uses
-122, active ferry patrol uses 124, worksite dialogue uses 126, each spring ritual stage uses 117,
-the completed scene uses 119, title uses 124, dialogue uses 126, and journal plus both enemy-replacement samples use 125, with zero root-child leaks. Godot runs the
+caps the main scene at 127 nodes, and requires every cycle to return the root to its baseline child
+count. The static scene uses 117 nodes; the measured peak is 127, mountain-path exploration uses
+123, active ferry patrol uses 125, worksite dialogue uses 127, each spring ritual stage uses 118,
+the completed scene uses 120, title uses 125, dialogue uses 127, and journal plus both enemy-replacement samples use 126, with zero root-child leaks. Godot runs the
 lifecycle gate on a fixed 60 FPS clock, keeps required focus/deferred-tree settle frames, and
 disables automatic drawing because deterministic PNG captures own pixel verification. The runner
 reports measured times but does not treat one development machine as a release hardware promise.
-One checked sample measured 54.05 ms for 100,000 path-keeper advances and 959.0 ms for the complete
+One checked sample measured 53.83 ms for 100,000 path-keeper advances and 953.54 ms for the complete
 20-cycle lifecycle workload.
 Every cycle starts, advances, and saves dialogue before traversing the remaining states. The first
 cycle of each complete sample additionally runs standard/fast/instant reveal behavior through four
@@ -127,8 +129,9 @@ Dialogue 行号或 save v17。v1–v3 保留已有合法偏好并迁移为标准
 已经锁定 32×56 px 帧、固定脚底锚点、16×20 px 碰撞基准、四方向待机/行走动画、
 最近邻过滤与整数像素对齐，并通过 `AnimatedSprite2D` 驱动主角、砚青、守堤人梁叔、
 药圃守蕙婶、渡口跑腿人陶小满和山道巡路人岑苇。四类敌人
-共用另一张 384×256 RGBA 图集，每类占一行，并各有双帧待机、攻击与受击姿态；
-战斗节点按固定优先级消费命中、破绽与敌方回应事件，山道预警节点仍只待机。稳定敌人标识
+共用另一张 512×256 RGBA 图集，每类占一行，并各有双帧待机、攻击、受击与败退姿态；
+正式战斗节点按固定优先级消费命中、破绽与敌方回应事件，独立旧敌节点只消费严格匹配
+的普通敌胜利/守巢者入场事件对，山道预警节点仍只待机。稳定敌人标识
 直接选择图集行，最近邻、脚底锚点、终局抑制和未知标识原子拒绝均由场景测试锁定。在照禾渡口
 使用 `WASD` 或方向键移动，靠近金色交互圈后按 `E`、空格或
 手柄 A；也可以点击右侧出现的行动。河水、地图边缘和房屋具有确定性碰撞，必须
@@ -157,7 +160,8 @@ Dialogue 行号或 save v17。v1–v3 保留已有合法偏好并迁移为标准
 渡口、山道、战斗、泉室和章节结算之间使用 0.48 秒的明亮纸墨转场。转场文字来自
 同一份已验证原创内容，活动期间由透明输入接收层临时接管鼠标、键盘和手柄焦点，
 结束后战斗重新聚焦第一个合法行动；“动态效果：简化”会立即显示新场景，不播放
-渐隐，也不改变规则、存档或可用行动。首领在同一战斗阶段入场时也有独立语义转场。
+渐隐，也不改变规则、存档或可用行动。普通敌与守巢者处于同一战斗阶段，因此替换时
+不再覆盖全屏转场；旧敌败退、当前守巢者、临势签和下一行动会直接同屏出现。
 
 山门现在进入独立的藏泉山道 TileMapLayer，而不是直接跳到战斗。玩家可以自由
 移动、查看旧石标、分别接近岩甲兽幼体、泉苔寄壳或失衡石傀、沿溪上缘无战斗绕行，或沿石阶回到渡口；地图标识与坐标
@@ -200,7 +204,10 @@ save v17 顶层 `path_keeper` 精确恢复这条路线；v1–v16 从固定起�
 每次战斗行动只在返回值中携带瞬时表现上下文：行动前敌人 ID 与已宣告意图 ID；
 地图反馈据此区分已结算意图、退场敌人和替换首领。该上下文不写入 save v17，读档
 会清空旧新身份等瞬时反馈并从 Journey 规则快照重建当前临势签；普通敌替换与终局
-还分别验证新敌身份原子切换和离开战斗时清签。
+还分别验证新敌身份原子切换和离开战斗时清签。严格配对成功时，隐藏常驻的
+`OutgoingEnemySprite` 在守巢者左侧显示 0.70 秒（快速 0.18 秒）的旧敌败退双帧；
+简化动态冻结可读首帧。当前正式敌人、状态栏与临势签在同一帧已经是守巢者，下一次
+独立手柄 A 也会立即结算首领回合并清除旧影。旧影不进入镜头焦点、Journey 或存档。
 守住首领重击会产生两层破甲，后续攻击逐层获得额外伤害；砚青援护会产生两层
 凝息，强化后续术式或符箓。两种状态自 save v8 起明确记录，并由当前 v17 继续保存；完整 E2E 会在
 首领战中断并恢复后继续结算；绕行路线仍可避开普通战与首领战。

@@ -4,6 +4,38 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-03 — Regular-enemy defeat is an outgoing-only, nonblocking presentation role
+
+The visible defeat beat uses one hidden, persistent `OutgoingEnemySprite`; it never rewinds the
+canonical `BattleEnemySprite` to the old profile. `MapCanvas` arms it only for the exact
+`regular_enemy_won` + `boss_arrived` pair, a valid pre-action regular-enemy ID, and the already
+settled `rock_armor_warden` replacement. Journey, status, the canonical sprite and the fixed intent
+tag therefore identify the warden in the same render. Lone events, final boss victory, unknown IDs,
+malformed context, or mismatched replacement facts clear safely and cannot guess a profile.
+
+Asset-contract schema v7 expands the original enemy atlas from 384×256 to 512×256. Every stable
+64×64 row now contains two defeat frames after idle, attack, and reaction. The validator decodes the
+RGBA cells and requires populated, distinct, non-reaction defeat frames with transparent cell
+borders. The outgoing role accepts only the three regular profiles, uses integer placement, and
+plays for 0.70 seconds or 0.18 seconds in fast mode. Full motion shifts/fades the collapsed form;
+reduced motion freezes the readable first frame. The next action replaces or clears the cue without
+waiting, and expiry, title, load, retreat, rescue, final victory, replay, and non-battle phases clear
+its identity. It owns no damage, intent, timing, camera focus, input, Journey, content, or save data;
+save v17 and all migrations remain unchanged.
+
+The former same-phase `boss_arrived` full-screen transition is retired. True phase/map transitions
+still use the paper reveal, but regular-to-warden handoff instead shows “灵物退开 · 守巢者现” in
+the battle safe frame while both sprites and the new intent are visible. This keeps the cue readable
+and lets the already-focused next action accept an independent controller press immediately.
+
+The local gate is 159 Python tests at 100% statement/branch coverage, 3,202 Godot unit/scene
+assertions, 360 chapter E2E checks, 192 physical-input checks, and a 117 static / 127 peak node
+boundary. Two 43-PNG passes are byte-identical at aggregate SHA-256
+`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`. Four local
+macOS/arm64 PCK exports, including two fresh-cache copies, match at 824,432 bytes and SHA-256
+`6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; the 25-required /
+nine-excluded resource probe and packaged boot pass.
+
 ### 2026-08-03 — Battle presentation uses an ID-only settled-action context
 
 Every successful battle action returns a deep-copied `presentation_context.battle` containing only

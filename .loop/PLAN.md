@@ -1,23 +1,26 @@
 # Loop Plan
 
-## Current loop — structured battle-intent presentation
+## Current loop — nonblocking outgoing-enemy defeat presentation
 
-- [x] Add an ID-only action-result context that preserves the pre-resolution enemy and announced
-  intent without entering Journey snapshots, save v17, events, or combat authority.
-- [x] Add a fixed screen-space Chinese “照禾临势签” whose nine distinct line marks, text, and damage
-  values remain readable without color at 1152×648, including large-text and high-contrast modes.
-- [x] Preserve enemy-intelligence gating: unknown foes reveal only the current intent; known foes may
-  reveal the next intent and current counter window, with no UI-side rule derivation.
-- [x] Keep the settled snapshot authoritative after every action: normal rounds show the next intent,
-  defeated regular enemies hand off immediately to the warden, and interrupted lethal rounds never
-  claim that the announced enemy intent resolved.
-- [x] Prove controller/keyboard/mouse focus, all speed/motion combinations, reload/retreat/rescue/win
-  cleanup, deterministic captures, lifecycle budgets, and package contents without a save migration.
-- [x] Run `make check`, audit secrets and unrelated files, commit, push, and update/monitor Draft PR #7
+- [x] Expand the deterministic enemy atlas to schema v7 / 512×256 with two distinct, bounded defeat
+  frames for every stable profile while preserving terminal suppression on the canonical sprite.
+- [x] Add one outgoing-only presentation node that accepts only the three regular profiles and can
+  never own current enemy, damage, intent, timing, input, camera, Journey, or save authority.
+- [x] Arm the cue only from a valid `regular_enemy_won` + `boss_arrived` pair after the settled
+  warden sprite, status, actions, and intent tag are authoritative in the same render.
+- [x] Retire the same-phase full-screen boss transition; keep true map/phase transitions and show the
+  readable “灵物退开 · 守巢者现” cue without hiding sprites or delaying the next action.
+- [x] Prove three regular profiles, standard/fast × full/reduced motion, malformed and terminal
+  cleanup, exact expiry/replacement, reload/title behavior, and immediate physical controller input.
+- [x] Reproduce the atlas and two 43-image capture passes, keep the 25/9 package boundary, measure
+  117 static / 127 peak nodes, and pass the four-export PCK identity/content/boot gate.
+- [ ] Run `make check`, audit secrets and unrelated files, commit, push, and update/monitor Draft PR #7
   without merging `main`.
 
 ## Recently completed
 
+- [x] Add the fixed-screen nine-shape intent tag and ID-only settled-action presentation context
+  without changing Journey or save v17.
 - [x] Add the original path-keeper 岑苇 with a deterministic four-waypoint route, six progress echoes,
   a generated atlas, save-v17 restoration, input parity, and complete local plus hosted gates.
 - [x] Stabilize PCK export across normal and independent empty-cache projects, add manifest-v2 build
@@ -37,8 +40,10 @@
 
 ## Next unblocked loops
 
-1. Add a visible outgoing-enemy defeat beat only if the completed transient context and lifecycle
-   evidence can keep the replacement enemy authoritative and the old profile presentation-only.
+1. Add intent-specific enemy attack accents only when the completed presentation context proves that
+   the announced intent actually resolved; preserve text equivalents, reduced motion, and no authority.
+2. Extend the original 15–20 minute chapter target with another bounded NPC schedule or side-story
+   beat after the attack-accent loop, reusing the existing route/dialogue/save contracts.
 
 ## Blocked production boundary
 

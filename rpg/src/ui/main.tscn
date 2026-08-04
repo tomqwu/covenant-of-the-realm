@@ -186,6 +186,15 @@ z_index = 8
 script = ExtResource("9_enemy")
 atlas_texture = ExtResource("10_enemy_profiles")
 
+[node name="OutgoingEnemySprite" type="AnimatedSprite2D" parent="MapFrame/WorldRoot/MapCanvas"]
+unique_name_in_owner = true
+visible = false
+texture_filter = 1
+z_index = 7
+script = ExtResource("9_enemy")
+atlas_texture = ExtResource("10_enemy_profiles")
+presentation_role = "outgoing"
+
 [node name="PathRockEnemySprite" type="AnimatedSprite2D" parent="MapFrame/WorldRoot/MapCanvas"]
 unique_name_in_owner = true
 visible = false

@@ -41,6 +41,7 @@ REFERENCE_CAPTURE_FILENAMES = (
     "02-cangquan-battle-react.png",
     "02-cangquan-battle.png",
     "02-cangquan-boss.png",
+    "02-cangquan-enemy-defeat.png",
     "02-cangquan-moss-battle.png",
     "02-cangquan-path.png",
     "02-cangquan-puppet-battle.png",
@@ -55,7 +56,7 @@ REFERENCE_CAPTURE_FILENAMES = (
     "04-first-breath.png",
 )
 REFERENCE_CAPTURE_AGGREGATE_SHA256 = (
-    "3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716"
+    "80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b"
 )
 
 
@@ -194,7 +195,7 @@ def test_package_scripts_use_checked_godot_gate() -> None:
     assert "export/convert_text_resources_to_binary=false" in project_settings
 
 
-def test_asset_reproducibility_and_capture_contract_include_path_keeper() -> None:
+def test_asset_reproducibility_and_capture_contract_include_path_keeper_and_defeat() -> None:
     reproducibility_script = (
         REPO_ROOT / "scripts" / "check_rpg_asset_reproducibility"
     ).read_text(encoding="utf-8")
@@ -203,11 +204,13 @@ def test_asset_reproducibility_and_capture_contract_include_path_keeper() -> Non
     )
 
     assert "  cenwei.png\n" in reproducibility_script
-    assert capture_script.count("await _save_frame(") == 42
+    assert capture_script.count("await _save_frame(") == 43
     assert (
         'await _save_frame("02-path-keeper-route.png", false, true)'
         in capture_script
     )
+    assert 'await _save_frame("02-cangquan-enemy-defeat.png")' in capture_script
+    assert "outgoing_enemy_defeat_contract()" in capture_script
 
 
 def test_reference_capture_set_and_aggregate_are_locked() -> None:

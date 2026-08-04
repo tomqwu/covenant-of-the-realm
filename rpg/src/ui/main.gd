@@ -338,12 +338,10 @@ func _render(event_ids: Array, presentation_context: Dictionary = {}) -> void:
 		scene_transition.play(transition_text, bool(settings["reduced_motion"]))
 
 
-func _transition_text(previous_phase: String, next_phase: String, event_ids: Array) -> String:
+func _transition_text(previous_phase: String, next_phase: String, _event_ids: Array) -> String:
 	if not is_playing:
 		return ""
 	var transitions: Dictionary = content.get("transitions", {})
-	if event_ids.has("boss_arrived"):
-		return str(transitions.get("boss_arrived", ""))
 	if previous_phase != next_phase:
 		return str(transitions.get(next_phase, ""))
 	return ""

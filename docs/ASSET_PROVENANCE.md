@@ -51,15 +51,19 @@ grass, path pebbles, wildflowers, stone cracks, moss, fallen leaves, and water f
 physics or navigation layer. No model, external map, texture, pattern, photograph, or third-party
 tile-design input is used.
 
-The generator also creates `enemy_profiles.png`, an original 384×256 RGBA atlas with six 64×64
+The generator also creates `enemy_profiles.png`, an original 512×256 RGBA atlas with eight 64×64
 frames for each of the four project-authored enemy profiles: 岩甲兽幼体、泉苔寄壳、
-失衡石傀 and 岩甲兽守巢者. Each stable row contains two idle, two attack, and two reaction
-frames. The silhouettes, short motion marks, and impact sparks are assembled only from project-authored pixel
+失衡石傀 and 岩甲兽守巢者. Each stable row contains two idle, two attack, two reaction, and two
+defeat frames. The defeat pair lowers and splits each recognizable form into an asymmetric debris
+pile with a transparent one-pixel cell border. The silhouettes, short motion marks, impact sparks,
+and collapse pieces are assembled only from project-authored pixel
 rectangles and the recorded palette; no model, reference image, commercial sprite, external game
 asset, or third-party drawing code is used. `enemy_sprite.gd` maps the same stable IDs used by the
 deterministic battle domain to fixed atlas rows and consumes semantic event IDs for presentation.
 The asset gate verifies dimensions, row order, animation columns, loop and frame-rate metadata,
-event groups, foot anchor, local file name, and exact profile list before package export.
+event groups, foot anchor, local file name, and exact profile list before package export. It also
+decodes all eight defeat cells to prove that they are populated, distinct from one another and the
+reaction frames, and do not spill across atlas boundaries.
 
 These are reproducible first-production placeholders intended to validate the `AnimatedSprite2D`
 pipeline. They may be regenerated with the pinned Godot runtime and should be replaced or refined
@@ -77,9 +81,9 @@ drawing code.
 
 `docs/concepts/gameplay-ui-v1/01-portrait-gallery.png` is a direct Godot capture of those same
 runtime controls at the production dialogue size. The capture-only 3×2 board adds no packaged scene,
-runtime asset, or alternate art source. It is regenerated with the other functional screenshots;
-two complete 42-image passes have aggregate SHA-256
-`3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
+runtime asset, or alternate art source. It is regenerated with the other functional screenshots in
+the current 43-image capture definition. Two complete passes reproduce aggregate SHA-256
+`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
 
 ## 2026-08-03 · Code-drawn Zhaohe battle-intent telegraph
 
@@ -98,11 +102,19 @@ intelligence, timing, input, reward, or save authority. High-contrast mode uses 
 and ink anchors, reduced motion preserves the same static text and geometry, and the large-text
 capture remains presentation-only.
 
-The five current battle screenshots—`02-cangquan-battle.png`,
+The six battle screenshots—`02-cangquan-battle.png`,
 `02-cangquan-battle-react.png`, `02-cangquan-moss-battle.png`,
-`02-cangquan-puppet-battle.png`, and `02-cangquan-boss.png`—show this same runtime control.
+`02-cangquan-puppet-battle.png`, `02-cangquan-enemy-defeat.png`, and
+`02-cangquan-boss.png`—show this same runtime control.
 `02-cangquan-puppet-battle.png` is the committed large-text plus high-contrast evidence; it is not a
 separate asset or alternate rendering source.
+
+`02-cangquan-enemy-defeat.png` is a direct deterministic runtime capture of the outgoing
+失衡石傀 presentation beside the already settled 岩甲兽守巢者. The temporary old profile reuses
+the same project-authored `enemy_profiles.png` atlas and receives only the action-result presentation
+IDs; it is not a new source image, alternate enemy asset, combat state, or saved resource. The capture
+asserts that the temporary presentation is non-authoritative and input-transparent before clearing it
+for the stable boss reference frame.
 
 ## 2026-08-03 · Deterministic Zhaohe landmark atlas
 
@@ -122,9 +134,11 @@ Journey snapshot unchanged and add no fields to the current save v17. The adjace
 from the existing original tile atlas, not an imported asset.
 
 The landmark fields introduced in `asset_contract.json` schema v4 remain enforced by the current
-schema v6: file name, atlas/frame dimensions, foot anchor, profile order, occluding subset, nearest
-filtering, integer snapping, and non-authoritative role. Schema v6 also records the sixth actor
+schema v7: file name, atlas/frame dimensions, foot anchor, profile order, occluding subset, nearest
+filtering, integer snapping, and non-authoritative role. Schema v6 added the sixth actor
 atlas, `cenwei.png`, without granting the atlas gameplay authority.
+Schema v7 adds the outgoing-only enemy defeat slots and explicitly keeps their rule, gameplay-timing,
+and save authority false.
 MapCanvas visual contract v2 additionally binds each life-landmark profile to one phase,
 interaction anchor, and action ID without creating a second gameplay authority.
 `scripts/check_rpg_asset_reproducibility` invokes the pinned Godot generator into two isolated
@@ -192,6 +206,7 @@ these screenshots.
 The screenshots can be rebuilt with `make capture-rpg-ui`. They document layout, scale, input,
 and readability decisions; the runtime-drawn shapes are placeholders rather than final sprites,
 tiles, portraits, textures, or promotional art. The current set includes
-`02-path-keeper-route.png`, a direct runtime capture of 岑苇 on the mountain route. Two consecutive
-42-image passes have aggregate SHA-256
-`3bb142fb4e31bd4d13c1a5fe96c45183ccf91b5562e168036ff0d69de6054716`.
+`02-path-keeper-route.png`, a direct runtime capture of 岑苇 on the mountain route, and
+`02-cangquan-enemy-defeat.png`, the non-authoritative outgoing-enemy beat. The expected set contains
+43 images; two consecutive complete passes are byte-identical and reproduce aggregate SHA-256
+`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.

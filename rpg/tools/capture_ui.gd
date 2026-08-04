@@ -267,7 +267,41 @@ func _capture_flow() -> void:
 	instance._on_action("guard")
 	instance._on_action("use_talisman")
 	instance._on_action("use_art")
-	instance.get_node("%SceneTransition").finish()
+	var defeat_canvas = instance.get_node("%MapCanvas")
+	var outgoing_defeat: Dictionary = defeat_canvas.outgoing_enemy_defeat_contract()
+	assert(
+		outgoing_defeat["active"]
+		and outgoing_defeat["visible"]
+		and outgoing_defeat["outgoing_enemy_id"] == "unbalanced_stone_puppet"
+		and outgoing_defeat["replacement_enemy_id"] == "rock_armor_warden",
+		"普通敌退场参考图必须同时保留失衡石傀旧影与守巢者替换身份"
+	)
+	assert(
+		not outgoing_defeat["blocks_input"]
+		and not outgoing_defeat["rule_authority"]
+		and not outgoing_defeat["save_authority"],
+		"普通敌退场旧影只能承担非阻断的瞬时表现职责"
+	)
+	var settled_warden: Dictionary = instance.get_node("%BattleEnemySprite").presentation_contract()
+	assert(
+		instance.journey.enemy_id == "rock_armor_warden"
+		and settled_warden["enemy_id"] == "rock_armor_warden"
+		and settled_warden["state"] == "idle",
+		"普通敌退场参考图必须让正式战斗精灵同帧落在守巢者待机态"
+	)
+	_assert_intent_telegraph(instance, "rock_armor_warden", "warden_pressing_charge", "warden_stonebreaking_blow", "", "普通敌退场")
+	assert(not instance.get_node("%SceneTransition").is_transitioning(),
+		"普通敌退场参考图不得用全屏转场遮挡旧影或接管输入")
+	await _save_frame("02-cangquan-enemy-defeat.png")
+	defeat_canvas.clear_battle_feedback()
+	var cleared_defeat: Dictionary = defeat_canvas.outgoing_enemy_defeat_contract()
+	assert(
+		not cleared_defeat["active"]
+		and not cleared_defeat["visible"]
+		and cleared_defeat["outgoing_enemy_id"] == ""
+		and cleared_defeat["replacement_enemy_id"] == "",
+		"退场参考帧写入后必须清除旧敌瞬时身份再拍摄稳定首领态"
+	)
 	await _settle()
 	_assert_intent_telegraph(instance, "rock_armor_warden", "warden_pressing_charge", "warden_stonebreaking_blow", "", "首领战斗")
 	await _save_frame("02-cangquan-boss.png")

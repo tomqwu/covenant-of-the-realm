@@ -14,12 +14,19 @@ const STATE_COLUMNS := {
 	"idle": [0, 1],
 	"attack": [2, 3],
 	"react": [4, 5],
+	"defeat": [6, 7],
 }
 const STATE_FPS := {
 	"idle": 2.5,
 	"attack": 8.0,
 	"react": 7.0,
+	"defeat": 6.0,
 }
+const REGULAR_PROFILES := [
+	"rock_armor_young",
+	"spring_moss_shell",
+	"unbalanced_stone_puppet",
+]
 const REACTION_EVENTS := ["weakness_exposed", "art_hit", "talisman_hit"]
 const ATTACK_EVENTS := ["enemy_hit", "enemy_glanced"]
 const SEMANTIC_EVENT_PRIORITY := [
@@ -39,6 +46,7 @@ const TERMINAL_EVENTS := [
 
 @export var atlas_texture: Texture2D
 @export_enum("rock_armor_young", "spring_moss_shell", "unbalanced_stone_puppet", "rock_armor_warden") var initial_enemy_id := "rock_armor_young"
+@export_enum("current", "outgoing") var presentation_role := "current"
 
 var enemy_id := "rock_armor_young"
 var semantic_state := "idle"
@@ -46,6 +54,8 @@ var semantic_event_id := ""
 var cue_duration := 0.0
 var cue_remaining := 0.0
 var cue_motion_enabled := true
+var cue_anchor := Vector2.ZERO
+var cue_offset := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -53,11 +63,14 @@ func _ready() -> void:
 	offset = Vector2(0, -24)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite_frames = _build_sprite_frames()
-	set_enemy_id(initial_enemy_id)
+	if presentation_role == "outgoing":
+		clear_outgoing_defeat()
+	else:
+		set_enemy_id(initial_enemy_id)
 
 
 func set_enemy_id(next_enemy_id: String) -> bool:
-	if not PROFILE_ROWS.has(next_enemy_id):
+	if presentation_role != "current" or not PROFILE_ROWS.has(next_enemy_id):
 		return false
 	var needs_reset := enemy_id != next_enemy_id or semantic_state != "idle"
 	enemy_id = next_enemy_id
@@ -67,7 +80,51 @@ func set_enemy_id(next_enemy_id: String) -> bool:
 	return true
 
 
+func set_outgoing_anchor(next_anchor: Vector2) -> bool:
+	if (
+		presentation_role != "outgoing"
+		or not is_finite(next_anchor.x)
+		or not is_finite(next_anchor.y)
+	):
+		return false
+	cue_anchor = next_anchor.round()
+	if cue_remaining <= 0.0:
+		position = cue_anchor
+	return true
+
+
+func start_outgoing_defeat(
+	profile_id: String,
+	fast_mode: bool,
+	reduced_motion: bool,
+	anchor: Vector2 = Vector2.ZERO
+) -> bool:
+	if (
+		presentation_role != "outgoing"
+		or profile_id not in REGULAR_PROFILES
+		or not is_finite(anchor.x)
+		or not is_finite(anchor.y)
+	):
+		return false
+	clear_outgoing_defeat()
+	enemy_id = profile_id
+	semantic_state = "defeat"
+	semantic_event_id = "regular_enemy_won"
+	cue_duration = FAST_CUE_DURATION if fast_mode else STANDARD_CUE_DURATION
+	cue_remaining = cue_duration
+	cue_motion_enabled = not reduced_motion
+	cue_anchor = anchor.round()
+	cue_offset = Vector2.ZERO
+	position = cue_anchor
+	modulate = Color.WHITE
+	visible = true
+	_play_animation(_animation_name("defeat"), cue_motion_enabled)
+	return true
+
+
 func consume_battle_events(event_ids: Array, fast_mode: bool, reduced_motion: bool) -> bool:
+	if presentation_role != "current":
+		return false
 	for terminal_event in TERMINAL_EVENTS:
 		if event_ids.has(terminal_event):
 			reset_presentation()
@@ -98,11 +155,23 @@ func advance_presentation(delta: float) -> bool:
 		return false
 	cue_remaining = maxf(0.0, cue_remaining - delta)
 	if cue_remaining <= 0.0:
-		reset_presentation()
+		if presentation_role == "outgoing":
+			clear_outgoing_defeat()
+		else:
+			reset_presentation()
+	elif presentation_role == "outgoing" and cue_motion_enabled:
+		var progress := clampf(1.0 - cue_remaining / cue_duration, 0.0, 1.0)
+		var travel_progress := clampf((progress - 0.18) / 0.82, 0.0, 1.0)
+		cue_offset = Vector2(-roundf(14.0 * travel_progress), roundf(4.0 * travel_progress))
+		position = cue_anchor + cue_offset
+		modulate.a = 1.0 - 0.72 * clampf((progress - 0.55) / 0.45, 0.0, 1.0)
 	return true
 
 
 func reset_presentation() -> void:
+	if presentation_role == "outgoing":
+		clear_outgoing_defeat()
+		return
 	semantic_state = "idle"
 	semantic_event_id = ""
 	cue_duration = 0.0
@@ -111,14 +180,30 @@ func reset_presentation() -> void:
 	_play_animation(_animation_name("idle"), true)
 
 
+func clear_outgoing_defeat() -> void:
+	if presentation_role != "outgoing":
+		return
+	stop()
+	enemy_id = ""
+	semantic_state = "idle"
+	semantic_event_id = ""
+	cue_duration = 0.0
+	cue_remaining = 0.0
+	cue_motion_enabled = true
+	cue_offset = Vector2.ZERO
+	position = cue_anchor
+	modulate = Color.WHITE
+	visible = false
+
+
 func animation_contract() -> Dictionary:
 	return {
 		"frame_size": FRAME_SIZE,
 		"foot_anchor": FOOT_ANCHOR,
 		"profiles": PROFILE_ROWS.keys(),
-		"states": ["idle", "attack", "react"],
+		"states": ["idle", "attack", "react", "defeat"],
 		"frames_per_state": 2,
-		"animations_per_profile": 3,
+		"animations_per_profile": 4,
 		"state_fps": STATE_FPS.duplicate(true),
 		"semantic_event_priority": SEMANTIC_EVENT_PRIORITY.duplicate(),
 		"terminal_events": TERMINAL_EVENTS.duplicate(),
@@ -129,6 +214,7 @@ func animation_contract() -> Dictionary:
 		"intent_authority": false,
 		"gameplay_timing_authority": false,
 		"save_authority": false,
+		"outgoing_profiles": REGULAR_PROFILES.duplicate(),
 	}
 
 
@@ -143,6 +229,11 @@ func presentation_contract() -> Dictionary:
 		"motion_enabled": cue_motion_enabled,
 		"motion_skipped": cue_remaining > 0.0 and not cue_motion_enabled,
 		"animation": str(animation),
+		"role": presentation_role,
+		"anchor": cue_anchor,
+		"offset": cue_offset,
+		"alpha": modulate.a,
+		"visible": visible,
 		"rule_authority": false,
 		"timing_authority": false,
 		"save_authority": false,
