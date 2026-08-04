@@ -61,7 +61,7 @@ the completed scene uses 118, title uses 123, and dialogue plus journal uses 125
 lifecycle gate on a fixed 60 FPS clock, keeps required focus/deferred-tree settle frames, and
 disables automatic drawing because deterministic PNG captures own pixel verification. The runner
 reports measured times but does not treat one development machine as a release hardware promise.
-The latest samples are 55.79 ms for 100,000 path-keeper advances and 920.40 ms for the complete
+The latest samples are 55.46 ms for 100,000 path-keeper advances and 928.60 ms for the complete
 20-cycle lifecycle workload.
 Every cycle starts, advances, and saves dialogue before traversing the remaining states. The first
 cycle of each complete sample additionally runs standard/fast/instant reveal behavior through four

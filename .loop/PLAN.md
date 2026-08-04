@@ -12,7 +12,7 @@
   malformed/future-state rejection, and exact mid-route resume.
 - [x] Integrate one new map actor without weakening collision, focus, input parity, camera framing,
   lifecycle/node budgets, or the existing Tao Xiaoman patrol.
-- [ ] Extend unit, E2E, physical-input, performance, capture, package, documentation, and migration
+- [x] Extend unit, E2E, physical-input, performance, capture, package, documentation, and migration
   gates; run `make check`, audit, commit, push, and monitor Draft PR #7 without merging it.
 
 ## Recently completed

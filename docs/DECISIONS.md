@@ -29,10 +29,10 @@ or oversized-dwell state. Explicit chapter replay restores the same start. The r
 selectable through keyboard, mouse, and controller, and modal presentation cannot advance it.
 
 The implementation gate is 2,906 Godot rule/scene assertions, 350 chapter E2E checks, and 185
-physical-input/focus checks. The latest 100,000-advance path-keeper sample is 55.79 ms. The scene
+physical-input/focus checks. The latest 100,000-advance path-keeper sample is 55.46 ms. The scene
 contract is 115 static nodes, 125 peak, 121 on the mountain path, 123 with the ferry patrol, 125 in
 worksite dialogue, 116 in each spring state, 118 at completion, 123 at title, and 125 with dialogue
-plus journal; the latest 20-cycle lifecycle sample is 920.40 ms with zero root leaks. Nine source
+plus journal; the latest 20-cycle lifecycle sample is 928.60 ms with zero root leaks. Nine source
 atlases and two 42-PNG capture passes reproduce, including `02-path-keeper-route.png`; the capture
 aggregate is `f56422804793b50d4ee20e5b9a733bb7a5d61a4599771648a0a3028f2fb51bb7`.
 

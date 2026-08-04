@@ -5,7 +5,7 @@
 - Repository: `/Users/tomwu/Projects/covenant-of-the-realm`
 - Branch: `codex/rpg-foundation`
 - Draft PR: <https://github.com/tomqwu/covenant-of-the-realm/pull/7>
-- The worktree completes the original mountain path keeper 岑苇: a deterministic four-point public
+- The branch completes the original mountain path keeper 岑苇: a deterministic four-point public
   route, endpoint dwell, analytic courtesy yielding, a project-generated 32×56 four-direction atlas,
   real keyboard/mouse/controller interaction, and six repeatable progress-aware Chinese echoes.
 - Save v17 stores the exact top-level `path_keeper` route snapshot, explicitly migrates v1–v16 to the
@@ -28,13 +28,15 @@
 - Independent architecture and validation reviews found no blocking runtime defect after adding exact
   schema-v1 history, all six echo branches, analytic frame-slicing equivalence, reverse mid-route
   restoration, real mouse activation, and the committed capture baseline gate.
-- Remote feature head is still `5c381b50d604c4136de00e3b3c5435a460f07888`; remote `main` remains
+- Implementation head `9d8ae1ffec1b42dbe8d619b0aadd8d4c3244e7df` is committed and pushed.
+  GitHub Actions run `30866425747` is green across RPG quality, MUD quality, Multiplayer E2E, and
+  Journey prototype. Draft PR #7 is open, draft, and mergeable; remote `main` remains
   `7256ade54792ff481ffc30517ca2c693f78be198` and must not be merged without authorization.
 
 ## Next action
 
-Audit and stage the complete feature set, commit and push `codex/rpg-foundation`, update Draft PR #7,
-then monitor all hosted checks while leaving `main` unchanged.
+Begin the next unblocked loop by adding structured presentation context for intent-specific battle
+telegraphs without moving combat resolution, timing, or save authority into the UI.
 
 ## Blockers
 
