@@ -109,15 +109,13 @@ Linux/x86_64 exports from run `30873652565`, each including two fresh-cache proj
 match at 824,432 bytes and SHA-256
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
 the unchanged 25/9 probe, and packaged boot pass locally and hosted. For the current resolved-intent
-accent input, four local macOS/arm64 exports, including two independent fresh-cache project copies,
-match at 870,720 bytes and SHA-256
+accent input, four local macOS/arm64 exports and four GitHub-hosted Linux/x86_64 exports from run
+`30879113809`, each including two independent fresh-cache project copies, all match at 870,720 bytes
+and SHA-256
 `7959ac89fe6f058b742883cacc04c6b2398b8d72355b8ce9b663e934630fbc98`; manifest verification,
-the unchanged 25-required / nine-excluded probe, and packaged boot pass locally. Hosted run
-`30877432459` passed all RPG functional suites at feature commit `02dc402` but its lifecycle
-confirmation measured 7,075.94 ms against the unchanged 7,000 ms ceiling, before packaging. The
-first allocation follow-up at `7dfdd98` repeated that result in run `30878257664` at 7,108.08 ms.
-The current transition/idle hot-path follow-up preserves the ceiling, all 20 cycles, and every
-immediate/stable state assertion; it has no hosted Linux package result yet.
+the unchanged 25-required / nine-excluded probe, and packaged boot pass locally and hosted. The
+hosted 20-cycle lifecycle passes at 5,008.02 ms against the unchanged 7,000 ms ceiling, with all
+immediate/stable samples, 117 static / 127 peak nodes, and zero root leaks.
 Two consecutive 43-PNG capture runs are
 byte-identical and produce aggregate SHA-256
 `153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.

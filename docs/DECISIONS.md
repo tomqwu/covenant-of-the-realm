@@ -30,17 +30,17 @@ or save migration, ignores pointer and focus input, and has explicit false autho
 damage, intent selection, gameplay timing, input, Journey, and save v17.
 
 The local gate is 3,530 Godot unit/scene assertions, 374 chapter E2E checks, 198 physical-input
-checks, a 952.74 ms 20-cycle lifecycle sample, 117 static / 127 peak nodes, and zero root leaks.
+checks, a 948.09 ms 20-cycle lifecycle sample, 117 static / 127 peak nodes, and zero root leaks.
 Two 43-PNG passes reproduce aggregate SHA-256
 `153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`. Four local macOS/arm64
-PCK exports, including two independent fresh-cache copies, match at 870,720 bytes and SHA-256
+and four hosted Linux/x86_64 PCK exports from run `30879113809`, each including two independent
+fresh-cache copies, match at 870,720 bytes and SHA-256
 `7959ac89fe6f058b742883cacc04c6b2398b8d72355b8ce9b663e934630fbc98`; the 25-required /
-nine-excluded probe, manifest verification, and packaged boot pass locally. Hosted run
-`30877432459` passed the RPG functional suites at feature commit `02dc402`, then its lifecycle
-confirmation measured 7,075.94 ms against the unchanged 7,000 ms ceiling before packaging. The
-first allocation follow-up at `7dfdd98` confirmed at 7,108.08 ms in run `30878257664`. The current
-follow-up removes repeated transition, idle, and empty-event work while preserving all 20 cycles,
-state assertions, and the same ceiling; it has no GitHub-hosted Linux package result yet.
+nine-excluded probe, manifest verification, and packaged boot pass locally and hosted. Runs
+`30877432459` and `30878257664` exposed 7,075.94 / 7,108.08 ms clean-sample overages without a
+functional failure; the budget stayed at 7,000 ms. Removing repeated transition, idle, empty-event,
+and second no-state settle work preserved all 20 cycles and assertions, then run `30879113809`
+passed at 5,008.02 ms.
 
 ### 2026-08-03 — Regular-enemy defeat is an outgoing-only, nonblocking presentation role
 

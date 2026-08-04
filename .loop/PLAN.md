@@ -16,7 +16,7 @@
   stale cleanup, exact expiry/replacement, title/load/replay paths, and immediate controller input.
 - [x] Reproduce the 43-image capture set twice, preserve nine generated atlases, 117/127 node and
   25/9 package boundaries, then pass the four-export identity/content/boot gate.
-- [ ] Run `make check`, audit secrets and unrelated files, commit, push, and update/monitor Draft PR #7
+- [x] Run `make check`, audit secrets and unrelated files, commit, push, and update/monitor Draft PR #7
   without merging `main`.
 
 ## Recently completed
