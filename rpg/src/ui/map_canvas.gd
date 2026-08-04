@@ -424,17 +424,11 @@ func feedback_contract() -> Dictionary:
 
 
 func attack_accent_contract() -> Dictionary:
-	var anchors := _attack_accent_anchors()
+	var active := _attack_accent_is_active()
+	var anchors := _attack_accent_anchors() if active else {}
 	var supported_shapes: Array[String] = []
 	for intent_id in ATTACK_ACCENT_IDS:
 		supported_shapes.append(str(ATTACK_ACCENT_STYLES[intent_id]["shape_id"]))
-	var active := (
-		phase_id == "battle"
-		and enemy_id == feedback_enemy_id_before
-		and feedback_remaining > 0.0
-		and not feedback_attack_shape_id.is_empty()
-		and not feedback_resolved_intent_id.is_empty()
-	)
 	return {
 		"active": active,
 		"enemy_id_before": feedback_enemy_id_before if active else "",
@@ -471,6 +465,16 @@ func attack_accent_contract() -> Dictionary:
 		"input_authority": false,
 		"save_authority": false,
 	}
+
+
+func _attack_accent_is_active() -> bool:
+	return (
+		phase_id == "battle"
+		and enemy_id == feedback_enemy_id_before
+		and feedback_remaining > 0.0
+		and not feedback_attack_shape_id.is_empty()
+		and not feedback_resolved_intent_id.is_empty()
+	)
 
 
 func outgoing_enemy_defeat_contract() -> Dictionary:
@@ -1617,7 +1621,7 @@ func _draw_attack_accent_label(alpha: float) -> void:
 
 
 func _draw_resolved_attack_accent() -> void:
-	if not bool(attack_accent_contract()["active"]):
+	if not _attack_accent_is_active():
 		return
 	var anchors := _attack_accent_anchors()
 	var alpha := _attack_accent_alpha()

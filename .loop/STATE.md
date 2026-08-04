@@ -18,25 +18,27 @@
   316 branches), 21 Evennia tests plus the real two-client journey, 3,530 Godot rule/scene assertions,
   374 chapter E2E checks, 198 physical-input/focus checks, 122 browser unit tests at 100%, and 53
   Playwright executions. Badges, deterministic builds, documentation links, and hygiene also pass.
-- The 20-cycle Godot lifecycle passes in `952.63` ms with 117 static / 127 peak nodes and zero root
+- The 20-cycle Godot lifecycle passes in `945.30` ms with 117 static / 127 peak nodes and zero root
   leaks. All domain workloads remain below 2.5 seconds.
 - Nine source atlases regenerate twice and match the Git index. Two independent 43-PNG capture passes
   are byte-identical at aggregate SHA-256
   `153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
 - Four local macOS/arm64 exports, including two independent fresh-cache project copies, match at
-  869,776 bytes and SHA-256
-  `fb91ed3c31f80b5cd01f957b54364fc1a96d7f195dbea069e2797e245ee004d3`; manifest verification,
+  870,304 bytes and SHA-256
+  `009689da1eea0005e492e747928a5401c9fc7395962f61c16dae14e9d627caa1`; manifest verification,
   the unchanged 25-required / nine-excluded probe, and packaged boot pass locally.
-- The current attack-accent input is not committed or pushed and has no hosted Linux CI result yet.
-  Historical outgoing-defeat run `30873652565` remains green at 824,432 bytes / SHA-256
-  `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`. Draft PR #7 remains open
-  and draft; `main` was not merged.
+- Feature commit `02dc402` is pushed. Hosted run `30877432459` passed MUD, Multiplayer, Journey,
+  and the 3,530 / 374 / 198 RPG functional gates, then its clean lifecycle confirmation measured
+  7,075.94 ms against the unchanged 7,000 ms ceiling; packaging therefore did not run. The current
+  allocation follow-up removes presentation-path dictionary work, preserves the strict budget, and
+  passes the complete local gate, but has no hosted Linux package result yet. Draft PR #7 remains
+  open and draft; `main` was not merged.
 
 ## Next action
 
-Audit the current diff, commit and push the attack-accent loop, update Draft PR #7, and monitor all
-hosted checks without merging `main`. After hosted evidence closes, begin the next bounded original
-NPC schedule or side-story content loop.
+Commit and push the allocation follow-up, update Draft PR #7, and monitor all hosted checks without
+merging `main`. After hosted evidence closes, begin the next bounded original NPC schedule or
+side-story content loop.
 
 ## Blockers
 

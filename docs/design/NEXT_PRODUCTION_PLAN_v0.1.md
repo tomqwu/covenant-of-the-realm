@@ -40,12 +40,15 @@ E2E 与浏览器原型四项任务全绿。
 Linux/x86_64 PCK（各含两个独立 fresh cache）均为 824,432 bytes，SHA-256 为
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`；25/9 资源探针、
 manifest 与启动 smoke 在本地与 hosted 均通过。本轮敌足势痕输入的四个本地
-macOS/arm64 PCK（含两个独立 fresh cache）均为 869,776 bytes，SHA-256 为
-`fb91ed3c31f80b5cd01f957b54364fc1a96d7f195dbea069e2797e245ee004d3`；25/9 资源探针、
-manifest 与启动 smoke 均在本地通过，尚未提交或运行 hosted Linux CI。连续两轮
+macOS/arm64 PCK（含两个独立 fresh cache）均为 870,304 bytes，SHA-256 为
+`009689da1eea0005e492e747928a5401c9fc7395962f61c16dae14e9d627caa1`；25/9 资源探针、
+manifest 与启动 smoke 均在本地通过。功能提交 `02dc402` 的 hosted run `30877432459`
+已通过 3,530 / 374 / 198 项 RPG 功能门禁，但生命周期确认值为 7,075.94 ms，超过未改动的
+7,000 ms 上限 75.94 ms，因而未进入打包；当前分配优化保持同一上限，尚无 hosted Linux
+打包结果。连续两轮
 43 张 PNG 逐字节一致，聚合 SHA-256 均为
 `153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`。20 轮场景生命周期
-用时 952.63 ms，保持 117 静态 / 127 峰值节点并在销毁后零根节点泄漏。
+用时 945.30 ms，保持 117 静态 / 127 峰值节点并在销毁后零根节点泄漏。
 现阶段最大缺口不再是底层闭环，而是正式人物精修、探索密度和内容时长。
 
 ## 2. 官方资料核对后的技术路线

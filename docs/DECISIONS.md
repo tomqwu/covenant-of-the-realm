@@ -30,13 +30,16 @@ or save migration, ignores pointer and focus input, and has explicit false autho
 damage, intent selection, gameplay timing, input, Journey, and save v17.
 
 The local gate is 3,530 Godot unit/scene assertions, 374 chapter E2E checks, 198 physical-input
-checks, a 952.63 ms 20-cycle lifecycle sample, 117 static / 127 peak nodes, and zero root leaks.
+checks, a 945.30 ms 20-cycle lifecycle sample, 117 static / 127 peak nodes, and zero root leaks.
 Two 43-PNG passes reproduce aggregate SHA-256
 `153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`. Four local macOS/arm64
-PCK exports, including two independent fresh-cache copies, match at 869,776 bytes and SHA-256
-`fb91ed3c31f80b5cd01f957b54364fc1a96d7f195dbea069e2797e245ee004d3`; the 25-required /
-nine-excluded probe, manifest verification, and packaged boot pass locally. This input is not yet
-committed and has no GitHub-hosted Linux result.
+PCK exports, including two independent fresh-cache copies, match at 870,304 bytes and SHA-256
+`009689da1eea0005e492e747928a5401c9fc7395962f61c16dae14e9d627caa1`; the 25-required /
+nine-excluded probe, manifest verification, and packaged boot pass locally. Hosted run
+`30877432459` passed the RPG functional suites at feature commit `02dc402`, then its lifecycle
+confirmation measured 7,075.94 ms against the unchanged 7,000 ms ceiling before packaging. The
+allocation follow-up removes presentation-path allocations without relaxing that ceiling and has
+no GitHub-hosted Linux package result yet.
 
 ### 2026-08-03 — Regular-enemy defeat is an outgoing-only, nonblocking presentation role
 

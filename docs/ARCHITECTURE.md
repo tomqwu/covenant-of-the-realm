@@ -91,11 +91,13 @@ The current resolved-intent contract is covered locally by 3,530 Godot unit/scen
 374 chapter E2E checks, 198 physical-input checks, a 117-node static scene / 127-node peak with zero
 root leaks, and the 43-capture aggregate
 `153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`. The complete 20-cycle scene
-sample is 952.63 ms. Four local macOS/arm64 exports, including two fresh-cache copies, match at
-869,776 bytes and SHA-256
-`fb91ed3c31f80b5cd01f957b54364fc1a96d7f195dbea069e2797e245ee004d3`; manifest verification,
-the unchanged 25-required / nine-excluded resource probe, and packaged boot pass locally. This
-uncommitted input has not yet run on GitHub-hosted Linux.
+sample is 945.30 ms. Four local macOS/arm64 exports, including two fresh-cache copies, match at
+870,304 bytes and SHA-256
+`009689da1eea0005e492e747928a5401c9fc7395962f61c16dae14e9d627caa1`; manifest verification,
+the unchanged 25-required / nine-excluded resource probe, and packaged boot pass locally. Hosted
+run `30877432459` passed all RPG functional gates at feature commit `02dc402`, then exceeded the
+unchanged 7,000 ms lifecycle ceiling by 75.94 ms on confirmation before packaging. The current
+allocation follow-up has no hosted Linux package result yet.
 
 ## Preserved multiplayer prototype
 

@@ -110,10 +110,13 @@ match at 824,432 bytes and SHA-256
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
 the unchanged 25/9 probe, and packaged boot pass locally and hosted. For the current resolved-intent
 accent input, four local macOS/arm64 exports, including two independent fresh-cache project copies,
-match at 869,776 bytes and SHA-256
-`fb91ed3c31f80b5cd01f957b54364fc1a96d7f195dbea069e2797e245ee004d3`; manifest verification,
-the unchanged 25-required / nine-excluded probe, and packaged boot pass locally. Hosted Linux
-evidence has not run for this uncommitted input. Two consecutive 43-PNG capture runs are
+match at 870,304 bytes and SHA-256
+`009689da1eea0005e492e747928a5401c9fc7395962f61c16dae14e9d627caa1`; manifest verification,
+the unchanged 25-required / nine-excluded probe, and packaged boot pass locally. Hosted run
+`30877432459` passed all RPG functional suites at feature commit `02dc402` but its lifecycle
+confirmation measured 7,075.94 ms against the unchanged 7,000 ms ceiling, before packaging. The
+current allocation follow-up preserves that ceiling and has no hosted Linux package result yet.
+Two consecutive 43-PNG capture runs are
 byte-identical and produce aggregate SHA-256
 `153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
 The MUD adapter has

@@ -501,9 +501,10 @@ func _event_text(event_ids: Array, presentation_context: Dictionary = {}) -> Str
 		enemy_name = str(EnemyCatalogScript.profile(enemy_id_before).get("name", enemy_name))
 	for event_id in event_ids:
 		messages.append(str(content["messages"].get(event_id, event_id)).replace("{enemy}", enemy_name))
-	var resolved_attack_text := _resolved_attack_event_text(event_ids, battle_context)
-	if not resolved_attack_text.is_empty():
-		messages.append(resolved_attack_text)
+	if event_ids.has("enemy_hit") or event_ids.has("enemy_glanced"):
+		var resolved_attack_text := _resolved_attack_event_text(event_ids, battle_context)
+		if not resolved_attack_text.is_empty():
+			messages.append(resolved_attack_text)
 	return "\n".join(messages)
 
 
@@ -531,7 +532,8 @@ func _resolved_attack_event_text(event_ids: Array, battle_context: Dictionary) -
 	if not EnemyCatalogScript.supports(enemy_id_before) or str(journey.enemy_id) != enemy_id_before:
 		return ""
 	var intent_name := ""
-	for intent_data in EnemyCatalogScript.profile(enemy_id_before).get("intents", []):
+	var enemy_profile: Dictionary = EnemyCatalogScript.PROFILES.get(enemy_id_before, {})
+	for intent_data in enemy_profile.get("intents", []):
 		if str(intent_data.get("id", "")) == intent_id:
 			intent_name = str(intent_data.get("name", ""))
 			break
