@@ -83,7 +83,7 @@ drawing code.
 runtime controls at the production dialogue size. The capture-only 3×2 board adds no packaged scene,
 runtime asset, or alternate art source. It is regenerated with the other functional screenshots in
 the current 43-image capture definition. Two complete passes reproduce aggregate SHA-256
-`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
+`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
 
 ## 2026-08-03 · Code-drawn Zhaohe battle-intent telegraph
 
@@ -115,6 +115,33 @@ the same project-authored `enemy_profiles.png` atlas and receives only the actio
 IDs; it is not a new source image, alternate enemy asset, combat state, or saved resource. The capture
 asserts that the temporary presentation is non-authoritative and input-transparent before clearing it
 for the stable boss reference frame.
+
+## 2026-08-04 · Code-drawn resolved enemy-intent accents
+
+`rpg/src/ui/map_canvas.gd` draws the enemy-foot “刚才” accent directly from project-authored
+`CanvasItem` lines, polygons, arcs, circles, and Chinese labels. The nine geometry fingerprints —
+`probing_charge`, `rending_charge`, `absorb_tide`, `spore_spray`, `unbalanced_swing`,
+`rebalance_step`, `pressing_charge`, `stonebreaking_blow`, and `nest_guard` — map one-to-one to the
+nine existing stable intent IDs. A contrasting outline and explicit
+“刚才 · 势名 · 受到冲击/化开冲势” text keep identity independent of color. No raster or vector
+input, model output, concept-image crop, stock effect, external font, plugin, random source, or
+third-party drawing code is used; this feature adds no image or scene-node asset.
+
+The geometry consumes only an already validated transient old-enemy/old-intent context and one
+semantic hit/glance result. It cannot read or change damage, choose an intent, advance a round,
+delay input, or write save v17. Standard/fast timing and complete/reduced motion are existing local
+presentation preferences; reduced motion keeps the full first geometry and result label static.
+Large-text and high-contrast variants remain inside the same declared safe bounds. Invalid,
+terminal, expired, replaced, non-battle, title, load, replay, and immediate same-enemy re-entry
+states clear the cue rather than deriving an image from stale data.
+
+`02-cangquan-battle.png` and `02-cangquan-battle-react.png` are direct deterministic runtime
+captures of the first and replacement resolved-intent accents while the fixed tag already shows the
+next intent. `02-cangquan-enemy-defeat.png` deliberately contains no attack accent because the old
+announced response was interrupted by a lethal player action. These two revised PNGs remain
+development evidence, not source textures or package resources. Two complete 43-image capture
+passes reproduce aggregate SHA-256
+`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
 
 ## 2026-08-03 · Deterministic Zhaohe landmark atlas
 
@@ -207,6 +234,7 @@ The screenshots can be rebuilt with `make capture-rpg-ui`. They document layout,
 and readability decisions; the runtime-drawn shapes are placeholders rather than final sprites,
 tiles, portraits, textures, or promotional art. The current set includes
 `02-path-keeper-route.png`, a direct runtime capture of 岑苇 on the mountain route, and
-`02-cangquan-enemy-defeat.png`, the non-authoritative outgoing-enemy beat. The expected set contains
+`02-cangquan-enemy-defeat.png`, the non-authoritative outgoing-enemy beat. The battle and reaction
+captures additionally show the zero-authority resolved-intent foot accents. The expected set contains
 43 images; two consecutive complete passes are byte-identical and reproduce aggregate SHA-256
-`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
+`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.

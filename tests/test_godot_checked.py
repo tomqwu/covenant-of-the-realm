@@ -56,7 +56,7 @@ REFERENCE_CAPTURE_FILENAMES = (
     "04-first-breath.png",
 )
 REFERENCE_CAPTURE_AGGREGATE_SHA256 = (
-    "80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b"
+    "153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4"
 )
 
 
@@ -195,7 +195,7 @@ def test_package_scripts_use_checked_godot_gate() -> None:
     assert "export/convert_text_resources_to_binary=false" in project_settings
 
 
-def test_asset_reproducibility_and_capture_contract_include_path_keeper_and_defeat() -> None:
+def test_asset_reproducibility_and_capture_contract_include_transient_battle_roles() -> None:
     reproducibility_script = (
         REPO_ROOT / "scripts" / "check_rpg_asset_reproducibility"
     ).read_text(encoding="utf-8")
@@ -211,6 +211,9 @@ def test_asset_reproducibility_and_capture_contract_include_path_keeper_and_defe
     )
     assert 'await _save_frame("02-cangquan-enemy-defeat.png")' in capture_script
     assert "outgoing_enemy_defeat_contract()" in capture_script
+    assert "attack_accent_contract()" in capture_script
+    assert 'float(attack_accent["duration"]) * 0.5' in capture_script
+    assert "defeat_attack_accent" in capture_script
 
 
 def test_reference_capture_set_and_aggregate_are_locked() -> None:

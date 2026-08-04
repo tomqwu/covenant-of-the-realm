@@ -13,6 +13,7 @@ const DialoguePortraitScript := preload("res://src/ui/dialogue_portrait.gd")
 const MapOccluderScript := preload("res://src/ui/map_occluder.gd")
 const WorldCameraScript := preload("res://src/ui/world_camera.gd")
 const IntentTelegraphScript := preload("res://src/ui/intent_telegraph.gd")
+const AttackAccentGeometryProbeScript := preload("res://tests/attack_accent_geometry_probe.gd")
 const TEST_SAVE_PATH := "user://automated-test-save.json"
 const TEST_SCENE_SAVE_PATH := "user://automated-scene-save.json"
 const TEST_SETTINGS_PATH := "user://automated-test-settings.json"
@@ -56,6 +57,7 @@ func _run() -> void:
 	_test_combat_paths()
 	_test_battle_presentation_context()
 	_test_intent_telegraph()
+	await _test_attack_accent_contract()
 	_test_enemy_profile_combat()
 	_test_boss_and_statuses()
 	_test_companion_retreat_and_rescue()
@@ -2795,6 +2797,313 @@ func _test_intent_telegraph() -> void:
 	telegraph.queue_free()
 
 
+func _test_attack_accent_contract() -> void:
+	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
+	SettingsStoreScript.remove(TEST_SCENE_SETTINGS_PATH)
+	var scene: PackedScene = load("res://src/ui/main.tscn")
+	var instance := scene.instantiate()
+	instance.configure_save_path(TEST_SCENE_SAVE_PATH)
+	instance.configure_settings_path(TEST_SCENE_SETTINGS_PATH)
+	root.add_child(instance)
+	await process_frame
+	var map_canvas = instance.get_node("%MapCanvas")
+	var battle_enemy_sprite: AnimatedSprite2D = instance.get_node("%BattleEnemySprite")
+	var player_sprite: AnimatedSprite2D = instance.get_node("%PlayerSprite")
+	var journey_before_accents: Dictionary = instance.journey.snapshot()
+	var intent_cases := [
+		{"enemy": "rock_armor_young", "intent": "rock_probing_charge", "shape": "probing_charge", "name": "试探冲撞"},
+		{"enemy": "rock_armor_young", "intent": "rock_rending_charge", "shape": "rending_charge", "name": "裂石冲撞"},
+		{"enemy": "spring_moss_shell", "intent": "moss_absorb_tide", "shape": "absorb_tide", "name": "吸潮蓄壳"},
+		{"enemy": "spring_moss_shell", "intent": "moss_spore_spray", "shape": "spore_spray", "name": "喷苔孢雾"},
+		{"enemy": "unbalanced_stone_puppet", "intent": "puppet_unbalanced_swing", "shape": "unbalanced_swing", "name": "失衡摆锤"},
+		{"enemy": "unbalanced_stone_puppet", "intent": "puppet_rebalance_step", "shape": "rebalance_step", "name": "踏地回正"},
+		{"enemy": "rock_armor_warden", "intent": "warden_pressing_charge", "shape": "pressing_charge", "name": "压阵肩撞"},
+		{"enemy": "rock_armor_warden", "intent": "warden_stonebreaking_blow", "shape": "stonebreaking_blow", "name": "崩石重击"},
+		{"enemy": "rock_armor_warden", "intent": "warden_nest_guard", "shape": "nest_guard", "name": "回身护巢"},
+	]
+	var expected_geometry_fingerprints := {
+		"probing_charge": (
+			"line[-38.00:-14.00,18.00:-10.00,38.00:0.00,18.00:10.00,-38.00:14.00];"
+			+ "line[-42.00:-7.00,-25.00:-7.00];line[-42.00:7.00,-25.00:7.00]"
+		),
+		"rending_charge": (
+			"line[-40.00:-19.00,10.00:-15.00,40.00:0.00,10.00:15.00,-40.00:19.00];"
+			+ "line[-18.00:0.00,-7.00:-6.00,4.00:5.00,15.00:-4.00,29.00:0.00]"
+		),
+		"absorb_tide": (
+			"line[-38.00:-15.00,-30.00:5.00,-13.00:17.00,13.00:17.00,30.00:5.00,38.00:-15.00];"
+			+ "line[-28.00:-17.00,-7.00:-6.00];dot[-34.00:-17.00;r=3.00];"
+			+ "line[-28.00:0.00,-7.00:0.00];dot[-34.00:0.00;r=3.00];"
+			+ "line[-28.00:17.00,-7.00:6.00];dot[-34.00:17.00;r=3.00]"
+		),
+		"spore_spray": (
+			"line[-34.00:0.00,22.00:-20.00];line[-34.00:0.00,22.00:0.00];"
+			+ "line[-34.00:0.00,22.00:20.00];"
+			+ "line[14.00:-24.00,27.00:-13.00,31.00:0.00,27.00:13.00,14.00:24.00];"
+			+ "dot[35.00:-19.00;r=3.50];dot[41.00:1.00;r=3.50];dot[34.00:20.00;r=3.50]"
+		),
+		"unbalanced_swing": (
+			"line[-36.00:15.00,-40.00:-3.00,-30.00:-20.00,-9.00:-29.00,14.00:-24.00,32.00:-10.00];"
+			+ "square[38.00:-7.00;h=7.00];dot[-7.00:2.00;r=3.00]"
+		),
+		"rebalance_step": (
+			"line[-37.00:0.00,35.00:0.00];line[-10.00:-18.00,-10.00:18.00];"
+			+ "line[12.00:-13.00,12.00:13.00];line[27.00:-8.00,35.00:0.00,27.00:8.00]"
+		),
+		"pressing_charge": (
+			"line[-40.00:-13.00,22.00:-13.00,39.00:-5.00];"
+			+ "line[-40.00:13.00,22.00:13.00,39.00:5.00];"
+			+ "line[-29.00:-5.00,27.00:-5.00,40.00:0.00,27.00:5.00,-29.00:5.00]"
+		),
+		"stonebreaking_blow": (
+			"line[-36.00:0.00,15.00:0.00];"
+			+ "line[8.00:-17.00,25.00:-17.00,25.00:17.00,8.00:17.00,8.00:-17.00];"
+			+ "line[25.00:0.00,36.00:-15.00,29.00:0.00,40.00:15.00]"
+		),
+		"nest_guard": (
+			"line[31.00:-12.00,17.00:-29.00,-7.00:-34.00,-29.00:-22.00,-37.00:0.00,"
+			+ "-27.00:23.00,-5.00:34.00,19.00:27.00];"
+			+ "line[18.00:27.00,37.00:16.00,28.00:7.00];dot[0.00:0.00;r=4.00]"
+		),
+	}
+	var expected_intent_ids: Array[String] = []
+	var expected_shape_ids: Array[String] = []
+	var seen_shape_ids: Array[String] = []
+	var geometry_primitive_fingerprints: Dictionary = {}
+	var geometry_probe = AttackAccentGeometryProbeScript.new()
+	for intent_case in intent_cases:
+		expected_intent_ids.append(str(intent_case["intent"]))
+		expected_shape_ids.append(str(intent_case["shape"]))
+		map_canvas.set_story_state(
+			"battle", true, true, 0, str(intent_case["enemy"]), "whole_plant",
+			[], "unanswered", "unanswered", "unanswered"
+		)
+		var resolution_event_id := "enemy_hit" if intent_cases.find(intent_case) % 2 == 0 else "enemy_glanced"
+		map_canvas.show_battle_feedback(
+			[resolution_event_id], false, false,
+			{"battle": {"enemy_id_before": intent_case["enemy"], "announced_intent_id": intent_case["intent"]}}
+		)
+		var contract: Dictionary = map_canvas.attack_accent_contract()
+		_expect_true(contract["active"], "%s 实际结算后启动敌足势痕" % intent_case["intent"])
+		_expect_equal(contract["enemy_id_before"], intent_case["enemy"], "%s 势痕保留动作前敌人档案" % intent_case["intent"])
+		_expect_equal(contract["resolved_intent_id"], intent_case["intent"], "%s 势痕保留真正结算的旧势" % intent_case["intent"])
+		_expect_equal(contract["resolution_event_id"], resolution_event_id, "%s 势痕区分命中与减伤结果" % intent_case["intent"])
+		_expect_equal(contract["shape_id"], intent_case["shape"], "%s 使用稳定无色轮廓" % intent_case["intent"])
+		_expect_equal(
+			contract["label_text"],
+			"刚才 · %s · %s" % [intent_case["name"], "受到冲击" if resolution_event_id == "enemy_hit" else "化开冲势"],
+			"%s 中文等价文字明确标注刚才及实际结果" % intent_case["intent"]
+		)
+		_expect_equal(contract["source_anchor"], battle_enemy_sprite.position, "%s 以当前敌人规则脚点为表现源锚" % intent_case["intent"])
+		_expect_equal(contract["target_anchor"], player_sprite.position, "%s 以玩家规则脚点为朝向目标" % intent_case["intent"])
+		_expect_true(contract["shape_bounds"].has_point(contract["source_anchor"]), "%s 轮廓边界包围敌人脚点" % intent_case["intent"])
+		_expect_true(contract["shape_bounds"].size.x > 0.0 and contract["shape_bounds"].size.y > 0.0, "%s 轮廓具有有界首帧尺寸" % intent_case["intent"])
+		_expect_true(contract["label_bounds"].size.x > 0.0 and contract["label_bounds"].size.y > 0.0, "%s 中文条具有有界首帧尺寸" % intent_case["intent"])
+		_expect_equal(contract["duration"], 0.70, "%s 标准势痕使用固定 0.70 秒" % intent_case["intent"])
+		_expect_equal(contract["remaining"], 0.70, "%s 首帧保留完整标准时钟" % intent_case["intent"])
+		_expect_true(contract["motion_enabled"], "%s 完整动态只启用装饰性次级笔痕" % intent_case["intent"])
+		_expect_false(contract["reduced_motion_static"], "%s 完整动态不误标为静态降级" % intent_case["intent"])
+		_expect_equal(contract["secondary_offset"], 0.0, "%s 首帧已经完整且没有延迟位移" % intent_case["intent"])
+		_expect_true(contract["world_space"] and contract["decorative_only"] and not contract["blocks_input"], "%s 势痕只属于世界装饰且不阻断输入" % intent_case["intent"])
+		for authority_key in ["rule_authority", "damage_authority", "intent_authority", "gameplay_timing_authority", "input_authority", "save_authority"]:
+			_expect_false(contract[authority_key], "%s 势痕明确不拥有 %s" % [intent_case["intent"], authority_key])
+		seen_shape_ids.append(str(contract["shape_id"]))
+		var geometry_fingerprint: String = geometry_probe.fingerprint(str(intent_case["shape"]))
+		geometry_primitive_fingerprints[intent_case["shape"]] = geometry_fingerprint
+		_expect_equal(
+			geometry_fingerprint,
+			expected_geometry_fingerprints[intent_case["shape"]],
+			"%s 真实绘制分支保留完整折线、圆点、方块与闭合几何" % intent_case["intent"]
+		)
+		_expect_equal(
+			geometry_probe.fingerprint(str(intent_case["shape"])),
+			geometry_fingerprint,
+			"%s 实际绘制几何在重复采样间确定" % intent_case["intent"]
+		)
+
+	var unique_shape_ids: Array[String] = []
+	for shape_id in seen_shape_ids:
+		if not unique_shape_ids.has(shape_id):
+			unique_shape_ids.append(shape_id)
+	var catalog_contract: Dictionary = map_canvas.attack_accent_contract()
+	_expect_equal(seen_shape_ids, expected_shape_ids, "九项已结算敌势逐项映射到预期无色轮廓")
+	_expect_equal(unique_shape_ids.size(), 9, "九项已结算敌势即使关闭颜色仍有九种不同轮廓")
+	_expect_equal(catalog_contract["supported_intent_ids"], expected_intent_ids, "势痕支持集合与领域九项稳定意图完全相等")
+	_expect_equal(catalog_contract["supported_shape_ids"], expected_shape_ids, "势痕轮廓支持集合无缺项或额外回退形状")
+	_expect_equal(geometry_primitive_fingerprints, expected_geometry_fingerprints, "九种势痕逐项命中精确绘制原语快照")
+	var unique_geometry_fingerprints: Array[String] = []
+	for geometry_fingerprint in geometry_primitive_fingerprints.values():
+		if not unique_geometry_fingerprints.has(str(geometry_fingerprint)):
+			unique_geometry_fingerprints.append(str(geometry_fingerprint))
+	_expect_equal(unique_geometry_fingerprints.size(), 9, "九个真实绘制分支不缺失且没有复制成同一几何")
+	_expect_equal(geometry_probe.fingerprint("unknown_shape"), "", "未知轮廓不会猜测或复用任一已支持绘制分支")
+	geometry_probe.free()
+
+	var preference_cases := [
+		{"fast": false, "reduced": false, "duration": 0.70, "motion": true, "label": "标准完整"},
+		{"fast": false, "reduced": true, "duration": 0.70, "motion": false, "label": "标准简化"},
+		{"fast": true, "reduced": false, "duration": 0.18, "motion": true, "label": "快速完整"},
+		{"fast": true, "reduced": true, "duration": 0.18, "motion": false, "label": "快速简化"},
+	]
+	for preference in preference_cases:
+		map_canvas.set_story_state("battle", true, true, 0, "rock_armor_young", "whole_plant", [], "unanswered", "unanswered", "unanswered")
+		map_canvas.show_battle_feedback(
+			["enemy_hit"], preference["fast"], preference["reduced"],
+			{"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}
+		)
+		var preference_contract: Dictionary = map_canvas.attack_accent_contract()
+		_expect_equal(preference_contract["duration"], preference["duration"], "%s势痕只选择固定表现时长" % preference["label"])
+		_expect_equal(preference_contract["remaining"], preference["duration"], "%s势痕首帧不消耗可读时长" % preference["label"])
+		_expect_equal(preference_contract["motion_enabled"], preference["motion"], "%s势痕按简化动态偏好降级" % preference["label"])
+		_expect_equal(preference_contract["reduced_motion_static"], preference["reduced"], "%s势痕显式记录静态降级" % preference["label"])
+		_expect_equal(preference_contract["secondary_offset"], 0.0, "%s势痕首帧完整无延迟" % preference["label"])
+		_expect_true(map_canvas.advance_battle_feedback(float(preference["duration"]) * 0.20), "%s势痕可推进非权威表现时钟" % preference["label"])
+		var advanced_preference: Dictionary = map_canvas.attack_accent_contract()
+		if preference["motion"]:
+			_expect_true(absf(float(advanced_preference["secondary_offset"])) > 0.0, "%s势痕只在完整动态早段移动次级笔痕" % preference["label"])
+		else:
+			_expect_equal(advanced_preference["secondary_offset"], 0.0, "%s势痕全程保持完全静态" % preference["label"])
+		map_canvas.clear_battle_feedback()
+
+	map_canvas.set_story_state("battle", true, true, 0, "rock_armor_young", "whole_plant", [], "unanswered", "unanswered", "unanswered")
+	map_canvas.show_battle_feedback(
+		["enemy_hit"], false, false,
+		{"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}
+	)
+	var stable_attack_accent: Dictionary = map_canvas.attack_accent_contract().duplicate(true)
+	for invalid_delta in [0.0, -0.1, NAN, INF]:
+		_expect_false(map_canvas.advance_battle_feedback(invalid_delta), "势痕拒绝零、负数或非有限表现步长")
+		_expect_equal(map_canvas.attack_accent_contract(), stable_attack_accent, "非法表现步长原子保留当前势痕")
+	_expect_true(map_canvas.advance_battle_feedback(0.35), "势痕可推进到标准时长中点")
+	var midpoint_accent: Dictionary = map_canvas.attack_accent_contract()
+	_expect_true(midpoint_accent["active"] and is_equal_approx(float(midpoint_accent["remaining"]), 0.35), "势痕中点仍保留稳定身份与精确剩余时长")
+	_expect_true(map_canvas.advance_battle_feedback(float(midpoint_accent["remaining"])), "势痕可在精确剩余时长边界收束")
+	var expired_accent: Dictionary = map_canvas.attack_accent_contract()
+	_expect_true(
+		not expired_accent["active"]
+		and expired_accent["enemy_id_before"] == ""
+		and expired_accent["resolved_intent_id"] == ""
+		and expired_accent["resolution_event_id"] == ""
+		and expired_accent["shape_id"] == ""
+		and expired_accent["label_text"] == ""
+		and expired_accent["remaining"] == 0.0,
+		"势痕精确到时原子清除全部瞬时身份、文字、轮廓与时钟"
+	)
+	var inactive_accent: Dictionary = expired_accent.duplicate(true)
+	_expect_false(map_canvas.advance_battle_feedback(0.1), "势痕到时后拒绝继续推进空时钟")
+	_expect_equal(map_canvas.attack_accent_contract(), inactive_accent, "到时后的多余步长不重建旧势痕")
+
+	map_canvas.show_battle_feedback(
+		["enemy_hit"], false, false,
+		{"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}
+	)
+	_expect_true(map_canvas.advance_battle_feedback(0.10), "替换测试先推进旧试探冲撞势痕")
+	var previous_accent: Dictionary = map_canvas.attack_accent_contract()
+	map_canvas.show_battle_feedback(
+		["enemy_glanced", "weakness_exposed"], true, true,
+		{"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_rending_charge"}}
+	)
+	var replacement_accent: Dictionary = map_canvas.attack_accent_contract()
+	_expect_true(
+		replacement_accent["active"]
+		and replacement_accent["resolved_intent_id"] == "rock_rending_charge"
+		and replacement_accent["resolution_event_id"] == "enemy_glanced"
+		and replacement_accent["shape_id"] == "rending_charge"
+		and replacement_accent["label_text"] == "刚才 · 裂石冲撞 · 化开冲势"
+		and replacement_accent["duration"] == 0.18
+		and replacement_accent["remaining"] == 0.18
+		and replacement_accent["reduced_motion_static"],
+		"下一合法回应原子替换旧势身份、结果、轮廓、文字、偏好与完整时钟"
+	)
+	_expect_false(replacement_accent["shape_id"] == previous_accent["shape_id"], "下一合法回应不残留上一势轮廓")
+
+	map_canvas.set_story_state("battle", true, true, 0, "rock_armor_young", "whole_plant", [], "unanswered", "unanswered", "unanswered")
+	map_canvas.show_battle_feedback(
+		["enemy_hit"], false, false,
+		{"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}
+	)
+	_expect_true(map_canvas.attack_accent_contract()["active"], "阶段生命周期回归先建立合法活动势痕")
+	map_canvas.set_story_state("mountain_path", true, true, 0, "rock_armor_young", "whole_plant", [], "unanswered", "unanswered", "unanswered")
+	var nonbattle_cleared_accent: Dictionary = map_canvas.attack_accent_contract()
+	_expect_true(
+		not nonbattle_cleared_accent["active"]
+		and nonbattle_cleared_accent["enemy_id_before"] == ""
+		and nonbattle_cleared_accent["resolved_intent_id"] == ""
+		and nonbattle_cleared_accent["resolution_event_id"] == ""
+		and nonbattle_cleared_accent["shape_id"] == ""
+		and nonbattle_cleared_accent["label_text"] == ""
+		and nonbattle_cleared_accent["source_anchor"] == Vector2.ZERO
+		and nonbattle_cleared_accent["target_anchor"] == Vector2.ZERO
+		and nonbattle_cleared_accent["shape_bounds"] == Rect2()
+		and nonbattle_cleared_accent["label_bounds"] == Rect2()
+		and nonbattle_cleared_accent["duration"] == 0.0
+		and nonbattle_cleared_accent["remaining"] == 0.0
+		and nonbattle_cleared_accent["secondary_offset"] == 0.0,
+		"离开战斗的 set_story_state 本身原子清除势痕身份、几何与时钟"
+	)
+	map_canvas.set_story_state("battle", true, true, 0, "rock_armor_young", "whole_plant", [], "unanswered", "unanswered", "unanswered")
+	_expect_equal(
+		map_canvas.attack_accent_contract(), nonbattle_cleared_accent,
+		"同敌立即重入战斗且没有新反馈时不会让已清势痕重新激活"
+	)
+
+	var invalid_cases := [
+		{"label": "缺失战斗上下文", "phase": "battle", "settled": "rock_armor_young", "events": ["enemy_hit"], "context": {}},
+		{"label": "战斗上下文类型错误", "phase": "battle", "settled": "rock_armor_young", "events": ["enemy_hit"], "context": {"battle": "malformed"}},
+		{"label": "缺失动作前敌人", "phase": "battle", "settled": "rock_armor_young", "events": ["enemy_hit"], "context": {"battle": {"announced_intent_id": "rock_probing_charge"}}},
+		{"label": "缺失已公告敌势", "phase": "battle", "settled": "rock_armor_young", "events": ["enemy_hit"], "context": {"battle": {"enemy_id_before": "rock_armor_young"}}},
+		{"label": "动作前敌人不是文本", "phase": "battle", "settled": "rock_armor_young", "events": ["enemy_hit"], "context": {"battle": {"enemy_id_before": 7, "announced_intent_id": "rock_probing_charge"}}},
+		{"label": "已公告敌势不是文本", "phase": "battle", "settled": "rock_armor_young", "events": ["enemy_hit"], "context": {"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": 7}}},
+		{"label": "未知动作前敌人", "phase": "battle", "settled": "unknown_enemy", "events": ["enemy_hit"], "context": {"battle": {"enemy_id_before": "unknown_enemy", "announced_intent_id": "rock_probing_charge"}}},
+		{"label": "未知已公告敌势", "phase": "battle", "settled": "rock_armor_young", "events": ["enemy_hit"], "context": {"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "unknown_intent"}}},
+		{"label": "敌人与敌势目录错配", "phase": "battle", "settled": "rock_armor_young", "events": ["enemy_hit"], "context": {"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "moss_absorb_tide"}}},
+		{"label": "结算后敌人已被替换", "phase": "battle", "settled": "spring_moss_shell", "events": ["enemy_hit"], "context": {"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}},
+		{"label": "非战斗阶段", "phase": "mountain_path", "settled": "rock_armor_young", "events": ["enemy_hit"], "context": {"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}},
+		{"label": "缺失敌方回应事件", "phase": "battle", "settled": "rock_armor_young", "events": ["weakness_exposed"], "context": {"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}},
+		{"label": "事件数组混入非文本条目", "phase": "battle", "settled": "rock_armor_young", "events": ["enemy_hit", 7], "context": {"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}},
+		{"label": "命中与减伤回应并存", "phase": "battle", "settled": "rock_armor_young", "events": ["enemy_hit", "enemy_glanced"], "context": {"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}},
+		{"label": "重复命中回应", "phase": "battle", "settled": "rock_armor_young", "events": ["enemy_hit", "enemy_hit"], "context": {"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}},
+	]
+	for terminal_event_id in ["regular_enemy_won", "boss_arrived", "battle_won", "retreated", "companion_rescue"]:
+		invalid_cases.append({
+			"label": "终止事件 %s" % terminal_event_id,
+			"phase": "battle",
+			"settled": "rock_armor_young",
+			"events": ["enemy_hit", terminal_event_id],
+			"context": {"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}},
+		})
+	for invalid_case in invalid_cases:
+		map_canvas.set_story_state("battle", true, true, 0, "rock_armor_young", "whole_plant", [], "unanswered", "unanswered", "unanswered")
+		map_canvas.show_battle_feedback(
+			["enemy_hit"], false, false,
+			{"battle": {"enemy_id_before": "rock_armor_young", "announced_intent_id": "rock_probing_charge"}}
+		)
+		_expect_true(map_canvas.attack_accent_contract()["active"], "%s 前先建立可检测的合法旧势痕" % invalid_case["label"])
+		map_canvas.set_story_state(
+			str(invalid_case["phase"]), true, true, 0, str(invalid_case["settled"]), "whole_plant",
+			[], "unanswered", "unanswered", "unanswered"
+		)
+		map_canvas.show_battle_feedback(invalid_case["events"], false, false, invalid_case["context"])
+		var rejected_contract: Dictionary = map_canvas.attack_accent_contract()
+		_expect_true(
+			not rejected_contract["active"]
+			and rejected_contract["enemy_id_before"] == ""
+			and rejected_contract["resolved_intent_id"] == ""
+			and rejected_contract["resolution_event_id"] == ""
+			and rejected_contract["shape_id"] == ""
+			and rejected_contract["label_text"] == ""
+			and rejected_contract["remaining"] == 0.0,
+			"%s 失败关闭且不会留下上一势身份、结果、轮廓、文字或时钟" % invalid_case["label"]
+		)
+
+	_expect_equal(instance.journey.snapshot(), journey_before_accents, "九势映射、偏好、计时与拒绝路径都不推进 Journey 规则")
+	map_canvas.clear_battle_feedback()
+	instance.queue_free()
+	await process_frame
+	SaveGameScript.remove(TEST_SCENE_SAVE_PATH)
+	SettingsStoreScript.remove(TEST_SCENE_SETTINGS_PATH)
+
+
 func _test_enemy_profile_combat() -> void:
 	var moss = _battle_state("approach_moss_shell")
 	_expect_equal(moss.enemy_id, "spring_moss_shell", "泉苔接近行动选择对应配置")
@@ -4165,6 +4474,7 @@ func _test_scene_smoke() -> void:
 	_expect_false(large_status_rect.intersects(large_intent_rect), "1152×648 大字状态栏与临势签保持固定间距而不重叠")
 	await _press_action(instance, "撤到旧石标")
 	var retreat_feedback: Dictionary = instance.get_node("%MapCanvas").feedback_contract()
+	var retreat_attack_accent: Dictionary = instance.get_node("%MapCanvas").attack_accent_contract()
 	_expect_true(
 		instance.get_node("%LocationLabel").text == "藏泉山道"
 		and not retreat_feedback["active"]
@@ -4175,6 +4485,14 @@ func _test_scene_smoke() -> void:
 		and retreat_feedback["outgoing_enemy_id"] == ""
 		and retreat_feedback["replacement_enemy_id"] == "",
 		"场景撤退返回山道并原子清除全部瞬时战斗反馈"
+	)
+	_expect_true(
+		not retreat_attack_accent["active"]
+		and retreat_attack_accent["resolved_intent_id"] == ""
+		and retreat_attack_accent["resolution_event_id"] == ""
+		and retreat_attack_accent["shape_id"] == ""
+		and retreat_attack_accent["label_text"] == "",
+		"撤退保留动作前上下文但不谎称旧敌势已经实际攻击"
 	)
 	_expect_true(map_detail.map_contract()["visible"], "撤退回山道后复用并显示缓存细节")
 	_expect_equal(map_detail.map_contract()["rebuild_count"], 4, "战斗返回同一山道不重建细节")
@@ -4199,6 +4517,26 @@ func _test_scene_smoke() -> void:
 	_expect_equal(fast_feedback["announced_intent_id"], "rock_probing_charge", "反馈上下文保留动作前已公告敌势")
 	_expect_equal(fast_feedback["resolved_intent_id"], "rock_probing_charge", "实际敌方回应才标记该势已结算")
 	_expect_equal(intent_telegraph.presentation_contract()["intent_id"], "rock_rending_charge", "同一帧持久签面已经显示结算后的下一势")
+	var fast_attack_accent: Dictionary = instance.get_node("%MapCanvas").attack_accent_contract()
+	_expect_true(
+		fast_attack_accent["active"]
+		and fast_attack_accent["enemy_id_before"] == "rock_armor_young"
+		and fast_attack_accent["resolved_intent_id"] == "rock_probing_charge"
+		and fast_attack_accent["resolution_event_id"] == "enemy_glanced"
+		and fast_attack_accent["shape_id"] == "probing_charge"
+		and fast_attack_accent["label_text"] == "刚才 · 试探冲撞 · 化开冲势",
+		"布置石灯只在试探冲撞真正结算后留下有文字等价的旧势脚痕"
+	)
+	_expect_true(
+		fast_attack_accent["duration"] == 0.18
+		and fast_attack_accent["remaining"] > 0.0
+		and fast_attack_accent["remaining"] <= 0.18
+		and not fast_attack_accent["motion_enabled"]
+		and fast_attack_accent["reduced_motion_static"]
+		and fast_attack_accent["secondary_offset"] == 0.0
+		and not fast_attack_accent["blocks_input"],
+		"快速简化偏好冻结完整首帧、缩短时长且不阻断下一行动"
+	)
 	var fast_enemy_cue: Dictionary = enemy_sprite.presentation_contract()
 	_expect_equal(fast_enemy_cue["state"], "attack", "石灯结算后的敌方反击触发攻击姿态")
 	_expect_equal(fast_enemy_cue["event_id"], "enemy_glanced", "攻击姿态消费实际格挡后的敌方事件")
@@ -4213,6 +4551,14 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%StatusLabel").text.contains("回合 4"), "战斗状态呈现回合信息")
 	_expect_equal(enemy_sprite.presentation_contract()["state"], "react", "镇岩符命中触发敌人受击姿态")
 	_expect_equal(enemy_sprite.presentation_contract()["event_id"], "talisman_hit", "受击姿态记录符箓命中语义")
+	var talisman_attack_accent: Dictionary = instance.get_node("%MapCanvas").attack_accent_contract()
+	_expect_true(
+		talisman_attack_accent["active"]
+		and talisman_attack_accent["resolved_intent_id"] == "rock_probing_charge"
+		and talisman_attack_accent["resolution_event_id"] == "enemy_hit"
+		and talisman_attack_accent["label_text"] == "刚才 · 试探冲撞 · 受到冲击",
+		"玩家命中姿态优先时仍保留同回合真正发生的敌方攻击势痕"
+	)
 	await _press_action(instance, "引气术")
 	await _press_action(instance, "引气术")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("岩甲兽守巢者 14/14"), "普通敌人后无缝进入首领配置")
@@ -4236,6 +4582,15 @@ func _test_scene_smoke() -> void:
 	_expect_equal(replacement_feedback["resolved_intent_id"], "", "致命回合没有敌方回应便不谎称敌势已结算")
 	_expect_equal(replacement_feedback["outgoing_enemy_id"], "rock_armor_young", "反馈合同明确旧敌档案")
 	_expect_equal(replacement_feedback["replacement_enemy_id"], "rock_armor_warden", "反馈合同明确结算后的替换首领")
+	var lethal_replacement_accent: Dictionary = instance.get_node("%MapCanvas").attack_accent_contract()
+	_expect_true(
+		not lethal_replacement_accent["active"]
+		and lethal_replacement_accent["resolved_intent_id"] == ""
+		and lethal_replacement_accent["resolution_event_id"] == ""
+		and lethal_replacement_accent["shape_id"] == ""
+		and lethal_replacement_accent["label_text"] == "",
+		"普通敌致命替换回合没有敌方回应，因此败退旧影不会叠加伪造攻击势痕"
+	)
 	var replacement_defeat: Dictionary = instance.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
 	_expect_true(
 		replacement_defeat["active"]
@@ -4287,6 +4642,16 @@ func _test_scene_smoke() -> void:
 	_expect_true(instance.get_node("%StatusLabel").text.contains("破甲 2"), "守住崩石重击后状态栏显示破甲")
 	_expect_equal(enemy_sprite.presentation_contract()["state"], "react", "首领破绽事件优先触发受击姿态")
 	_expect_equal(enemy_sprite.presentation_contract()["event_id"], "weakness_exposed", "首领受击姿态保留破绽语义")
+	var weakness_attack_accent: Dictionary = instance.get_node("%MapCanvas").attack_accent_contract()
+	_expect_true(
+		weakness_attack_accent["active"]
+		and weakness_attack_accent["enemy_id_before"] == "rock_armor_warden"
+		and weakness_attack_accent["resolved_intent_id"] == "warden_stonebreaking_blow"
+		and weakness_attack_accent["resolution_event_id"] == "enemy_glanced"
+		and weakness_attack_accent["shape_id"] == "stonebreaking_blow"
+		and weakness_attack_accent["label_text"] == "刚才 · 崩石重击 · 化开冲势",
+		"弱点受击姿态优先时仍显示真正结算的首领重击与减伤结果"
+	)
 	await _press_action(instance, "引气术")
 	await _press_action(instance, "请砚青援护")
 	_expect_true(instance.get_node("%StatusLabel").text.contains("凝息 2"), "同伴援护后状态栏显示凝息")
@@ -4294,6 +4659,16 @@ func _test_scene_smoke() -> void:
 	await _press_action(instance, "引气术")
 	_expect_equal(instance.get_node("%LocationLabel").text, "藏泉石室", "胜利进入泉室")
 	_expect_false(intent_telegraph.presentation_contract()["active"], "首领胜利后固定签面立即清空")
+	var boss_victory_attack_accent: Dictionary = instance.get_node("%MapCanvas").attack_accent_contract()
+	_expect_true(
+		not boss_victory_attack_accent["active"]
+		and boss_victory_attack_accent["enemy_id_before"] == ""
+		and boss_victory_attack_accent["resolved_intent_id"] == ""
+		and boss_victory_attack_accent["resolution_event_id"] == ""
+		and boss_victory_attack_accent["shape_id"] == ""
+		and boss_victory_attack_accent["label_text"] == "",
+		"首领致命胜利回合不伪造未执行的护巢敌势且切图无残留"
+	)
 	var boss_victory_outgoing: Dictionary = instance.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
 	_expect_true(
 		not boss_victory_outgoing["active"]

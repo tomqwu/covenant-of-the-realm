@@ -41,6 +41,29 @@ behavior. Its short cue clock is non-blocking and has no damage, intent, profile
 round, counter, input, gameplay-timing, or save authority. Save v17 is unchanged: loading derives a
 fresh tag from the restored enemy ID and round and never resumes old action-result context.
 
+### Resolved enemy-intent attack accents
+
+`MapCanvas` may draw a bounded world-space “刚才” accent at the current enemy's feet only after a
+strict conjunctive gate proves that an announced old intent actually resolved. The scene must still
+be in battle; `presentation_context.battle` must contain two valid string IDs; exactly one of
+`enemy_hit` or `enemy_glanced` must be present; the old intent must belong to the old enemy in the
+catalog; the settled enemy must match that same profile; and no retreat, rescue, replacement, or
+victory event may make the response terminal. The fixed `IntentTelegraph` is synchronized from the
+settled snapshot independently, so it can show the next intent while the foot accent names only the
+previous resolved intent. Malformed, mismatched, stale, multiple-response, or terminal input clears
+atomically instead of guessing.
+
+All nine authored intent IDs map to nine color-independent, code-native geometry fingerprints plus
+the Chinese text equivalent `刚才 · {势名} · 受到冲击/化开冲势`. Profile color is reinforced by a
+high-contrast outline rather than carrying meaning alone. The shapes stay within a declared safe
+world-space bound below the actor and preserve their label under the large-text/high-contrast
+settings. Standard and fast modes use local 0.70/0.18-second clocks. Full motion adds only a short
+secondary-stroke offset and fade; reduced motion freezes the complete first frame while retaining
+the result text. Expiry, replacement, terminal facts, leaving battle, title, load, replay, and
+re-entering battle clear identity and time together. The accent ignores mouse/focus input, adds no
+scene node or asset, and has explicit zero authority for rules, damage, intent selection, gameplay
+timing, input, Journey, content, or save v17.
+
 ### Outgoing regular-enemy presentation
 
 `MapCanvas` owns one hidden `OutgoingEnemySprite` beside the canonical `BattleEnemySprite`. It arms
@@ -58,14 +81,21 @@ replay, or any non-battle phase hides the node and clears its ID. It never enter
 Journey, save v17, content, damage, round timing, or input. Boss arrival no longer starts a same-phase
 full-screen transition, so the cue cannot be hidden and the next focused action remains available.
 
-The current contract is covered by 3,202 Godot unit/scene assertions, 360 chapter E2E checks,
-192 physical-input checks, a 117-node static scene and 127-node peak, a 25-required / nine-excluded
-package boundary, and the 43-capture aggregate
-`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
-Four local macOS/arm64 exports and four GitHub-hosted Linux/x86_64 exports from run `30873652565`,
+The outgoing-defeat historical closure is covered by four local macOS/arm64 exports and four
+GitHub-hosted Linux/x86_64 exports from run `30873652565`,
 each including two fresh-cache copies, match at 824,432 bytes and SHA-256
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
 the 25/9 resource probe, and packaged boot pass locally and hosted.
+
+The current resolved-intent contract is covered locally by 3,530 Godot unit/scene assertions,
+374 chapter E2E checks, 198 physical-input checks, a 117-node static scene / 127-node peak with zero
+root leaks, and the 43-capture aggregate
+`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`. The complete 20-cycle scene
+sample is 952.63 ms. Four local macOS/arm64 exports, including two fresh-cache copies, match at
+869,776 bytes and SHA-256
+`fb91ed3c31f80b5cd01f957b54364fc1a96d7f195dbea069e2797e245ee004d3`; manifest verification,
+the unchanged 25-required / nine-excluded resource probe, and packaged boot pass locally. This
+uncommitted input has not yet run on GitHub-hosted Linux.
 
 ## Preserved multiplayer prototype
 

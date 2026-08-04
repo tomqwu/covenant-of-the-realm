@@ -11,6 +11,9 @@ const STATUS_HUD_LARGE_BOTTOM := 102.0
 const INTENT_TELEGRAPH_STANDARD_TOP := 86.0
 const INTENT_TELEGRAPH_LARGE_TOP := 110.0
 const INTENT_TELEGRAPH_HEIGHT := 90.0
+const ATTACK_RESULT_TERMINAL_EVENTS := [
+	"regular_enemy_won", "boss_arrived", "battle_won", "retreated", "companion_rescue",
+]
 const ENEMY_NOTE_IDS := [
 	"rock_armor_young",
 	"spring_moss_shell",
@@ -329,7 +332,9 @@ func _render(event_ids: Array, presentation_context: Dictionary = {}) -> void:
 		event_ids,
 		settings["battle_speed"] == "fast",
 		settings["reduced_motion"],
-		presentation_context
+		presentation_context,
+		str(settings.get("text_scale", "standard")) == "large",
+		bool(settings.get("high_contrast", false))
 	)
 	_build_actions(node)
 	_render_dialogue_overlay()
@@ -496,7 +501,44 @@ func _event_text(event_ids: Array, presentation_context: Dictionary = {}) -> Str
 		enemy_name = str(EnemyCatalogScript.profile(enemy_id_before).get("name", enemy_name))
 	for event_id in event_ids:
 		messages.append(str(content["messages"].get(event_id, event_id)).replace("{enemy}", enemy_name))
+	var resolved_attack_text := _resolved_attack_event_text(event_ids, battle_context)
+	if not resolved_attack_text.is_empty():
+		messages.append(resolved_attack_text)
 	return "\n".join(messages)
+
+
+func _resolved_attack_event_text(event_ids: Array, battle_context: Dictionary) -> String:
+	if journey.phase_id() != "battle":
+		return ""
+	for event_id in event_ids:
+		if typeof(event_id) != TYPE_STRING:
+			return ""
+	var response_count := event_ids.count("enemy_hit") + event_ids.count("enemy_glanced")
+	if response_count != 1:
+		return ""
+	for terminal_event_id in ATTACK_RESULT_TERMINAL_EVENTS:
+		if event_ids.has(terminal_event_id):
+			return ""
+	if (
+		not battle_context.has("enemy_id_before")
+		or not battle_context.has("announced_intent_id")
+		or typeof(battle_context["enemy_id_before"]) != TYPE_STRING
+		or typeof(battle_context["announced_intent_id"]) != TYPE_STRING
+	):
+		return ""
+	var enemy_id_before := str(battle_context["enemy_id_before"])
+	var intent_id := str(battle_context["announced_intent_id"])
+	if not EnemyCatalogScript.supports(enemy_id_before) or str(journey.enemy_id) != enemy_id_before:
+		return ""
+	var intent_name := ""
+	for intent_data in EnemyCatalogScript.profile(enemy_id_before).get("intents", []):
+		if str(intent_data.get("id", "")) == intent_id:
+			intent_name = str(intent_data.get("name", ""))
+			break
+	if intent_name.is_empty():
+		return ""
+	var result_text := "受到冲击" if event_ids.has("enemy_hit") else "化开冲势"
+	return "刚才 · %s · %s" % [intent_name, result_text]
 
 
 func _chapter_summary(snapshot: Dictionary) -> String:

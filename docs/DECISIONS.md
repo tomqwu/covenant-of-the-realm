@@ -4,6 +4,40 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-04 — Resolved enemy intent leaves a strict, zero-authority foot accent
+
+`MapCanvas` draws an enemy-foot “刚才” accent only when the action-result evidence proves that an
+announced old intent actually produced the enemy response. The current phase must be battle; the
+transient context must contain valid old enemy and intent IDs; exactly one `enemy_hit` or
+`enemy_glanced` event must be present; the intent catalog must bind that pair; the settled enemy
+must still match; and no regular victory, boss arrival, final victory, retreat, or rescue fact may
+terminate the response. The fixed intent tag independently follows the settled snapshot and can
+therefore show the next intent without relabeling it as the attack that just happened. Malformed,
+mismatched, stale, multiple-response, lethal, or terminal inputs clear atomically.
+
+The nine stable geometry fingerprints are `probing_charge`, `rending_charge`, `absorb_tide`,
+`spore_spray`, `unbalanced_swing`, `rebalance_step`, `pressing_charge`, `stonebreaking_blow`, and
+`nest_guard`. Each is drawn from project-authored `CanvasItem` geometry inside a bounded world-space
+safe frame, with a contrasting outline and the Chinese equivalent
+“刚才 · 势名 · 受到冲击/化开冲势”; color never carries identity alone. Large-text and
+high-contrast modes preserve both bounds and meaning. Standard and fast preferences keep the
+existing 0.70/0.18-second local clocks. Full motion adds only a short secondary-stroke offset and
+fade; reduced motion freezes the complete first frame while retaining the event text.
+
+Expiry, replacement, title, load, replay, leaving battle, and immediate same-enemy re-entry clear
+the ID, geometry, label, result, and timer together. The accent adds no node, asset, content field,
+or save migration, ignores pointer and focus input, and has explicit false authority for rules,
+damage, intent selection, gameplay timing, input, Journey, and save v17.
+
+The local gate is 3,530 Godot unit/scene assertions, 374 chapter E2E checks, 198 physical-input
+checks, a 952.63 ms 20-cycle lifecycle sample, 117 static / 127 peak nodes, and zero root leaks.
+Two 43-PNG passes reproduce aggregate SHA-256
+`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`. Four local macOS/arm64
+PCK exports, including two independent fresh-cache copies, match at 869,776 bytes and SHA-256
+`fb91ed3c31f80b5cd01f957b54364fc1a96d7f195dbea069e2797e245ee004d3`; the 25-required /
+nine-excluded probe, manifest verification, and packaged boot pass locally. This input is not yet
+committed and has no GitHub-hosted Linux result.
+
 ### 2026-08-03 — Regular-enemy defeat is an outgoing-only, nonblocking presentation role
 
 The visible defeat beat uses one hidden, persistent `OutgoingEnemySprite`; it never rewinds the

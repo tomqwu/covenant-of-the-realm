@@ -75,6 +75,65 @@ const REGULAR_ENEMY_IDS := [
 	"spring_moss_shell",
 	"unbalanced_stone_puppet",
 ]
+const ATTACK_ACCENT_IDS := [
+	"rock_probing_charge",
+	"rock_rending_charge",
+	"moss_absorb_tide",
+	"moss_spore_spray",
+	"puppet_unbalanced_swing",
+	"puppet_rebalance_step",
+	"warden_pressing_charge",
+	"warden_stonebreaking_blow",
+	"warden_nest_guard",
+]
+const ATTACK_ACCENT_STYLES := {
+	"rock_probing_charge": {
+		"enemy_id": "rock_armor_young", "shape_id": "probing_charge",
+		"label": "试探冲撞", "color": Color("8f4a32"),
+	},
+	"rock_rending_charge": {
+		"enemy_id": "rock_armor_young", "shape_id": "rending_charge",
+		"label": "裂石冲撞", "color": Color("8f4a32"),
+	},
+	"moss_absorb_tide": {
+		"enemy_id": "spring_moss_shell", "shape_id": "absorb_tide",
+		"label": "吸潮蓄壳", "color": Color("34737a"),
+	},
+	"moss_spore_spray": {
+		"enemy_id": "spring_moss_shell", "shape_id": "spore_spray",
+		"label": "喷苔孢雾", "color": Color("34737a"),
+	},
+	"puppet_unbalanced_swing": {
+		"enemy_id": "unbalanced_stone_puppet", "shape_id": "unbalanced_swing",
+		"label": "失衡摆锤", "color": Color("355e63"),
+	},
+	"puppet_rebalance_step": {
+		"enemy_id": "unbalanced_stone_puppet", "shape_id": "rebalance_step",
+		"label": "踏地回正", "color": Color("355e63"),
+	},
+	"warden_pressing_charge": {
+		"enemy_id": "rock_armor_warden", "shape_id": "pressing_charge",
+		"label": "压阵肩撞", "color": Color("8a6b24"),
+	},
+	"warden_stonebreaking_blow": {
+		"enemy_id": "rock_armor_warden", "shape_id": "stonebreaking_blow",
+		"label": "崩石重击", "color": Color("8a6b24"),
+	},
+	"warden_nest_guard": {
+		"enemy_id": "rock_armor_warden", "shape_id": "nest_guard",
+		"label": "回身护巢", "color": Color("8a6b24"),
+	},
+}
+const ATTACK_ACCENT_TERMINAL_EVENTS := [
+	"regular_enemy_won", "boss_arrived", "battle_won", "retreated", "companion_rescue",
+]
+const ATTACK_ACCENT_OUTLINE := Color("fdfaf1")
+const ATTACK_ACCENT_PANEL := Color("27312e")
+const ATTACK_ACCENT_TEXT := Color("f2e6cb")
+const ATTACK_ACCENT_HIGH_CONTRAST_PANEL := Color("fdfaf1")
+const ATTACK_ACCENT_HIGH_CONTRAST_TEXT := Color("131a17")
+const ATTACK_ACCENT_STANDARD_FONT_SIZE := 18
+const ATTACK_ACCENT_LARGE_FONT_SIZE := 23
 
 @onready var player_sprite = %PlayerSprite
 @onready var companion_sprite = %CompanionSprite
@@ -108,6 +167,12 @@ var feedback_phase := 0.0
 var feedback_enemy_id_before := ""
 var feedback_announced_intent_id := ""
 var feedback_resolved_intent_id := ""
+var feedback_attack_event_id := ""
+var feedback_attack_shape_id := ""
+var feedback_attack_label_text := ""
+var feedback_attack_color := Color.WHITE
+var feedback_attack_large_text := false
+var feedback_attack_high_contrast := false
 var feedback_outgoing_enemy_id := ""
 var feedback_replacement_enemy_id := ""
 var occluder_nodes: Array[Node] = []
@@ -147,8 +212,8 @@ func set_story_state(
 	next_enemy_intel: Array = [],
 	next_first_breath_stage: String = "unstarted"
 ) -> void:
-	if next_phase != "battle" and is_instance_valid(outgoing_enemy_sprite):
-		outgoing_enemy_sprite.clear_outgoing_defeat()
+	if next_phase != "battle":
+		_reset_battle_feedback()
 	if next_phase != phase_id or talked != talked_to_companion:
 		companion_trail_needs_reset = true
 	phase_id = next_phase
@@ -233,7 +298,9 @@ func show_battle_feedback(
 	event_ids: Array,
 	fast_mode: bool,
 	reduced_motion: bool,
-	presentation_context: Dictionary = {}
+	presentation_context: Dictionary = {},
+	large_text: bool = false,
+	high_contrast: bool = false
 ) -> void:
 	if is_instance_valid(outgoing_enemy_sprite):
 		outgoing_enemy_sprite.clear_outgoing_defeat()
@@ -242,8 +309,46 @@ func show_battle_feedback(
 	var battle_context: Dictionary = raw_battle_context if raw_battle_context is Dictionary else {}
 	feedback_enemy_id_before = str(battle_context.get("enemy_id_before", ""))
 	feedback_announced_intent_id = str(battle_context.get("announced_intent_id", ""))
-	if event_ids.has("enemy_hit") or event_ids.has("enemy_glanced"):
+	var battle_context_valid := (
+		raw_battle_context is Dictionary
+		and battle_context.has("enemy_id_before")
+		and battle_context.has("announced_intent_id")
+		and typeof(battle_context["enemy_id_before"]) == TYPE_STRING
+		and typeof(battle_context["announced_intent_id"]) == TYPE_STRING
+	)
+	var event_ids_valid := true
+	for event_id in event_ids:
+		if typeof(event_id) != TYPE_STRING:
+			event_ids_valid = false
+			break
+	var response_event_count := event_ids.count("enemy_hit") + event_ids.count("enemy_glanced")
+	var has_terminal_event := false
+	for terminal_event_id in ATTACK_ACCENT_TERMINAL_EVENTS:
+		if event_ids.has(terminal_event_id):
+			has_terminal_event = true
+			break
+	var attack_style: Dictionary = ATTACK_ACCENT_STYLES.get(feedback_announced_intent_id, {})
+	var has_resolved_attack := (
+		phase_id == "battle"
+		and battle_context_valid
+		and event_ids_valid
+		and response_event_count == 1
+		and not has_terminal_event
+		and not attack_style.is_empty()
+		and str(attack_style.get("enemy_id", "")) == feedback_enemy_id_before
+		and enemy_id == feedback_enemy_id_before
+	)
+	if has_resolved_attack:
 		feedback_resolved_intent_id = feedback_announced_intent_id
+		feedback_attack_event_id = "enemy_hit" if event_ids.has("enemy_hit") else "enemy_glanced"
+		feedback_attack_shape_id = str(attack_style["shape_id"])
+		feedback_attack_color = attack_style["color"]
+		feedback_attack_large_text = large_text
+		feedback_attack_high_contrast = high_contrast
+		feedback_attack_label_text = "刚才 · %s · %s" % [
+			str(attack_style["label"]),
+			"受到冲击" if feedback_attack_event_id == "enemy_hit" else "化开冲势",
+		]
 	if event_ids.has("regular_enemy_won") or event_ids.has("battle_won"):
 		feedback_outgoing_enemy_id = feedback_enemy_id_before
 	if event_ids.has("boss_arrived"):
@@ -318,6 +423,56 @@ func feedback_contract() -> Dictionary:
 	}
 
 
+func attack_accent_contract() -> Dictionary:
+	var anchors := _attack_accent_anchors()
+	var supported_shapes: Array[String] = []
+	for intent_id in ATTACK_ACCENT_IDS:
+		supported_shapes.append(str(ATTACK_ACCENT_STYLES[intent_id]["shape_id"]))
+	var active := (
+		phase_id == "battle"
+		and enemy_id == feedback_enemy_id_before
+		and feedback_remaining > 0.0
+		and not feedback_attack_shape_id.is_empty()
+		and not feedback_resolved_intent_id.is_empty()
+	)
+	return {
+		"active": active,
+		"enemy_id_before": feedback_enemy_id_before if active else "",
+		"resolved_intent_id": feedback_resolved_intent_id if active else "",
+		"resolution_event_id": feedback_attack_event_id if active else "",
+		"shape_id": feedback_attack_shape_id if active else "",
+		"label_text": feedback_attack_label_text if active else "",
+		"label_font_size": _attack_accent_font_size() if active else 0,
+		"large_text": active and feedback_attack_large_text,
+		"high_contrast": active and feedback_attack_high_contrast,
+		"panel_color": _attack_accent_panel_color() if active else Color.TRANSPARENT,
+		"text_color": _attack_accent_text_color() if active else Color.TRANSPARENT,
+		"supported_intent_ids": ATTACK_ACCENT_IDS.duplicate(),
+		"supported_shape_ids": supported_shapes,
+		"source_anchor": anchors["source"] if active else Vector2.ZERO,
+		"target_anchor": anchors["target"] if active else Vector2.ZERO,
+		"shape_bounds": anchors["shape_bounds"] if active else Rect2(),
+		"label_bounds": (
+			_attack_accent_label_bounds(feedback_attack_label_text, anchors["source"])
+			if active else Rect2()
+		),
+		"duration": feedback_duration if active else 0.0,
+		"remaining": feedback_remaining if active else 0.0,
+		"motion_enabled": feedback_motion_enabled if active else false,
+		"reduced_motion_static": active and not feedback_motion_enabled,
+		"secondary_offset": _attack_accent_secondary_offset() if active else 0.0,
+		"world_space": true,
+		"decorative_only": true,
+		"blocks_input": false,
+		"rule_authority": false,
+		"damage_authority": false,
+		"intent_authority": false,
+		"gameplay_timing_authority": false,
+		"input_authority": false,
+		"save_authority": false,
+	}
+
+
 func outgoing_enemy_defeat_contract() -> Dictionary:
 	var contract := {
 		"enemy_id": "",
@@ -342,6 +497,12 @@ func _clear_feedback_context() -> void:
 	feedback_enemy_id_before = ""
 	feedback_announced_intent_id = ""
 	feedback_resolved_intent_id = ""
+	feedback_attack_event_id = ""
+	feedback_attack_shape_id = ""
+	feedback_attack_label_text = ""
+	feedback_attack_color = Color.WHITE
+	feedback_attack_large_text = false
+	feedback_attack_high_contrast = false
 	feedback_outgoing_enemy_id = ""
 	feedback_replacement_enemy_id = ""
 
@@ -636,15 +797,20 @@ func _notification(what: int) -> void:
 		_sync_actor_visuals()
 
 
-func _process(delta: float) -> void:
-	if feedback_remaining <= 0.0:
-		return
+func advance_battle_feedback(delta: float) -> bool:
+	if not is_finite(delta) or delta <= 0.0 or feedback_remaining <= 0.0:
+		return false
 	feedback_remaining = maxf(0.0, feedback_remaining - delta)
 	feedback_phase += delta
 	if feedback_remaining <= 0.0:
 		_reset_battle_feedback()
-		return
+		return true
 	queue_redraw()
+	return true
+
+
+func _process(delta: float) -> void:
+	advance_battle_feedback(delta)
 
 
 func _sync_actor_visuals() -> void:
@@ -809,6 +975,7 @@ func _draw() -> void:
 			_draw_spring_chamber(false)
 		_:
 			_draw_spring_chamber(true)
+	_draw_resolved_attack_accent()
 	_draw_battle_feedback()
 	_draw_vignette()
 
@@ -1209,6 +1376,265 @@ func _draw_vignette() -> void:
 	draw_rect(Rect2(0, size.y - 14, size.x, 14), edge)
 	draw_rect(Rect2(0, 0, 14, size.y), edge)
 	draw_rect(Rect2(size.x - 14, 0, 14, size.y), edge)
+
+
+func _attack_accent_anchors() -> Dictionary:
+	var source := Vector2.ZERO
+	var target := Vector2.ZERO
+	if is_instance_valid(battle_enemy_sprite):
+		source = battle_enemy_sprite.position.round()
+	if is_instance_valid(player_sprite):
+		target = player_sprite.position.round()
+	var forward := (target - source).normalized()
+	if forward.is_zero_approx():
+		forward = Vector2.LEFT
+	var side := Vector2(-forward.y, forward.x)
+	var origin := (source + forward * 42.0 + Vector2(0, 16)).round()
+	return {
+		"source": source,
+		"target": target,
+		"forward": forward,
+		"side": side,
+		"origin": origin,
+		"shape_bounds": Rect2(origin - Vector2(68, 42), Vector2(136, 84)),
+	}
+
+
+func _attack_accent_label_bounds(label_text: String, source: Vector2) -> Rect2:
+	if label_text.is_empty():
+		return Rect2()
+	var font := ThemeDB.fallback_font
+	var font_size := _attack_accent_font_size()
+	var panel_height := 40.0 if feedback_attack_large_text else 32.0
+	var horizontal_padding := 34.0 if feedback_attack_large_text else 28.0
+	var minimum_width := 272.0 if feedback_attack_large_text else 220.0
+	var maximum_width := 390.0 if feedback_attack_large_text else 312.0
+	var text_width := font.get_string_size(label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var panel_width := minf(maximum_width, maxf(minimum_width, text_width + horizontal_padding))
+	if feedback_attack_large_text and is_inside_tree():
+		# Large reading text uses the known minimum-viewport safe column. Keeping it
+		# screen-clamped avoids the expanded story panel and both combatants' feet.
+		var screen_bounds := Rect2(Vector2(40, 212), Vector2(panel_width, panel_height))
+		return get_global_transform_with_canvas().affine_inverse() * screen_bounds
+	var size := get_rect().size
+	var center_x := clampf(source.x - 58.0, panel_width * 0.5 + 24.0, size.x - panel_width * 0.5 - 24.0)
+	var center_y := clampf(source.y + 68.0, 300.0, size.y - 210.0)
+	return Rect2(
+		Vector2(center_x - panel_width * 0.5, center_y - panel_height * 0.5).round(),
+		Vector2(panel_width, panel_height).round()
+	)
+
+
+func _attack_accent_font_size() -> int:
+	return ATTACK_ACCENT_LARGE_FONT_SIZE if feedback_attack_large_text else ATTACK_ACCENT_STANDARD_FONT_SIZE
+
+
+func _attack_accent_panel_color() -> Color:
+	return ATTACK_ACCENT_HIGH_CONTRAST_PANEL if feedback_attack_high_contrast else ATTACK_ACCENT_PANEL
+
+
+func _attack_accent_text_color() -> Color:
+	return ATTACK_ACCENT_HIGH_CONTRAST_TEXT if feedback_attack_high_contrast else ATTACK_ACCENT_TEXT
+
+
+func _attack_accent_secondary_offset() -> float:
+	if not feedback_motion_enabled or feedback_duration <= 0.0 or feedback_remaining <= 0.0:
+		return 0.0
+	var elapsed := clampf(1.0 - feedback_remaining / feedback_duration, 0.0, 1.0)
+	return roundf(8.0 * clampf(elapsed / 0.18, 0.0, 1.0))
+
+
+func _attack_accent_alpha() -> float:
+	if not feedback_motion_enabled or feedback_duration <= 0.0:
+		return 1.0
+	var elapsed := clampf(1.0 - feedback_remaining / feedback_duration, 0.0, 1.0)
+	return 1.0 - clampf((elapsed - 0.72) / 0.28, 0.0, 1.0)
+
+
+func _attack_color_with_alpha(color: Color, alpha: float) -> Color:
+	return Color(color.r, color.g, color.b, color.a * alpha)
+
+
+func _attack_point(
+	origin: Vector2,
+	forward: Vector2,
+	side: Vector2,
+	coordinate: Vector2,
+	shift: Vector2 = Vector2.ZERO
+) -> Vector2:
+	return (origin + forward * coordinate.x + side * coordinate.y + shift).round()
+
+
+func _attack_points(
+	coordinates: Array,
+	origin: Vector2,
+	forward: Vector2,
+	side: Vector2,
+	shift: Vector2 = Vector2.ZERO,
+	closed: bool = false
+) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for coordinate in coordinates:
+		points.append(_attack_point(origin, forward, side, coordinate, shift))
+	if closed and not points.is_empty():
+		points.append(points[0])
+	return points
+
+
+func _draw_attack_polyline(
+	coordinates: Array,
+	origin: Vector2,
+	forward: Vector2,
+	side: Vector2,
+	accent: Color,
+	alpha: float,
+	shift: Vector2 = Vector2.ZERO,
+	closed: bool = false
+) -> void:
+	var points := _attack_points(coordinates, origin, forward, side, shift, closed)
+	if points.size() < 2:
+		return
+	draw_polyline(points, _attack_color_with_alpha(ATTACK_ACCENT_OUTLINE, 0.92 * alpha), 7.0, true)
+	draw_polyline(points, _attack_color_with_alpha(accent, alpha), 3.0, true)
+
+
+func _draw_attack_dot(
+	coordinate: Vector2,
+	radius: float,
+	origin: Vector2,
+	forward: Vector2,
+	side: Vector2,
+	accent: Color,
+	alpha: float,
+	shift: Vector2 = Vector2.ZERO
+) -> void:
+	var center := _attack_point(origin, forward, side, coordinate, shift)
+	draw_circle(center, radius + 3.0, _attack_color_with_alpha(ATTACK_ACCENT_OUTLINE, 0.92 * alpha))
+	draw_circle(center, radius, _attack_color_with_alpha(accent, alpha))
+
+
+func _draw_attack_square(
+	coordinate: Vector2,
+	half_size: float,
+	origin: Vector2,
+	forward: Vector2,
+	side: Vector2,
+	accent: Color,
+	alpha: float,
+	shift: Vector2 = Vector2.ZERO
+) -> void:
+	var center := _attack_point(origin, forward, side, coordinate, shift)
+	var inner := Rect2(center - Vector2.ONE * half_size, Vector2.ONE * half_size * 2.0)
+	draw_rect(inner.grow(3.0), _attack_color_with_alpha(ATTACK_ACCENT_OUTLINE, 0.92 * alpha), true)
+	draw_rect(inner, _attack_color_with_alpha(accent, alpha), true)
+
+
+func _draw_attack_resolution_marker(
+	origin: Vector2,
+	forward: Vector2,
+	side: Vector2,
+	accent: Color,
+	alpha: float
+) -> void:
+	if feedback_attack_event_id == "enemy_hit":
+		_draw_attack_square(Vector2(50, 0), 5.0, origin, forward, side, accent, alpha)
+	else:
+		_draw_attack_polyline([Vector2(43, 0), Vector2(55, -9)], origin, forward, side, accent, alpha)
+		_draw_attack_polyline([Vector2(43, 0), Vector2(55, 9)], origin, forward, side, accent, alpha)
+
+
+func _draw_attack_shape(
+	shape_id: String,
+	origin: Vector2,
+	forward: Vector2,
+	side: Vector2,
+	accent: Color,
+	alpha: float,
+	secondary_shift: Vector2
+) -> void:
+	match shape_id:
+		"probing_charge":
+			_draw_attack_polyline([Vector2(-38, -14), Vector2(18, -10), Vector2(38, 0), Vector2(18, 10), Vector2(-38, 14)], origin, forward, side, accent, alpha)
+			_draw_attack_polyline([Vector2(-42, -7), Vector2(-25, -7)], origin, forward, side, accent, alpha, secondary_shift)
+			_draw_attack_polyline([Vector2(-42, 7), Vector2(-25, 7)], origin, forward, side, accent, alpha, secondary_shift)
+		"rending_charge":
+			_draw_attack_polyline([Vector2(-40, -19), Vector2(10, -15), Vector2(40, 0), Vector2(10, 15), Vector2(-40, 19)], origin, forward, side, accent, alpha)
+			_draw_attack_polyline([Vector2(-18, 0), Vector2(-7, -6), Vector2(4, 5), Vector2(15, -4), Vector2(29, 0)], origin, forward, side, accent, alpha, secondary_shift)
+		"absorb_tide":
+			_draw_attack_polyline([Vector2(-38, -15), Vector2(-30, 5), Vector2(-13, 17), Vector2(13, 17), Vector2(30, 5), Vector2(38, -15)], origin, forward, side, accent, alpha)
+			for y in [-17.0, 0.0, 17.0]:
+				_draw_attack_polyline([Vector2(-28, y), Vector2(-7, y * 0.35)], origin, forward, side, accent, alpha, secondary_shift)
+				_draw_attack_dot(Vector2(-34, y), 3.0, origin, forward, side, accent, alpha, secondary_shift)
+		"spore_spray":
+			for y in [-20.0, 0.0, 20.0]:
+				_draw_attack_polyline([Vector2(-34, 0), Vector2(22, y)], origin, forward, side, accent, alpha)
+			_draw_attack_polyline([Vector2(14, -24), Vector2(27, -13), Vector2(31, 0), Vector2(27, 13), Vector2(14, 24)], origin, forward, side, accent, alpha)
+			for coordinate in [Vector2(35, -19), Vector2(41, 1), Vector2(34, 20)]:
+				_draw_attack_dot(coordinate, 3.5, origin, forward, side, accent, alpha, secondary_shift)
+		"unbalanced_swing":
+			_draw_attack_polyline([Vector2(-36, 15), Vector2(-40, -3), Vector2(-30, -20), Vector2(-9, -29), Vector2(14, -24), Vector2(32, -10)], origin, forward, side, accent, alpha)
+			_draw_attack_square(Vector2(38, -7), 7.0, origin, forward, side, accent, alpha, secondary_shift)
+			_draw_attack_dot(Vector2(-7, 2), 3.0, origin, forward, side, accent, alpha)
+		"rebalance_step":
+			_draw_attack_polyline([Vector2(-37, 0), Vector2(35, 0)], origin, forward, side, accent, alpha)
+			_draw_attack_polyline([Vector2(-10, -18), Vector2(-10, 18)], origin, forward, side, accent, alpha)
+			_draw_attack_polyline([Vector2(12, -13), Vector2(12, 13)], origin, forward, side, accent, alpha, secondary_shift)
+			_draw_attack_polyline([Vector2(27, -8), Vector2(35, 0), Vector2(27, 8)], origin, forward, side, accent, alpha)
+		"pressing_charge":
+			for y in [-13.0, 13.0]:
+				_draw_attack_polyline([Vector2(-40, y), Vector2(22, y), Vector2(39, y * 0.35)], origin, forward, side, accent, alpha)
+			_draw_attack_polyline([Vector2(-29, -5), Vector2(27, -5), Vector2(40, 0), Vector2(27, 5), Vector2(-29, 5)], origin, forward, side, accent, alpha, secondary_shift)
+		"stonebreaking_blow":
+			_draw_attack_polyline([Vector2(-36, 0), Vector2(15, 0)], origin, forward, side, accent, alpha)
+			_draw_attack_polyline([Vector2(8, -17), Vector2(25, -17), Vector2(25, 17), Vector2(8, 17)], origin, forward, side, accent, alpha, Vector2.ZERO, true)
+			_draw_attack_polyline([Vector2(25, 0), Vector2(36, -15), Vector2(29, 0), Vector2(40, 15)], origin, forward, side, accent, alpha, secondary_shift)
+		"nest_guard":
+			_draw_attack_polyline([Vector2(31, -12), Vector2(17, -29), Vector2(-7, -34), Vector2(-29, -22), Vector2(-37, 0), Vector2(-27, 23), Vector2(-5, 34), Vector2(19, 27)], origin, forward, side, accent, alpha)
+			_draw_attack_polyline([Vector2(18, 27), Vector2(37, 16), Vector2(28, 7)], origin, forward, side, accent, alpha, secondary_shift)
+			_draw_attack_dot(Vector2(0, 0), 4.0, origin, forward, side, accent, alpha)
+
+
+func _draw_attack_accent_label(alpha: float) -> void:
+	var bounds := _attack_accent_label_bounds(feedback_attack_label_text, _attack_accent_anchors()["source"])
+	if bounds.size.is_zero_approx():
+		return
+	var font_size := _attack_accent_font_size()
+	var panel_color := _attack_accent_panel_color()
+	var text_color := _attack_accent_text_color()
+	draw_rect(bounds, _attack_color_with_alpha(panel_color, 0.96 if feedback_attack_high_contrast else 0.82 * alpha), true)
+	draw_rect(bounds, _attack_color_with_alpha(INK_ROOT if feedback_attack_high_contrast else SPIRIT_GOLD, 0.98 if feedback_attack_high_contrast else 0.92 * alpha), false, 2.0)
+	var font := ThemeDB.fallback_font
+	var text_width := font.get_string_size(feedback_attack_label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	draw_string(
+		font,
+		Vector2(bounds.get_center().x - text_width * 0.5, bounds.get_center().y + float(font_size) * 0.34).round(),
+		feedback_attack_label_text,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		font_size,
+		_attack_color_with_alpha(text_color, 1.0 if feedback_attack_high_contrast else alpha)
+	)
+
+
+func _draw_resolved_attack_accent() -> void:
+	if not bool(attack_accent_contract()["active"]):
+		return
+	var anchors := _attack_accent_anchors()
+	var alpha := _attack_accent_alpha()
+	var secondary_shift: Vector2 = -anchors["forward"] * _attack_accent_secondary_offset()
+	_draw_attack_shape(
+		feedback_attack_shape_id,
+		anchors["origin"],
+		anchors["forward"],
+		anchors["side"],
+		feedback_attack_color,
+		alpha,
+		secondary_shift
+	)
+	_draw_attack_resolution_marker(
+		anchors["origin"], anchors["forward"], anchors["side"], feedback_attack_color, alpha
+	)
+	_draw_attack_accent_label(alpha)
 
 
 func _draw_battle_feedback() -> void:

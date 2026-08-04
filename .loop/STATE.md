@@ -5,44 +5,38 @@
 - Repository: `/Users/tomwu/Projects/covenant-of-the-realm`
 - Branch: `codex/rpg-foundation`
 - Draft PR: <https://github.com/tomqwu/covenant-of-the-realm/pull/7>
-- The branch now gives all three regular enemies an explicit outgoing defeat beat. A separate hidden
-  presentation role shows the old profile while Journey, status, the canonical enemy sprite, the
-  fixed intent tag, and available actions identify the settled 岩甲兽守巢者 in the same render.
-- Asset schema v7 expands the original enemy atlas to 512×256 / eight columns. Every profile has two
-  bounded defeat frames; the validator proves all eight cells are populated, distinct, not reaction
-  duplicates, and surrounded by transparent borders. Two independent generations match byte for byte.
-- The cue arms only from valid `regular_enemy_won` + `boss_arrived` facts during battle. Standard and
-  fast lifetimes are 0.70/0.18 seconds; reduced motion freezes the first frame. Malformed, lone,
-  non-battle, next-action, expiry, title, reload, retreat, rescue, victory, and replay paths clear it.
-- Same-phase boss arrival no longer uses the blocking full-screen transition. The safe-frame message
-  reads “灵物退开 · 守巢者现”, and the next independent controller A immediately resolves a warden
-  round. True phase and map transitions retain the existing paper reveal.
+- The branch now draws nine color-independent enemy-foot geometry fingerprints with a Chinese
+  “刚才 · 势名 · 受到冲击/化开冲势” equivalent only after a strict old-intent gate proves an
+  enemy response resolved. The fixed intent tag independently shows the settled next intent.
+- Arming requires battle phase, valid old enemy/intent IDs, exactly one hit/glance event, a catalog
+  match, the same settled enemy, and no terminal fact. Malformed, mismatch, lethal, replacement,
+  expiry, title, load, replay, leave-battle, and immediate same-enemy re-entry clear atomically.
+- Standard/fast timing remains 0.70/0.18 seconds. Full motion uses only a bounded secondary stroke;
+  reduced motion freezes the complete first frame and preserves the result text. Large text and high
+  contrast remain screen-safe. The cue owns no rules, damage, intent, gameplay timing, input, or save.
 - Local `make check` is green: 159 Python tests at 100% statement and branch coverage (621 statements /
-  316 branches), 21 Evennia tests plus the real two-client journey, 3,202 Godot rule/scene assertions,
-  360 chapter E2E checks, 192 physical-input/focus checks, 122 browser unit tests at 100%, and 53
+  316 branches), 21 Evennia tests plus the real two-client journey, 3,530 Godot rule/scene assertions,
+  374 chapter E2E checks, 198 physical-input/focus checks, 122 browser unit tests at 100%, and 53
   Playwright executions. Badges, deterministic builds, documentation links, and hygiene also pass.
-- The 20-cycle Godot lifecycle passes in `953.07` ms with 117 static / 127 peak nodes, 126 nodes during
-  regular-enemy replacement, and zero root leaks. All domain workloads remain below 2.5 seconds.
+- The 20-cycle Godot lifecycle passes in `952.63` ms with 117 static / 127 peak nodes and zero root
+  leaks. All domain workloads remain below 2.5 seconds.
 - Nine source atlases regenerate twice and match the Git index. Two independent 43-PNG capture passes
   are byte-identical at aggregate SHA-256
-  `80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
-- Four local macOS/arm64 exports and four GitHub-hosted Linux/x86_64 exports from run
-  `30873652565`, each including two independent fresh-cache project copies, match at 824,432 bytes
-  and SHA-256 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`;
-  manifest verification, the unchanged 25-required / nine-excluded resource probe, and packaged
-  boot smoke pass locally and hosted.
-- Implementation commit `735499a48b0d25706b7ac8d108e3f9e2094a3441` is pushed. GitHub Actions run
-  `30873652565` attempt 2 is green across RPG, MUD, real multiplayer E2E, and the 53-execution
-  browser matrix; the targeted retry replaced a stalled Playwright dependency-install runner step.
-  Draft PR #7 remains open and draft. Remote `main` remains
-  `7256ade54792ff481ffc30517ca2c693f78be198` and was not merged.
+  `153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
+- Four local macOS/arm64 exports, including two independent fresh-cache project copies, match at
+  869,776 bytes and SHA-256
+  `fb91ed3c31f80b5cd01f957b54364fc1a96d7f195dbea069e2797e245ee004d3`; manifest verification,
+  the unchanged 25-required / nine-excluded probe, and packaged boot pass locally.
+- The current attack-accent input is not committed or pushed and has no hosted Linux CI result yet.
+  Historical outgoing-defeat run `30873652565` remains green at 824,432 bytes / SHA-256
+  `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`. Draft PR #7 remains open
+  and draft; `main` was not merged.
 
 ## Next action
 
-Begin the intent-specific enemy attack-accent loop. Render a distinct, text-equivalent “刚才” accent
-only when the action-result context and enemy-response event jointly prove the announced intent
-resolved; keep save v17, Journey combat authority, input timing, node budgets, and package boundaries
-unchanged.
+Audit the current diff, commit and push the attack-accent loop, update Draft PR #7, and monitor all
+hosted checks without merging `main`. After hosted evidence closes, begin the next bounded original
+NPC schedule or side-story content loop.
 
 ## Blockers
 

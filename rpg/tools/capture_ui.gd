@@ -236,6 +236,18 @@ func _capture_flow() -> void:
 	assert(instance.get_node("%BattleEnemySprite").presentation_contract()["state"] == "attack",
 		"攻击参考图必须在真实时间推进前锁定语义姿态")
 	_assert_intent_telegraph(instance, "rock_armor_young", "rock_rending_charge", "rock_probing_charge", "镇岩符", "岩甲战斗")
+	var battle_attack_accent: Dictionary = instance.get_node("%MapCanvas").attack_accent_contract()
+	assert(
+		battle_attack_accent["active"]
+		and battle_attack_accent["enemy_id_before"] == "rock_armor_young"
+		and battle_attack_accent["resolved_intent_id"] == "rock_probing_charge"
+		and battle_attack_accent["resolution_event_id"] == "enemy_glanced"
+		and battle_attack_accent["shape_id"] == "probing_charge"
+		and battle_attack_accent["label_text"] == "刚才 · 试探冲撞 · 化开冲势"
+		and battle_attack_accent["duration"] == 0.70
+		and battle_attack_accent["motion_enabled"],
+		"岩甲战斗参考图必须以敌足势痕显示旧试探势，同时临势签已进到裂石势"
+	)
 	await _save_frame("02-cangquan-battle.png")
 	instance._on_action("use_art")
 	assert(instance.get_node("%BattleEnemySprite").presentation_contract()["state"] == "react",
@@ -281,6 +293,16 @@ func _capture_flow() -> void:
 		and not outgoing_defeat["rule_authority"]
 		and not outgoing_defeat["save_authority"],
 		"普通敌退场旧影只能承担非阻断的瞬时表现职责"
+	)
+	var defeat_attack_accent: Dictionary = defeat_canvas.attack_accent_contract()
+	assert(
+		not defeat_attack_accent["active"]
+		and defeat_attack_accent["enemy_id_before"] == ""
+		and defeat_attack_accent["resolved_intent_id"] == ""
+		and defeat_attack_accent["resolution_event_id"] == ""
+		and defeat_attack_accent["shape_id"] == ""
+		and defeat_attack_accent["label_text"] == "",
+		"普通敌致命回合中已公告但未执行的敌势不得污染退场参考图"
 	)
 	var settled_warden: Dictionary = instance.get_node("%BattleEnemySprite").presentation_contract()
 	assert(
@@ -694,6 +716,22 @@ func _normalize_capture_state(
 			journey_state.phase_id() == "mountain_path"
 		)
 	var map_canvas := root.find_child("MapCanvas", true, false)
+	if map_canvas != null:
+		var attack_accent: Dictionary = map_canvas.attack_accent_contract()
+		if bool(attack_accent["active"]):
+			var target_remaining := float(attack_accent["duration"]) * 0.5
+			var advance_delta := float(attack_accent["remaining"]) - target_remaining
+			assert(advance_delta >= 0.0,
+				"截图标准化不得将攻击势痕时钟倒退到中点")
+			if advance_delta > 0.0:
+				assert(map_canvas.advance_battle_feedback(advance_delta),
+					"截图标准化必须通过公开推进器锁定攻击势痕中点")
+			var normalized_accent: Dictionary = map_canvas.attack_accent_contract()
+			assert(
+				normalized_accent["active"]
+				and is_equal_approx(float(normalized_accent["remaining"]), target_remaining),
+				"截图标准化必须把活动攻击势痕确定性锁在 50% 时相"
+			)
 	if map_canvas != null and map_canvas.feedback_remaining > 0.0:
 		map_canvas.feedback_remaining = map_canvas.feedback_duration * 0.5
 		map_canvas.feedback_phase = 0.0

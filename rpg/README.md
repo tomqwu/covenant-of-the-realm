@@ -1,7 +1,7 @@
 # 《山河有契》RPG 灰盒
 
 这是 Godot 4.7.1 制作的原创单机剧情 RPG 基础。当前灰盒验证数据驱动中文行动、
-确定性回合战斗、九形临势签、非阻断旧敌败退、陶小满与岑苇两条独立 NPC 日程、一次性资源与“听泉辨脉 → 月芽温脉 → 静坐引息”的三步首次境界突破；
+确定性回合战斗、九形临势签、敌足九形“刚才”势痕、非阻断旧敌败退、陶小满与岑苇两条独立 NPC 日程、一次性资源与“听泉辨脉 → 月芽温脉 → 静坐引息”的三步首次境界突破；
 不包含外部小说的受保护内容。
 
 ```sh
@@ -43,21 +43,26 @@ exports and four GitHub-hosted Linux/x86_64 exports from run `30869981829`, each
 independent fresh-cache project copies, all match at 812,608 bytes and SHA-256
 `aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`. Manifest verification,
 the 25-required / nine-excluded resource probe, and packaged boot smoke all pass locally and hosted.
-For the current outgoing-defeat input, four local macOS/arm64 exports and four GitHub-hosted
+For the previous outgoing-defeat input, four local macOS/arm64 exports and four GitHub-hosted
 Linux/x86_64 exports from run `30873652565`, each including two independent fresh-cache project
 copies, all match at 824,432 bytes and SHA-256
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
-the unchanged 25/9 resource probe, and packaged boot pass locally and hosted. Two consecutive
-43-PNG capture batches are byte-identical and reproduce aggregate SHA-256
-`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
+the unchanged 25/9 resource probe, and packaged boot pass locally and hosted. For the current
+resolved-intent accent input, four local macOS/arm64 exports, including two independent fresh-cache
+project copies, match at 869,776 bytes and SHA-256
+`fb91ed3c31f80b5cd01f957b54364fc1a96d7f195dbea069e2797e245ee004d3`; manifest verification,
+the unchanged 25/9 resource probe, and packaged boot pass locally. This uncommitted input has no
+hosted Linux result yet. Two consecutive 43-PNG capture batches are byte-identical and reproduce
+aggregate SHA-256
+`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
 A native `.app`/`.exe` is intentionally deferred until the owner selects the first platform and public
 license, then confirms export templates, signing identity, product icon, and distribution target.
 
 The development window has a 1152×648 minimum because that is the validated readable layout.
 Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, battle confirmation,
 and pause/resume are exercised as physical input events by `make test-rpg-input`.
-The current automated Godot evidence is 3,202 rule/scene assertions, 360 complete-chapter E2E
-assertions, and 192 semantic physical-input/focus assertions.
+The current automated Godot evidence is 3,530 rule/scene assertions, 374 complete-chapter E2E
+assertions, and 198 semantic physical-input/focus assertions.
 
 `make test-rpg-performance` executes 100,000 deterministic movement/collision steps, 100,000
 deterministic ferry-runner route steps, 100,000 deterministic path-keeper route steps, 50,000
@@ -70,7 +75,7 @@ the completed scene uses 120, title uses 125, dialogue uses 127, and journal plu
 lifecycle gate on a fixed 60 FPS clock, keeps required focus/deferred-tree settle frames, and
 disables automatic drawing because deterministic PNG captures own pixel verification. The runner
 reports measured times but does not treat one development machine as a release hardware promise.
-One checked sample measured 53.83 ms for 100,000 path-keeper advances and 953.54 ms for the complete
+One checked sample measured 53.75 ms for 100,000 path-keeper advances and 952.63 ms for the complete
 20-cycle lifecycle workload.
 Every cycle starts, advances, and saves dialogue before traversing the remaining states. The first
 cycle of each complete sample additionally runs standard/fast/instant reveal behavior through four
@@ -105,9 +110,9 @@ the maximum structural observations across both samples.
 由项目 GDScript 在运行时合成，不下载或嵌入第三方音频；偏好独立保存在本机，
 损坏设置会安全回落为静音与 60% 音量，不影响旅程存档。
 
-settings v2 还保存“标准/快速”战斗表现和“完整/简化”动态效果。快速把语义文字与
-敌人姿态反馈从 0.70 秒缩短到 0.18 秒；简化动态保留静态文字、边框和可读的敌人
-语义首帧，但关闭脉冲与双帧运动。两项设置
+settings v2 还保存“标准/快速”战斗表现和“完整/简化”动态效果。快速把语义文字、
+敌人姿态与敌足势痕从 0.70 秒缩短到 0.18 秒；简化动态保留静态文字、边框、可读的
+敌人语义首帧和完整第一帧势痕，但关闭脉冲、双帧运动与势痕次级位移。两项设置
 不会进入旅程 domain，也不会改变伤害、回合、意图或存档结果。v1 音频设置自动
 迁移为标准速度与完整动态，键盘、鼠标和手柄均可在标题或暂停页切换。
 
@@ -210,6 +215,17 @@ save v17 顶层 `path_keeper` 精确恢复这条路线；v1–v16 从固定起�
 `OutgoingEnemySprite` 在守巢者左侧显示 0.70 秒（快速 0.18 秒）的旧敌败退双帧；
 简化动态冻结可读首帧。当前正式敌人、状态栏与临势签在同一帧已经是守巢者，下一次
 独立手柄 A 也会立即结算首领回合并清除旧影。旧影不进入镜头焦点、Journey 或存档。
+
+非致命敌方回应另由 `MapCanvas` 在敌人脚下绘制一枚“刚才”势痕。九个稳定意图分别
+映射到九种不依赖颜色的真实几何指纹，并配有“刚才 · 势名 · 受到冲击/化开冲势”
+中文等价文字；临势签继续只显示已经落定的下一势。势痕必须同时取得战斗阶段、合法
+旧敌/旧势上下文、恰好一个 `enemy_hit` 或 `enemy_glanced` 结果、匹配的当前敌人，且
+不得含终止事件，才会启动。非法或不完整数据、终局、离开战斗、读档、重游与下一次
+替换都会清空；离战后即使马上以同一敌人重入，也不会复活旧势痕。标准/快速时长为
+0.70/0.18 秒，简化动态冻结完整首帧且保留事件文字，大字和高对比模式下仍留在安全
+画框内。该表现不拥有规则、伤害、意图、游戏时序、输入或 save v17 权威，也不新增
+场景节点。
+
 守住首领重击会产生两层破甲，后续攻击逐层获得额外伤害；砚青援护会产生两层
 凝息，强化后续术式或符箓。两种状态自 save v8 起明确记录，并由当前 v17 继续保存；完整 E2E 会在
 首领战中断并恢复后继续结算；绕行路线仍可避开普通战与首领战。

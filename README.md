@@ -13,8 +13,10 @@ MUD 与单人 PWA 作为可运行研究原型保留。标题与暂停页还提�
 
 战斗中另有固定屏幕“照禾临势签”：九项稳定敌势分别使用不同线形，当前伤害始终
 可读，已调查敌迹才显示后一势与破绽；动作前敌人与意图只进入瞬时表现上下文，
-不会写入 save v17 或成为第二套战斗权威。普通敌致命回合会在守巢者已成为当前
-规则敌人的同一帧留下短暂败退旧影；旧影不阻断下一次键盘、鼠标或手柄行动。
+不会写入 save v17 或成为第二套战斗权威。敌方回应真正结算时，敌人脚下会留下
+九形之一的“刚才”势痕，明确区分旧势与临势签中的下一势；普通敌致命回合则只在
+守巢者已成为当前规则敌人的同一帧留下短暂败退旧影。两种表现都不阻断下一次
+键盘、鼠标或手柄行动。
 
 ## Play the RPG graybox
 
@@ -87,8 +89,8 @@ make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
 The repository pytest gate passes 159 tests at 100% statement and branch coverage (621 statements /
-316 branches). Godot behavior is covered by 3,202 headless rule/scene assertions plus an independent
-360-check chapter E2E and 192-check physical-input/focus path. Nine committed pixel atlases are
+316 branches). Godot behavior is covered by 3,530 headless rule/scene assertions plus an independent
+374-check chapter E2E and 198-check physical-input/focus path. Nine committed pixel atlases are
 regenerated twice and must match the Git index byte for byte. With pinned Godot 4.7.1 and export-time
 text-to-binary scene conversion disabled, the package gate compares two normal exports plus exports
 from two independent clean import caches. As historical controlled-input evidence, for the packaged runtime inputs committed in `f5c60e2`,
@@ -102,13 +104,18 @@ macOS/arm64 exports and four GitHub-hosted Linux/x86_64 exports from run `308699
 two fresh-cache project copies, all match at 812,608 bytes and SHA-256
 `aa952662231cb0911197b538defd19a65ef9ee15b72ce62a10bd664054e4c895`; manifest verification,
 the 25-required / nine-excluded resource probe, and packaged boot smoke pass locally and hosted.
-For the current outgoing-defeat input, four local macOS/arm64 exports and four GitHub-hosted
+For the previous outgoing-defeat input, four local macOS/arm64 exports and four GitHub-hosted
 Linux/x86_64 exports from run `30873652565`, each including two fresh-cache project copies, all
 match at 824,432 bytes and SHA-256
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
-the unchanged 25/9 probe, and packaged boot pass locally and hosted. Two consecutive 43-PNG
-capture runs are byte-identical and produce aggregate SHA-256
-`80dfb36a14b81a54b0562932a841d2f295f829d3992eec900f079b31a329bc0b`.
+the unchanged 25/9 probe, and packaged boot pass locally and hosted. For the current resolved-intent
+accent input, four local macOS/arm64 exports, including two independent fresh-cache project copies,
+match at 869,776 bytes and SHA-256
+`fb91ed3c31f80b5cd01f957b54364fc1a96d7f195dbea069e2797e245ee004d3`; manifest verification,
+the unchanged 25-required / nine-excluded probe, and packaged boot pass locally. Hosted Linux
+evidence has not run for this uncommitted input. Two consecutive 43-PNG capture runs are
+byte-identical and produce aggregate SHA-256
+`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
 The MUD adapter has
 isolated Evennia tests, and its release path
 is exercised through two real concurrent Telnet clients. The preserved browser prototype retains

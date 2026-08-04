@@ -484,6 +484,49 @@ func _benchmark_scene_lifecycle_sample(budget: Dictionary) -> Dictionary:
 			failures.append("战斗镜头必须复用四个资产化树木前景节点")
 		instance._on_action("guard")
 		state_peaks["battle_action_immediate"] = maxi(int(state_peaks["battle_action_immediate"]), _count_nodes(instance))
+		var battle_map_canvas = instance.get_node("%MapCanvas")
+		var immediate_attack_accent: Dictionary = battle_map_canvas.attack_accent_contract()
+		if (
+			not bool(immediate_attack_accent["active"])
+			or immediate_attack_accent["enemy_id_before"] != "rock_armor_young"
+			or immediate_attack_accent["resolved_intent_id"] != "rock_probing_charge"
+			or immediate_attack_accent["resolution_event_id"] != "enemy_glanced"
+			or immediate_attack_accent["shape_id"] != "probing_charge"
+			or immediate_attack_accent["label_text"] != "刚才 · 试探冲撞 · 化开冲势"
+			or float(immediate_attack_accent["duration"]) != 0.70
+			or float(immediate_attack_accent["remaining"]) != 0.70
+			or not bool(immediate_attack_accent["motion_enabled"])
+			or bool(immediate_attack_accent["reduced_motion_static"])
+			or not bool(immediate_attack_accent["world_space"])
+			or not bool(immediate_attack_accent["decorative_only"])
+			or bool(immediate_attack_accent["blocks_input"])
+		):
+			failures.append("生命周期战斗行动即时帧必须完整显示标准时序的已结算试探势痕")
+		if (
+			bool(immediate_attack_accent.get("rule_authority", true))
+			or bool(immediate_attack_accent.get("damage_authority", true))
+			or bool(immediate_attack_accent.get("intent_authority", true))
+			or bool(immediate_attack_accent.get("gameplay_timing_authority", true))
+			or bool(immediate_attack_accent.get("input_authority", true))
+			or bool(immediate_attack_accent.get("save_authority", true))
+		):
+			failures.append("生命周期敌足势痕必须保持规则、伤害、意图、时序、输入与存档零权威")
+		var accent_remaining := float(immediate_attack_accent["remaining"])
+		if not battle_map_canvas.advance_battle_feedback(accent_remaining):
+			failures.append("生命周期公开推进器必须接受活动势痕的精确剩余时长")
+		var expired_attack_accent: Dictionary = battle_map_canvas.attack_accent_contract()
+		if (
+			bool(expired_attack_accent["active"])
+			or expired_attack_accent["enemy_id_before"] != ""
+			or expired_attack_accent["resolved_intent_id"] != ""
+			or expired_attack_accent["resolution_event_id"] != ""
+			or expired_attack_accent["shape_id"] != ""
+			or expired_attack_accent["label_text"] != ""
+			or float(expired_attack_accent["duration"]) != 0.0
+			or float(expired_attack_accent["remaining"]) != 0.0
+			or battle_map_canvas.advance_battle_feedback(0.01)
+		):
+			failures.append("生命周期势痕精确到期必须原子清空全部身份且已空时拒绝继续推进")
 		await process_frame
 		await process_frame
 		state_peaks["battle_action_stable"] = maxi(int(state_peaks["battle_action_stable"]), _count_nodes(instance))

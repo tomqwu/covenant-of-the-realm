@@ -428,6 +428,7 @@ func _run() -> void:
 	_expect(game.journey.phase_id() == "battle", "交互动作从敌人预警区进入战斗")
 	await _settle()
 	var input_telegraph: Control = game.get_node("%IntentTelegraph")
+	var input_map_canvas: Control = game.get_node("%MapCanvas")
 	var input_telegraph_contract: Dictionary = input_telegraph.presentation_contract()
 	_expect(
 		input_telegraph_contract["active"]
@@ -443,6 +444,11 @@ func _run() -> void:
 		and not input_telegraph_contract["blocks_input"],
 		"势签忽略鼠标命中且不进入键盘或手柄焦点链"
 	)
+	_expect(
+		input_map_canvas.mouse_filter == Control.MOUSE_FILTER_IGNORE
+		and input_map_canvas.focus_mode == Control.FOCUS_NONE,
+		"承载敌足势痕的世界画布忽略鼠标且不进入键盘或手柄焦点链"
+	)
 	var first_focus := root.gui_get_focus_owner()
 	_expect(first_focus is Button and first_focus.text == "引气术", "战斗焦点落在第一项术式")
 	await _trigger_action("ui_right")
@@ -452,6 +458,7 @@ func _run() -> void:
 	_expect(game.journey.round_number == 2, "确认动作执行当前战斗焦点")
 	_expect(game.get_node("%BattleEnemySprite").presentation_contract()["state"] == "react", "真实方向与确认输入触发同一敌人受击语义")
 	var post_action_telegraph: Dictionary = input_telegraph.presentation_contract()
+	var fast_static_probing_accent: Dictionary = input_map_canvas.attack_accent_contract()
 	var post_action_focus := root.gui_get_focus_owner()
 	_expect(
 		post_action_telegraph["intent_id"] == "rock_rending_charge"
@@ -464,9 +471,48 @@ func _run() -> void:
 		and post_action_focus != input_telegraph,
 		"势签更新后战斗行动网格保持输入焦点"
 	)
-	for _finishing_round in range(3):
+	_expect(
+		fast_static_probing_accent["active"]
+		and fast_static_probing_accent["enemy_id_before"] == "rock_armor_young"
+		and fast_static_probing_accent["resolved_intent_id"] == "rock_probing_charge"
+		and fast_static_probing_accent["resolution_event_id"] == "enemy_hit"
+		and fast_static_probing_accent["shape_id"] == "probing_charge"
+		and fast_static_probing_accent["label_text"] == "刚才 · 试探冲撞 · 受到冲击"
+		and fast_static_probing_accent["duration"] == 0.18
+		and fast_static_probing_accent["remaining"] > 0.0
+		and fast_static_probing_accent["remaining"] <= 0.18
+		and not fast_static_probing_accent["motion_enabled"]
+		and fast_static_probing_accent["reduced_motion_static"]
+		and fast_static_probing_accent["secondary_offset"] == 0.0
+		and fast_static_probing_accent["world_space"]
+		and fast_static_probing_accent["decorative_only"]
+		and not fast_static_probing_accent["blocks_input"]
+		and _attack_accent_has_zero_authority(fast_static_probing_accent),
+		"快速加简化动态以 0.18 秒静态大字高对比标签显示已结算的试探冲撞"
+	)
+	_expect(
+		game.get_node("%EventLabel").text.contains("刚才 · 试探冲撞 · 受到冲击"),
+		"快速简化动态把旧势名称与结果同步保留在持续事件文字中"
+	)
+	var controller_replacement_round: int = int(game.journey.round_number)
+	await _trigger_joy_button(JOY_BUTTON_A)
+	var controller_rending_accent: Dictionary = input_map_canvas.attack_accent_contract()
+	_expect(
+		game.journey.round_number == controller_replacement_round + 1
+		and controller_rending_accent["active"]
+		and controller_rending_accent["enemy_id_before"] == "rock_armor_young"
+		and controller_rending_accent["resolved_intent_id"] == "rock_rending_charge"
+		and controller_rending_accent["resolution_event_id"] == "enemy_hit"
+		and controller_rending_accent["shape_id"] == "rending_charge"
+		and controller_rending_accent["resolved_intent_id"] != fast_static_probing_accent["resolved_intent_id"]
+		and root.gui_get_focus_owner() is Button
+		and game.get_node("%Actions").is_ancestor_of(root.gui_get_focus_owner()),
+		"下一次独立手柄 A 立即结算下一回合并用裂石势痕替换试探势，不等待动画"
+	)
+	for _finishing_round in range(2):
 		await _trigger_action("ui_accept")
 	var input_outgoing_defeat: Dictionary = game.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	var lethal_regular_input_accent: Dictionary = input_map_canvas.attack_accent_contract()
 	var replacement_focus := root.gui_get_focus_owner()
 	var replacement_input_intent: Dictionary = input_telegraph.presentation_contract()
 	_expect(
@@ -485,6 +531,15 @@ func _run() -> void:
 		"真实确认输入按快速简化偏好显示旧幼兽静态退场，同时切换当前首领与势签"
 	)
 	_expect(
+		not lethal_regular_input_accent["active"]
+		and lethal_regular_input_accent["enemy_id_before"] == ""
+		and lethal_regular_input_accent["resolved_intent_id"] == ""
+		and lethal_regular_input_accent["resolution_event_id"] == ""
+		and lethal_regular_input_accent["shape_id"] == ""
+		and lethal_regular_input_accent["label_text"] == "",
+		"快速确认的普通敌致命回合不会把未执行敌势画成攻击势痕"
+	)
+	_expect(
 		replacement_focus is Button
 		and game.get_node("%Actions").is_ancestor_of(replacement_focus)
 		and not input_outgoing_defeat["blocks_input"]
@@ -496,6 +551,7 @@ func _run() -> void:
 	var replacement_round: int = int(game.journey.round_number)
 	await _trigger_joy_button(JOY_BUTTON_A)
 	var post_replacement_input_defeat: Dictionary = game.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	var post_replacement_attack_accent: Dictionary = input_map_canvas.attack_accent_contract()
 	_expect(
 		game.journey.enemy_id == "rock_armor_warden"
 		and game.journey.round_number == replacement_round + 1
@@ -506,11 +562,22 @@ func _run() -> void:
 		and game.get_node("%Actions").is_ancestor_of(root.gui_get_focus_owner()),
 		"退场出现后的下一次独立手柄 A 会立即结算首领回合并清除旧敌，不发生输入穿透或等待"
 	)
+	_expect(
+		post_replacement_attack_accent["active"]
+		and post_replacement_attack_accent["enemy_id_before"] == "rock_armor_warden"
+		and post_replacement_attack_accent["resolved_intent_id"] == "warden_pressing_charge"
+		and post_replacement_attack_accent["resolution_event_id"] == "enemy_hit"
+		and post_replacement_attack_accent["shape_id"] == "pressing_charge"
+		and post_replacement_attack_accent["duration"] == 0.18
+		and post_replacement_attack_accent["reduced_motion_static"],
+		"同一次手柄 A 在清除旧敌后立即显示已真实结算的首领肩撞势痕"
+	)
 	game.return_to_title()
 	await _settle()
 	game._apply_accessibility_settings()
 	var title_feedback: Dictionary = game.get_node("%MapCanvas").feedback_contract()
 	var title_outgoing_defeat: Dictionary = game.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	var title_attack_accent: Dictionary = input_map_canvas.attack_accent_contract()
 	_expect(
 		game.get_node("%TitleDialogueSpeedButton").text == "对话显字：快速"
 		and not input_telegraph.presentation_contract()["active"]
@@ -523,7 +590,13 @@ func _run() -> void:
 		and not title_outgoing_defeat["visible"]
 		and title_outgoing_defeat["enemy_id"] == ""
 		and title_outgoing_defeat["state"] == "idle"
-		and title_outgoing_defeat["event_id"] == "",
+		and title_outgoing_defeat["event_id"] == ""
+		and not title_attack_accent["active"]
+		and title_attack_accent["enemy_id_before"] == ""
+		and title_attack_accent["resolved_intent_id"] == ""
+		and title_attack_accent["resolution_event_id"] == ""
+		and title_attack_accent["shape_id"] == ""
+		and title_attack_accent["label_text"] == "",
 		"战斗返回标题保留显字偏好，并在标题设置重刷后仍清除势签与瞬时反馈"
 	)
 	var battle_save_text := FileAccess.get_file_as_string(SAVE_PATH)
@@ -794,6 +867,20 @@ func _snapshots_match(left: Variant, right: Variant) -> bool:
 				return false
 		return true
 	return left == right
+
+
+func _attack_accent_has_zero_authority(contract: Dictionary) -> bool:
+	for authority_key in [
+		"rule_authority",
+		"damage_authority",
+		"intent_authority",
+		"gameplay_timing_authority",
+		"input_authority",
+		"save_authority",
+	]:
+		if bool(contract.get(authority_key, true)):
+			return false
+	return true
 
 
 func _expect(value: bool, label: String) -> void:

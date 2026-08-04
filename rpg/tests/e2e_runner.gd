@@ -513,11 +513,123 @@ func _run() -> void:
 		and restored_moss_feedback["replacement_enemy_id"] == "",
 		"E2E 读档不恢复上一场景的瞬时战斗反馈身份"
 	)
+	var restored_moss_accent: Dictionary = game.get_node("%MapCanvas").attack_accent_contract()
+	_expect(
+		not restored_moss_accent["active"]
+		and restored_moss_accent["enemy_id_before"] == ""
+		and restored_moss_accent["resolved_intent_id"] == ""
+		and restored_moss_accent["resolution_event_id"] == ""
+		and restored_moss_accent["shape_id"] == ""
+		and restored_moss_accent["label_text"] == "",
+		"E2E 读档不恢复上一场景的敌足攻击势痕"
+	)
 	await _press_action(game, "布置引泉石灯")
 	_expect(game.journey.lamp_turns == 1, "E2E 战术石灯进入持续状态")
 	_expect(game.get_node("%BattleEnemySprite").presentation_contract()["state"] == "attack", "E2E 石灯回合消费敌方攻击语义")
+	var moss_absorb_accent: Dictionary = game.get_node("%MapCanvas").attack_accent_contract()
+	var advanced_spore_telegraph: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
+	_expect(
+		moss_absorb_accent["active"]
+		and moss_absorb_accent["enemy_id_before"] == "spring_moss_shell"
+		and moss_absorb_accent["resolved_intent_id"] == "moss_absorb_tide"
+		and moss_absorb_accent["resolution_event_id"] == "enemy_glanced"
+		and moss_absorb_accent["shape_id"] == "absorb_tide"
+		and moss_absorb_accent["label_text"] == "刚才 · 吸潮蓄壳 · 化开冲势"
+		and advanced_spore_telegraph["intent_id"] == "moss_spore_spray"
+		and advanced_spore_telegraph["shape_id"] == "spore_spray",
+		"E2E 石灯结算同帧以“刚才”势痕保留旧吸潮势，顶部势签已推进到孢雾"
+	)
+	_expect(
+		moss_absorb_accent["supported_intent_ids"].size() == 9
+		and moss_absorb_accent["supported_shape_ids"].size() == 9
+		and typeof(moss_absorb_accent["source_anchor"]) == TYPE_VECTOR2
+		and typeof(moss_absorb_accent["target_anchor"]) == TYPE_VECTOR2
+		and typeof(moss_absorb_accent["shape_bounds"]) == TYPE_RECT2
+		and typeof(moss_absorb_accent["label_bounds"]) == TYPE_RECT2
+		and moss_absorb_accent["shape_bounds"].has_area()
+		and moss_absorb_accent["label_bounds"].has_area()
+		and moss_absorb_accent["duration"] == 0.70
+		and moss_absorb_accent["remaining"] > 0.0
+		and moss_absorb_accent["remaining"] <= moss_absorb_accent["duration"]
+		and moss_absorb_accent["motion_enabled"]
+		and not moss_absorb_accent["reduced_motion_static"]
+		and moss_absorb_accent["world_space"]
+		and moss_absorb_accent["decorative_only"]
+		and not moss_absorb_accent["blocks_input"]
+		and _attack_accent_has_zero_authority(moss_absorb_accent),
+		"E2E 标准势痕暴露九形、安全框、时序与零权威公开合同"
+	)
+	game.queue_free()
+	await _settle()
+	game = scene.instantiate()
+	game.configure_save_path(TEST_SAVE_PATH)
+	game.configure_settings_path(TEST_SETTINGS_PATH)
+	root.add_child(game)
+	await _settle()
+	_expect(game.continue_game(), "E2E 势痕活跃时可从新场景恢复同一泉苔战斗")
+	_expect(
+		game.journey.phase_id() == "battle"
+		and game.journey.enemy_id == "spring_moss_shell"
+		and game.get_node("%IntentTelegraph").presentation_contract()["intent_id"] == "moss_spore_spray",
+		"E2E 势痕活跃时的读档只恢复同一战斗的下一规则意图"
+	)
+	var restored_armed_accent: Dictionary = game.get_node("%MapCanvas").attack_accent_contract()
+	_expect(
+		not restored_armed_accent["active"]
+		and restored_armed_accent["enemy_id_before"] == ""
+		and restored_armed_accent["resolved_intent_id"] == ""
+		and restored_armed_accent["resolution_event_id"] == ""
+		and restored_armed_accent["shape_id"] == ""
+		and restored_armed_accent["label_text"] == ""
+		and is_zero_approx(restored_armed_accent["remaining"]),
+		"E2E 保存、重建与继续同一战斗不会持久化或重放旧敌足势痕"
+	)
+	game.toggle_battle_speed()
+	game.toggle_reduced_motion()
+	game.toggle_text_scale()
+	game.toggle_high_contrast()
 	await _press_action(game, "请砚青援护")
 	_expect(game.get_node("%BattleEnemySprite").presentation_contract()["state"] == "attack", "E2E 援护回合仍呈现敌方回应")
+	var moss_spore_accent: Dictionary = game.get_node("%MapCanvas").attack_accent_contract()
+	_expect(
+		moss_spore_accent["active"]
+		and moss_spore_accent["enemy_id_before"] == "spring_moss_shell"
+		and moss_spore_accent["resolved_intent_id"] == "moss_spore_spray"
+		and moss_spore_accent["resolution_event_id"] == "enemy_glanced"
+		and moss_spore_accent["shape_id"] == "spore_spray"
+		and moss_spore_accent["label_text"] == "刚才 · 喷苔孢雾 · 化开冲势"
+		and moss_spore_accent["duration"] == 0.18
+		and moss_spore_accent["reduced_motion_static"]
+		and moss_spore_accent["large_text"]
+		and moss_spore_accent["label_font_size"] == 23
+		and moss_spore_accent["label_bounds"].size.y == 40.0
+		and moss_spore_accent["high_contrast"]
+		and moss_spore_accent["panel_color"] == Color("fdfaf1")
+		and moss_spore_accent["text_color"] == Color("131a17")
+		and game.get_node("%EventLabel").text.contains("刚才 · 喷苔孢雾 · 化开冲势")
+		and game.get_node("%IntentTelegraph").presentation_contract()["intent_id"] == "moss_absorb_tide",
+		"E2E 快速简化动态以大字高对比势痕结算孢雾，并在持续事件文字保留同等结果"
+	)
+	var moss_spore_screen_bounds: Rect2 = game.get_node("%MapCanvas").get_global_transform_with_canvas() * moss_spore_accent["label_bounds"]
+	var battle_screen_safe_frame: Rect2 = game.world_camera_contract()["safe_frame"]["rect"]
+	var story_screen_bounds: Rect2 = game.get_node("StoryPanel").get_global_rect()
+	var status_screen_bounds: Rect2 = game.get_node("StatusHud").get_global_rect()
+	var intent_screen_bounds: Rect2 = game.get_node("%IntentTelegraph").get_global_rect()
+	var enemy_foot_bounds := Rect2(game.get_node("%BattleEnemySprite").global_position - Vector2(24, 56), Vector2(48, 64))
+	var player_foot_bounds := Rect2(game.get_node("%PlayerSprite").global_position - Vector2(24, 56), Vector2(48, 64))
+	_expect(
+		battle_screen_safe_frame.encloses(moss_spore_screen_bounds)
+		and not moss_spore_screen_bounds.intersects(story_screen_bounds)
+		and not moss_spore_screen_bounds.intersects(status_screen_bounds)
+		and not moss_spore_screen_bounds.intersects(intent_screen_bounds)
+		and not moss_spore_screen_bounds.intersects(enemy_foot_bounds)
+		and not moss_spore_screen_bounds.intersects(player_foot_bounds),
+		"E2E 大字势痕标签经世界镜头变换后仍位于屏幕安全框，且不遮挡 HUD、剧情纸面或战斗脚点"
+	)
+	game.toggle_battle_speed()
+	game.toggle_reduced_motion()
+	game.toggle_text_scale()
+	game.toggle_high_contrast()
 	await _press_action(game, "镇岩符")
 	_expect(game.get_node("%BattleEnemySprite").presentation_contract()["state"] == "react", "E2E 符箓命中呈现泉苔受击")
 	await _press_action(game, "引气术")
@@ -531,6 +643,16 @@ func _run() -> void:
 		and replacement_feedback["outgoing_enemy_id"] == "spring_moss_shell"
 		and replacement_feedback["replacement_enemy_id"] == "rock_armor_warden",
 		"E2E 普通敌退场与首领替换保留同一行动的旧新身份"
+	)
+	var lethal_regular_accent: Dictionary = game.get_node("%MapCanvas").attack_accent_contract()
+	_expect(
+		not lethal_regular_accent["active"]
+		and lethal_regular_accent["enemy_id_before"] == ""
+		and lethal_regular_accent["resolved_intent_id"] == ""
+		and lethal_regular_accent["resolution_event_id"] == ""
+		and lethal_regular_accent["shape_id"] == ""
+		and lethal_regular_accent["label_text"] == "",
+		"E2E 普通敌致命回合中已公告但未执行的孢雾势不会伪造攻击势痕"
 	)
 	var replacement_intent: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
 	_expect(
@@ -592,6 +714,7 @@ func _run() -> void:
 		"E2E 读档仍从首领规则状态重建当前势签"
 	)
 	var restored_outgoing_replacement: Dictionary = game.get_node("%MapCanvas").outgoing_enemy_defeat_contract()
+	var restored_attack_accent: Dictionary = game.get_node("%MapCanvas").attack_accent_contract()
 	_expect(
 		not restored_outgoing_replacement["active"]
 		and not restored_outgoing_replacement["visible"]
@@ -599,6 +722,14 @@ func _run() -> void:
 		and restored_outgoing_replacement["state"] == "idle"
 		and restored_outgoing_replacement["event_id"] == "",
 		"E2E 重新实例化与继续游戏都不恢复上一场旧敌退场姿态"
+	)
+	_expect(
+		not restored_attack_accent["active"]
+		and restored_attack_accent["enemy_id_before"] == ""
+		and restored_attack_accent["resolved_intent_id"] == ""
+		and restored_attack_accent["resolution_event_id"] == ""
+		and restored_attack_accent["shape_id"] == "",
+		"E2E 继续游戏只从规则重建当前势签，不持久化旧攻击势痕"
 	)
 	await _press_action(game, "守势调息")
 	_expect(game.journey.armor_break_turns == 0, "E2E 守势在压阵肩撞时只做普通防御")
@@ -612,6 +743,16 @@ func _run() -> void:
 		and game.get_node("%BattleEnemySprite").enemy_id == "rock_armor_warden",
 		"E2E 读档后的下一行动只推进当前首领，不重播已清退旧敌"
 	)
+	var warden_pressing_accent: Dictionary = game.get_node("%MapCanvas").attack_accent_contract()
+	_expect(
+		warden_pressing_accent["active"]
+		and warden_pressing_accent["enemy_id_before"] == "rock_armor_warden"
+		and warden_pressing_accent["resolved_intent_id"] == "warden_pressing_charge"
+		and warden_pressing_accent["resolution_event_id"] == "enemy_glanced"
+		and warden_pressing_accent["shape_id"] == "pressing_charge"
+		and warden_pressing_accent["label_text"] == "刚才 · 压阵肩撞 · 化开冲势",
+		"E2E 首领守势先保留已结算的压阵肩撞势痕"
+	)
 	var stonebreaking_intent: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
 	_expect(
 		stonebreaking_intent["intent_id"] == "warden_stonebreaking_blow"
@@ -624,6 +765,17 @@ func _run() -> void:
 	await _press_action(game, "守势调息")
 	_expect(game.journey.armor_break_turns == 2, "E2E 守势只在首领重击回合施加破甲")
 	_expect(game.get_node("%BattleEnemySprite").presentation_contract()["event_id"] == "weakness_exposed", "E2E 重击破绽优先呈现首领受击")
+	var warden_stonebreaking_accent: Dictionary = game.get_node("%MapCanvas").attack_accent_contract()
+	_expect(
+		warden_stonebreaking_accent["active"]
+		and warden_stonebreaking_accent["enemy_id_before"] == "rock_armor_warden"
+		and warden_stonebreaking_accent["resolved_intent_id"] == "warden_stonebreaking_blow"
+		and warden_stonebreaking_accent["resolution_event_id"] == "enemy_glanced"
+		and warden_stonebreaking_accent["shape_id"] == "stonebreaking_blow"
+		and warden_stonebreaking_accent["label_text"] == "刚才 · 崩石重击 · 化开冲势"
+		and warden_stonebreaking_accent["resolved_intent_id"] != warden_pressing_accent["resolved_intent_id"],
+		"E2E 重击真实结算后立即替换肩撞势痕，不被破绽受击姿态遮掉"
+	)
 	await _press_action(game, "引气术")
 	await _press_action(game, "请砚青援护")
 	_expect(game.journey.focus_turns == 2, "E2E 同伴援护施加凝息")
@@ -643,6 +795,7 @@ func _run() -> void:
 	await _press_action(game, "引气术")
 	_expect(game.journey.phase_id() == "spring", "E2E 击败首领后打开泉室")
 	var terminal_intent: Dictionary = game.get_node("%IntentTelegraph").presentation_contract()
+	var terminal_attack_accent: Dictionary = game.get_node("%MapCanvas").attack_accent_contract()
 	_expect(
 		not terminal_intent["active"]
 		and terminal_intent["enemy_id"] == ""
@@ -650,6 +803,15 @@ func _run() -> void:
 		and terminal_intent["first_line"] == ""
 		and terminal_intent["second_line"] == "",
 		"E2E 终局离开战斗时清空独立势签"
+	)
+	_expect(
+		not terminal_attack_accent["active"]
+		and terminal_attack_accent["enemy_id_before"] == ""
+		and terminal_attack_accent["resolved_intent_id"] == ""
+		and terminal_attack_accent["resolution_event_id"] == ""
+		and terminal_attack_accent["shape_id"] == ""
+		and terminal_attack_accent["label_text"] == "",
+		"E2E 击败首领离开战斗时原子清空最后一道敌足势痕"
 	)
 	_expect(game.exploration.map_id == ExplorationStateScript.CANGQUAN_SPRING_MAP_ID, "E2E 战斗路线汇入独立藏泉石室地图")
 	_expect(game.journey.first_breath_stage == "unstarted", "E2E 战斗路线从未开始的引息仪轨汇入")
@@ -782,6 +944,17 @@ func _run() -> void:
 	_expect(resumed.journey.phase_id() == "complete", "E2E 继续游戏恢复完成态")
 	await _press_action(resumed, "重游序章（重置进度）")
 	_expect(resumed.journey.phase_id() == "riverbank", "E2E 重游回到序章起点")
+	var replay_attack_accent: Dictionary = resumed.get_node("%MapCanvas").attack_accent_contract()
+	_expect(
+		not replay_attack_accent["active"]
+		and replay_attack_accent["enemy_id_before"] == ""
+		and replay_attack_accent["resolved_intent_id"] == ""
+		and replay_attack_accent["resolution_event_id"] == ""
+		and replay_attack_accent["shape_id"] == ""
+		and replay_attack_accent["label_text"] == ""
+		and is_zero_approx(replay_attack_accent["remaining"]),
+		"E2E 章节重游建立干净序章，不带入上轮攻击势痕"
+	)
 	_expect(resumed.settings["dialogue_speed"] == "instant", "E2E 重游只重置旅程而不清除对话显字偏好")
 	_expect(resumed.exploration.player_position == ExplorationStateScript.START_POSITION, "E2E 重游重置地图坐标")
 	_expect(resumed.exploration.map_id == ExplorationStateScript.DEFAULT_MAP_ID, "E2E 重游从藏泉石室清回渡口地图")
@@ -1054,6 +1227,20 @@ func _snapshots_match(left: Variant, right: Variant) -> bool:
 				return false
 		return true
 	return left == right
+
+
+func _attack_accent_has_zero_authority(contract: Dictionary) -> bool:
+	for authority_key in [
+		"rule_authority",
+		"damage_authority",
+		"intent_authority",
+		"gameplay_timing_authority",
+		"save_authority",
+		"input_authority",
+	]:
+		if bool(contract.get(authority_key, true)):
+			return false
+	return true
 
 
 func _expect(value: bool, label: String) -> void:
