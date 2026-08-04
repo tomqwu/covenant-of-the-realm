@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "movement_iterations": 100000,
+  "movement_budget_ms": 2500,
+  "patrol_iterations": 100000,
+  "patrol_budget_ms": 2500,
+  "path_keeper_iterations": 100000,
+  "path_keeper_budget_ms": 2500,
+  "trail_iterations": 50000,
+  "trail_budget_ms": 2500,
+  "battle_iterations": 2000,
+  "battle_budget_ms": 2500,
+  "scene_cycles": 20,
+  "scene_budget_ms": 7000,
+  "max_main_scene_nodes": 127
+}

@@ -1,7 +1,7 @@
 [project]
 name = "covenant-of-the-realm"
 version = "0.1.0"
-description = "Server-authoritative multiplayer cultivation MUD"
+description = "Original Chinese cultivation RPG and preserved multiplayer prototypes"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
@@ -21,7 +21,7 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["mud/world"]
+source = ["mud/world", "scripts.check_rpg_content", "scripts.rpg_package_manifest"]
 omit = [
   "mud/world/bootstrap.py",
   "mud/world/help_entries.py",

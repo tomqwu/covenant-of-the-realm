@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+package_tmp="$(mktemp -d)"
+trap 'rm -rf "$package_tmp"' EXIT
+command -v rsync >/dev/null 2>&1 || {
+  printf 'RPG package check requires rsync to create isolated project copies.\n' >&2
+  exit 1
+}
+
+first_dir="$package_tmp/first"
+second_dir="$package_tmp/second"
+first_pack="$first_dir/covenant-of-the-realm.pck"
+second_pack="$second_dir/covenant-of-the-realm.pck"
+first_manifest="$first_dir/covenant-of-the-realm.manifest.json"
+second_manifest="$second_dir/covenant-of-the-realm.manifest.json"
+fresh_first_project="$package_tmp/fresh-first-project"
+fresh_second_project="$package_tmp/fresh-second-project"
+fresh_first_pack="$package_tmp/fresh-first.pck"
+fresh_second_pack="$package_tmp/fresh-second.pck"
+
+"$repo_root/scripts/package_rpg" "$first_dir"
+"$repo_root/scripts/package_rpg" "$second_dir"
+
+mkdir -p "$fresh_first_project" "$fresh_second_project"
+rsync -a --exclude '.godot/' "$repo_root/rpg/" "$fresh_first_project/"
+rsync -a --exclude '.godot/' "$repo_root/rpg/" "$fresh_second_project/"
+"$repo_root/scripts/godot_checked" --quiet --headless --path "$fresh_first_project" \
+  --export-pack "Playable Pack" "$fresh_first_pack"
+"$repo_root/scripts/godot_checked" --quiet --headless --path "$fresh_second_project" \
+  --export-pack "Playable Pack" "$fresh_second_pack"
+
+test -s "$first_pack"
+cmp "$first_pack" "$second_pack"
+cmp "$first_pack" "$fresh_first_pack"
+cmp "$fresh_first_pack" "$fresh_second_pack"
+cmp "$first_manifest" "$second_manifest"
+cd "$repo_root"
+uv run python scripts/rpg_package_manifest.py \
+  --pack "$first_pack" \
+  --manifest "$first_manifest" \
+  --verify
+"$repo_root/scripts/godot_checked" --headless --main-pack "$first_pack" \
+  --script "$repo_root/scripts/check_rpg_pack_contents.gd" -- "$first_manifest"
+"$repo_root/scripts/godot_checked" --quiet --headless --main-pack "$first_pack" --quit-after 2
+
+pack_size="$(wc -c < "$first_pack" | tr -d ' ')"
+pack_sha256="$(uv run python -c 'import hashlib, pathlib, sys; print(hashlib.sha256(pathlib.Path(sys.argv[1]).read_bytes()).hexdigest())' "$first_pack")"
+build_platform="$(uv run python -c 'import json, pathlib, sys; data = json.loads(pathlib.Path(sys.argv[1]).read_text()); print(data["build_os"] + "/" + data["build_architecture"])' "$first_manifest")"
+printf 'RPG package passed: four exports, including two fresh project copies, matched for build tuple %s; %s bytes, sha256 %s; manifest, contents, and boot smoke complete.\n' "$build_platform" "$pack_size" "$pack_sha256"

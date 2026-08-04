@@ -1,0 +1,545 @@
+{
+  "schema_version": 1,
+  "story_id": "zhaohe_first_breath",
+  "origin": "original",
+  "start_node": "riverbank",
+  "transitions": {
+    "riverbank": "照禾渡口 · 风过水明",
+    "mountain_path": "藏泉山道 · 石阶入云",
+    "battle": "碎甲声近 · 临势应战",
+    "spring": "藏泉石室 · 灵泉初醒",
+    "complete": "第一息 · 山河有应",
+    "boss_arrived": "守巢者现 · 临势应战"
+  },
+  "nodes": {
+    "riverbank": {
+      "kind": "explore",
+      "title": "照禾渡口",
+      "description": "河水绕过石堤，薄雾贴着芦苇缓缓散去。砚青正在渡碑旁等你。",
+      "actions": [
+        {
+          "id": "inspect_boat_repair",
+          "label": "查看补船木架",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "talk_at_boat_worksite",
+          "label": "问问船架这头",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "inspect_drying_rack",
+          "label": "查看晾晒竹架",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "talk_at_herbs_worksite",
+          "label": "问问竹架这头",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "inspect_ferry_watermark",
+          "label": "辨认旧水痕",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "talk_to_companion",
+          "label": "与砚青交谈",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "talk_to_patrol_runner",
+          "label": "问问陶小满",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "talk_to_ferryman",
+          "label": "询问守堤人",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "talk_to_herbkeeper",
+          "label": "交还山道药篓",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "gather_moonleaf",
+          "label": "依旧规取一株",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "gather_moonleaf_cutting",
+          "label": "剪叶留根",
+          "possible_targets": ["riverbank"]
+        },
+        {
+          "id": "enter_spring",
+          "label": "进入藏泉山道",
+          "possible_targets": ["riverbank", "mountain_path"]
+        }
+      ]
+    },
+    "mountain_path": {
+      "kind": "explore",
+      "title": "藏泉山道",
+      "description": "石路贴着溪谷向上。旧石标留着退路，前方碎甲声在林间忽远忽近。",
+      "actions": [
+        {
+          "id": "inspect_path_marker",
+          "label": "查看旧石标",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "inspect_rain_shelter",
+          "label": "查看避雨石棚",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "inspect_spring_seam",
+          "label": "观察石缝泉纹",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "inspect_abandoned_basket",
+          "label": "翻看弃置药篓",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "inspect_rock_spoor",
+          "label": "查看崩石爪痕",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "inspect_moss_spoor",
+          "label": "辨认泉苔孢痕",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "inspect_puppet_spoor",
+          "label": "追看石屑拖痕",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "talk_to_path_keeper",
+          "label": "问问岑苇",
+          "possible_targets": ["mountain_path"]
+        },
+        {
+          "id": "approach_enemy",
+          "label": "接近岩甲幼兽",
+          "possible_targets": ["battle"]
+        },
+        {
+          "id": "approach_moss_shell",
+          "label": "触碰泉苔寄壳",
+          "possible_targets": ["battle"]
+        },
+        {
+          "id": "approach_stone_puppet",
+          "label": "唤醒失衡石傀",
+          "possible_targets": ["battle"]
+        },
+        {
+          "id": "bypass_enemy",
+          "label": "沿溪上缘绕行",
+          "possible_targets": ["spring"]
+        },
+        {
+          "id": "return_to_ferry",
+          "label": "沿石阶返回渡口",
+          "possible_targets": ["riverbank"]
+        }
+      ]
+    },
+    "battle": {
+      "kind": "battle",
+      "title": "藏泉山道",
+      "description": "山道灵物受泉脉震动惊醒。砚青展开药囊，提醒你先看意图与材质，再决定出手。",
+      "actions": [
+        {
+          "id": "use_art",
+          "label": "引气术",
+          "possible_targets": ["battle", "spring"]
+        },
+        {
+          "id": "use_talisman",
+          "label": "镇岩符",
+          "possible_targets": ["battle", "spring"]
+        },
+        {
+          "id": "guard",
+          "label": "守势调息",
+          "possible_targets": ["battle"]
+        },
+        {
+          "id": "companion_support",
+          "label": "请砚青援护",
+          "possible_targets": ["battle"]
+        },
+        {
+          "id": "deploy_spring_lamp",
+          "label": "布置引泉石灯",
+          "possible_targets": ["battle"]
+        },
+        {
+          "id": "retreat",
+          "label": "撤到旧石标",
+          "possible_targets": ["mountain_path"]
+        }
+      ]
+    },
+    "spring": {
+      "kind": "cultivation",
+      "title": "藏泉石室",
+      "description": "泉息从石脉间涌出。砚青守住洞口；你须先听泉辨脉，再以月芽温脉，最后静坐引息。",
+      "actions": [
+        {
+          "id": "listen_to_spring",
+          "label": "听泉辨脉",
+          "possible_targets": ["spring"]
+        },
+        {
+          "id": "warm_meridians",
+          "label": "月芽温脉",
+          "possible_targets": ["spring"]
+        },
+        {
+          "id": "breakthrough",
+          "label": "静坐引息",
+          "possible_targets": ["complete"]
+        }
+      ]
+    },
+    "complete": {
+      "kind": "ending",
+      "title": "第一息",
+      "description": "灵息沿经脉完成第一个周天。山河仍旧辽阔，但你已能看见它隐约的纹理。",
+      "actions": [
+        {
+          "id": "review_journey",
+          "label": "回顾此行",
+          "possible_targets": ["complete"]
+        },
+        {
+          "id": "return_to_title",
+          "label": "完成本节并返回标题",
+          "possible_targets": ["complete"]
+        },
+        {
+          "id": "replay_chapter",
+          "label": "重游序章（重置进度）",
+          "possible_targets": ["riverbank"]
+        }
+      ]
+    }
+  },
+  "dialogues": {
+    "companion_briefing": {
+      "lines": [
+        {"speaker": "砚青", "text": "泉眼昨夜震过一次，渡碑上的水纹到天亮都没有散。"},
+        {"speaker": "你", "text": "山道里只有泉雾，还是还有别的东西被惊醒了？"},
+        {"speaker": "砚青", "text": "一头岩甲兽在石室外换巢。它护甲厚，却不愿离开潮湿的石地。"},
+        {"speaker": "砚青", "text": "旧石标背面留着猎户的箭记。真要撤，就逆着箭尖往溪下走。"},
+        {"speaker": "你", "text": "月芽草能护住第一次引息，但田里这一轮只能取一株。"},
+        {"speaker": "砚青", "text": "所以先准备，再决定迎战还是绕行。没有哪一步值得拿命硬换。"},
+        {"speaker": "砚青", "text": "到了山门，你来定路线。我守住药囊，也替你记住退路。"}
+      ],
+      "choices": [
+        {"id": "careful", "label": "先看退路，再进山。", "event_id": "briefing_careful"},
+        {"id": "trusting", "label": "我信你的判断，一起走。", "event_id": "briefing_trusting"}
+      ],
+      "choice_prompt": "砚青等着你的决定。回应只改变同行回声，不会锁死主线。"
+    },
+    "chapter_epilogue": {
+      "lines": [
+        {"speaker": "砚青", "text": "泉声安静下来了。你这一趟{harvest_reflection}，也把{discovery_reflection}与{intel_reflection}一同写进了札记。"},
+        {"speaker": "你", "text": "第一次引息不像登上高处，倒像终于听见脚下的水往哪里去。"},
+        {"speaker": "砚青", "text": "{setback_reflection}。能走到这里，说明路线与退路都没有白看。"},
+        {"speaker": "你", "text": "下一次出门，我得先知道自己能失去什么，也得知道什么值得留下。"},
+        {"speaker": "砚青", "text": "{companion_reflection}。{ferryman_reflection}。{basket_reflection}。{path_mark_reflection}。{patrol_reflection}。照禾的河明早还会涨，我们也还来得及再走一段。"}
+      ],
+      "choices": [
+        {"id": "record", "label": "先把所见写进札记。", "event_id": "epilogue_recorded"},
+        {"id": "return", "label": "明日再沿河走一趟。", "event_id": "epilogue_returned"}
+      ],
+      "choice_prompt": "第一息已经稳住。你想怎样收好这段行旅？"
+    },
+    "ferryman_briefing": {
+      "lines": [
+        {"speaker": "梁叔", "text": "先别踩那块浅石。昨夜涨水把水尺冲歪了，刻度还沾着新泥。"},
+        {"speaker": "你", "text": "水已经退了半掌。要扶正木尺，还是先记下这一刻的水位？"},
+        {"speaker": "梁叔", "text": "两样都能留给后来守堤的人，只是今天这一身力气，够做其中一样。"},
+        {"speaker": "梁叔", "text": "你替我拿个主意。山里人走远路，也得先学会看脚边的水。"}
+      ],
+      "choices": [
+        {"id": "repair", "label": "一起扶正水尺。", "event_id": "ferryman_repair"},
+        {"id": "record", "label": "先记下涨水时辰。", "event_id": "ferryman_record"}
+      ],
+      "choice_prompt": "水尺与守堤簿都能留下证据；两种选择不改变战斗强度。"
+    },
+    "herbkeeper_basket": {
+      "lines": [
+        {"speaker": "蕙婶", "text": "这只篓底的双叶印，是渡口药圃公用的。前年换过一次提绳，没想到落在了山里。"},
+        {"speaker": "你", "text": "篓身还能用。带回圃里，还是补好绳结，放回山道避雨石下？"},
+        {"speaker": "蕙婶", "text": "带回去，采药人能照旧借；留在山里，赶路的人也有地方装散落药材。"},
+        {"speaker": "蕙婶", "text": "它本来就不是谁的私物。你决定它下一次在哪儿帮上忙。"}
+      ],
+      "choices": [
+        {"id": "return", "label": "把药篓带回圃里。", "event_id": "basket_return"},
+        {"id": "trail", "label": "补好提绳，留在山道。", "event_id": "basket_trail"}
+      ],
+      "choice_prompt": "药篓无论归圃还是留山都服务后来人，不改变战斗强度。"
+    },
+    "patrol_runner_briefing": {
+      "lines": [
+        {"speaker": "陶小满", "text": "借过。西头补船缺两枚木楔，东边药架又催着翻晒；这趟河风比人还会派活。"},
+        {"speaker": "你", "text": "你每天都这样绕着渡口跑？"},
+        {"speaker": "陶小满", "text": "河涨之前送绳，日头偏西前翻药。路走熟了，哪块石头打滑，脚先替我记着。"},
+        {"speaker": "陶小满", "text": "今天两头都不能落下，只是得定个先后。你替我看一眼风和日头。"}
+      ],
+      "choices": [
+        {"id": "boat_first", "label": "木楔怕潮，先送船架。", "event_id": "patrol_boat_first"},
+        {"id": "herbs_first", "label": "药叶怕闷，先翻竹架。", "event_id": "patrol_herbs_first"}
+      ],
+      "choice_prompt": "先后会改变陶小满下一段巡路与章节回声，但不改变战斗强度。"
+    },
+    "patrol_boat_priority": {
+      "lines": [
+        {"speaker": "陶小满", "text": "先送来的木楔已经压在篷布底下，河雾只在布角结了细珠。"},
+        {"speaker": "陶小满", "text": "我每回折到西头都再按一遍，免得梁叔量好缺口却找不着料。"}
+      ],
+      "choices": [
+        {"id": "secure_boat_cloth", "label": "替她压稳篷布边角。", "event_id": "patrol_boat_cloth_secured"},
+        {"id": "check_boat_measure", "label": "陪她核对木楔尺痕。", "event_id": "patrol_boat_measure_checked"}
+      ],
+      "choice_prompt": "船架这头已经接上手。你愿意再帮她确认哪一处？"
+    },
+    "patrol_boat_followup": {
+      "lines": [
+        {"speaker": "陶小满", "text": "东边药叶先翻妥了，木楔也没让河雾咬着；油布一路都扎得紧。"},
+        {"speaker": "陶小满", "text": "梁叔量好缺口，我把两枚楔子平码在尺边，谁接手都看得明白。"}
+      ],
+      "choices": [
+        {"id": "secure_boat_cloth", "label": "替她压稳篷布边角。", "event_id": "patrol_boat_cloth_secured"},
+        {"id": "check_boat_measure", "label": "陪她核对木楔尺痕。", "event_id": "patrol_boat_measure_checked"}
+      ],
+      "choice_prompt": "船架这头已经接上手。你愿意再帮她确认哪一处？"
+    },
+    "patrol_herbs_priority": {
+      "lines": [
+        {"speaker": "陶小满", "text": "先翻过的药叶已经散了背潮，竹架上的木牌也挪到下一格。"},
+        {"speaker": "陶小满", "text": "我每回折到东头都摸一下叶边；不粘手，就能放心去看船架。"}
+      ],
+      "choices": [
+        {"id": "steady_herb_tray", "label": "替她扶稳晾叶竹匾。", "event_id": "patrol_herbs_tray_steadied"},
+        {"id": "check_herb_light", "label": "陪她看清叶背日影。", "event_id": "patrol_herbs_light_checked"}
+      ],
+      "choice_prompt": "竹架这头已经照看妥当。你愿意再帮她确认哪一处？"
+    },
+    "patrol_herbs_followup": {
+      "lines": [
+        {"speaker": "陶小满", "text": "西头先收好了木楔。日影偏了半格，药叶仍赶上了该翻的时辰。"},
+        {"speaker": "陶小满", "text": "两头都接上才算完；渡口的活不是争第一，是别让下一双手空等。"}
+      ],
+      "choices": [
+        {"id": "steady_herb_tray", "label": "替她扶稳晾叶竹匾。", "event_id": "patrol_herbs_tray_steadied"},
+        {"id": "check_herb_light", "label": "陪她看清叶背日影。", "event_id": "patrol_herbs_light_checked"}
+      ],
+      "choice_prompt": "竹架这头已经照看妥当。你愿意再帮她确认哪一处？"
+    },
+    "path_mark_briefing": {
+      "lines": [
+        {"speaker": "砚青", "text": "旧石标背后的晴绳松了，一端还挂着两枚磨亮的小竹片。"},
+        {"speaker": "你", "text": "低处的绳结伸手就能摸到；高处的亮穗隔着薄雾也看得见。"},
+        {"speaker": "砚青", "text": "余绳只够稳稳系成一种。不是替谁选路，是让后来的人更早知道路还在。"},
+        {"speaker": "砚青", "text": "你来收最后这个结。我扶住石标，免得旧刻又被碰歪。"}
+      ],
+      "choices": [
+        {"id": "low_knot", "label": "系成低结，照顾负篓行人。", "event_id": "path_mark_low_knot"},
+        {"id": "high_streamer", "label": "系成高穗，让亮片指风。", "event_id": "path_mark_high_streamer"}
+      ],
+      "choice_prompt": "两种晴绳都服务后来人，不提供奖励，也不改变战斗强度。"
+    }
+  },
+  "journal_entries": {
+    "ferry_watermark": {
+      "title": "渡堤三重水痕",
+      "summary": "照禾人曾在涨水前整夜转移药苗。最高水痕旁的短横，是留给后来守堤人的警记。"
+    },
+    "spring_seam": {
+      "title": "分向旧圃的泉纹",
+      "summary": "石缝泉脉有一支通往山中旧药圃。藏泉并非荒废之地，仍有人悄悄维护水路。"
+    },
+    "abandoned_basket": {
+      "title": "换过两次的提绳",
+      "summary": "篓底烙着照禾药圃的双叶印。弃篓者带走药材，却把还能使用的绳结留给后来人。"
+    }
+  },
+  "journal_side_entries": {
+    "ferryman_repair": {
+      "title": "扶正的照禾水尺",
+      "summary": "你与梁叔把木尺重新压进浅石。下一次涨水，刻度会直接留在正位。"
+    },
+    "ferryman_record": {
+      "title": "守堤簿里的涨时",
+      "summary": "你记下退水时刻与泥痕高度。梁叔把纸条夹进守堤簿，留给下一班人比较。"
+    },
+    "basket_return": {
+      "title": "回到药圃的公用篓",
+      "summary": "你把山道药篓交给蕙婶。补过的提绳挂回圃门，等下一位采药人借用。"
+    },
+    "basket_trail": {
+      "title": "留在避雨石下的药篓",
+      "summary": "你与蕙婶补紧提绳，再把药篓放回山道，供后来行旅收拢散落药材。"
+    },
+    "patrol_boat_first": {
+      "title": "先往补船架的脚步",
+      "summary": "你请陶小满先护住怕潮的木楔。她沿中央石路折向西头，送完仍会回来照看药架。"
+    },
+    "patrol_herbs_first": {
+      "title": "先往晾晒架的脚步",
+      "summary": "你请陶小满先赶在日头偏西前翻药。她转向东头竹架，回来再把木楔送去补船。"
+    },
+    "path_mark_low_knot": {
+      "title": "伸手可触的晴绳低结",
+      "summary": "你把晴绳系在旧石标低处。负篓行人不必抬头找路，伸手便能摸到回程的结。"
+    },
+    "path_mark_high_streamer": {
+      "title": "隔雾可见的晴绳亮穗",
+      "summary": "你把两枚亮竹片系成高穗。薄雾与山风经过时，后来人能更早辨清路向。"
+    }
+  },
+  "enemy_notes": {
+    "rock_armor_young": {
+      "title": "岩甲幼兽 · 两短一深",
+      "trace": "向阳碎石上留着两道短爪印与一道沉肩压痕；幼兽再次伏低时，未合拢的甲缝会一同张开。",
+      "cycle": [
+        "试探冲撞：肩甲偏高，只逼迫来者挪动退路。",
+        "裂石冲撞：伏身压低，把全副重量送进尚未闭合的肩甲。"
+      ],
+      "counter": "等幼兽伏身蓄力再贴上镇岩符，灵纹才能沿张开的甲缝压住护甲；成熟守巢者则只在崩石重击落空时腹甲错位，需以守势承力。",
+      "trace_action": "inspect_rock_spoor",
+      "counter_action": "use_talisman",
+      "counter_intent": "rock_rending_charge"
+    },
+    "spring_moss_shell": {
+      "title": "泉苔寄壳 · 吸潮吐雾",
+      "trace": "浅泉边的孢尘一团明、一团暗；空壳贴地吸潮时，湿苔会把壳缘全部摊开。",
+      "cycle": [
+        "吸潮蓄壳：壳缘贴地，青苔贪吸泉气。",
+        "喷苔孢雾：空壳昂起，将积下的孢雾推向前方。"
+      ],
+      "counter": "只在吸潮时以引气术吹散湿苔，干涸的壳缝才会显露。",
+      "trace_action": "inspect_moss_spoor",
+      "counter_action": "use_art",
+      "counter_intent": "moss_absorb_tide"
+    },
+    "unbalanced_stone_puppet": {
+      "title": "失衡石傀 · 锤落身倾",
+      "trace": "石阶上的拖痕一深一浅；沉锤扫过向阳处时，石傀负责回正的那只石足会短暂离地。",
+      "cycle": [
+        "失衡摆锤：沉锤横扫，偏斜重心越过足底。",
+        "踏地回正：石足重压，重新收回倾势。"
+      ],
+      "counter": "在摆锤将至时守稳架势，借冲力使它越过重心，才有破甲机会。",
+      "trace_action": "inspect_puppet_spoor",
+      "counter_action": "guard",
+      "counter_intent": "puppet_unbalanced_swing"
+    }
+  },
+  "messages": {
+    "gathered": "你与砚青只取一株月芽草，将余下幼株重新覆好薄土。",
+    "gathered_cutting": "你剪下成熟月芽叶，把根须与新芽留在湿土中；药性足以护住第一次引息。",
+    "companion_briefing": "砚青收好渡碑拓片，与你一同离开石碑。",
+    "briefing_careful": "你决定先确认退路。砚青点头，把旧石标的位置画在药囊内侧。",
+    "briefing_trusting": "你把路线交给砚青判断。她认真应下，也请你在危险时提醒她撤退。",
+    "epilogue_recorded": "你与砚青把药田、山道与泉室逐条写进札记，留待下一次出门前复看。",
+    "epilogue_returned": "你约砚青明早再看一次河势。修行已经开始，日常山河仍要一步步走。",
+    "epilogue_unavailable": "此刻还没有一段完整行旅可以回顾。",
+    "invalid_epilogue_response": "这不是此刻可以作出的余波回应。",
+    "ferryman_repair": "你与梁叔踩住浅石，把歪斜水尺重新立稳。木尺没有奖励你，但下一场涨水会留下更准的刻度。",
+    "ferryman_record": "你把昨夜涨水、今晨退水与泥痕高度逐项写下。梁叔将纸条夹进守堤簿，留给下一班人。",
+    "ferryman_already_answered": "水尺与守堤簿已经按你的选择处理妥当。",
+    "invalid_ferryman_response": "这不是此刻可以作出的守堤选择。",
+    "basket_return": "你把山道药篓带回渡口。蕙婶补紧提绳，将它重新挂在药圃公用木钩上。",
+    "basket_trail": "你与蕙婶换好提绳，把药篓送回山道避雨石下，留给下一位行旅者。",
+    "basket_unavailable": "你还没有带回能让蕙婶辨认的山道药篓，或它已经安置妥当。",
+    "invalid_basket_response": "这不是此刻可以作出的药篓安排。",
+    "patrol_boat_first": "陶小满把木楔往怀里一拢，笑着沿中央石路折向补船架；送完还会回来照看药叶。",
+    "patrol_herbs_first": "陶小满抬头看了看日影，先往晾晒竹架快走两步；回来再把木楔送去补船。",
+    "patrol_boat_cloth_secured": "你按住篷布边角，陶小满重新收紧系绳；河风掠过木架，没有再钻进布缝。",
+    "patrol_boat_measure_checked": "你与陶小满顺着梁叔留下的尺痕核对木楔；两枚楔子仍平码在缺口旁。",
+    "patrol_herbs_tray_steadied": "你扶住被河风顶起的竹匾，陶小满将叶片理开，让潮气继续从缝间散去。",
+    "patrol_herbs_light_checked": "你与陶小满沿竹架看过一遍叶背日影；她把木牌挪正，下一次翻晒仍有时辰可循。",
+    "patrol_worksite_unavailable": "此刻陶小满不在可一起搭手的工作点。",
+    "invalid_patrol_work_response": "这不是此刻可作出的搭手方式。",
+    "patrol_unavailable": "陶小满还没有开始巡路，或今天的先后已经定下。",
+    "invalid_patrol_response": "这不是此刻可以作出的巡路安排。",
+    "invalid_briefing_response": "此刻无法作出这项回应。",
+    "already_briefed": "砚青已经说明了山道的风险与退路。",
+    "need_briefing": "你还不知道山道异动的详情，先回渡碑旁与砚青商量。",
+    "already_gathered": "本轮可取的月芽草已经收好，继续采摘会伤及田脉。",
+    "need_moonleaf": "山道灵雾刺骨。砚青建议先去月芽田准备一株护脉灵草。",
+    "path_entered": "你与砚青越过山门。溪声掩住了林间的碎甲声，退路仍在身后。",
+    "boat_repair_inspected": "补船木架上压着一块新桐木。旧船板被削成楔子，湿麻绳和桐油在晨风里慢慢收干；渡舟午后就能再下水。",
+    "drying_rack_inspected": "竹架把月芽叶、芦根和刚洗过的布分层晾开。木牌记着翻晒时辰，药香与河风各有自己的位置。",
+    "path_mark_low_knot": "你把晴绳系成低结，又留出一截能被负篓人轻易碰到的绳尾。砚青退后看了看，笑说回程的人不用先抬头找路。",
+    "path_mark_high_streamer": "你把两枚亮竹片系成高穗。山风一过，竹片便在雾色前轻轻翻亮，远处也能辨清下山方向。",
+    "path_mark_choice_required": "晴绳还没有重新系好；先与砚青商量哪种路签更适合后来人。",
+    "path_mark_unavailable": "晴绳已经按你的选择系稳，或此刻不在旧石标旁。",
+    "invalid_path_mark_response": "这不是此刻可以系成的晴绳样式。",
+    "path_marker_low_knot_inspected": "旧石标的低结仍系得牢。绳尾落在负篓人伸手可触的高度，亮竹片朝着下山一侧。",
+    "path_marker_high_streamer_inspected": "旧石标的高穗随风轻摆。两枚亮竹片一正一反，隔着薄雾也能指出下山方向。",
+    "rain_shelter_inspected": "避雨石棚下留着干柴、引火绒和一只空水瓢。石壁刻着旧规：取一束，后来补一束。",
+    "rock_spoor_inspected": "你蹲在晴光照亮的碎石边。两短一深的爪痕指向低处；砚青看出幼兽第二次冲撞前会先伏低肩甲，正好让镇岩符贴进甲缝。",
+    "moss_spoor_inspected": "泉边孢尘被日光照成细亮的青点。潮湿空壳先贴地吸水，再昂起吐雾；趁它吸潮时引气，最容易吹散湿苔。",
+    "puppet_spoor_inspected": "石屑拖痕一深一浅，穿过松影又回到亮处。沉锤扫落时，石傀的回正足会离地片刻，守稳便能借它自己的力气破势。",
+    "path_keeper_after_setback": "岑苇把被风拨歪的下山签敲正：“退回来不是走错。能把下一步带回来，这趟路就没白走。”",
+    "path_keeper_low_knot": "岑苇用指节轻碰晴绳低结：“负篓的人腾不出手抬头，这个高度正好。路签先照顾最难走路的人。”",
+    "path_keeper_high_streamer": "岑苇抬头看着亮穗翻过一面：“雾再厚一些，山风也会替它说话。远处先看见，脚下就少慌一步。”",
+    "path_keeper_basket_returned": "岑苇见你空着手回来，笑着点头：“篓子回了药圃，下一位借用的人就不必从山脚空跑。”",
+    "path_keeper_basket_left": "岑苇往石棚方向望了一眼：“篓子留在背风处正好；山上的公用物，也该替山上的人省几步路。”",
+    "path_keeper_basket_found": "岑苇从签筒里抽出一截备用麻绳：“公用篓不怕旧，怕的是明明还能用，却没人肯搭一把手。”",
+    "path_keeper_spoor_noted": "岑苇顺着你指出的痕迹，把一枚路签移开半步：“看清谁从这里走过，路才不只是一条线。”",
+    "path_keeper_route_checked": "岑苇把浸过桐油的竹签插进石缝，退后看了看：“亮面朝下山。雾一起来，回头的人也不会认反。”",
+    "ferry_watermark_discovered": "石堤内侧留着三层旧水痕。最高一层被人刻成短横：照禾人曾在涨水前整夜转移药苗。",
+    "spring_seam_discovered": "青白泉纹在石缝里向低处分叉。砚青辨出其中一支通往旧药圃，说明藏泉并非无人照料。",
+    "abandoned_basket_discovered": "破药篓里只剩干苔与一段换过两次的提绳。弃篓者带走药材，却把还能用的绳结留给后来人。",
+    "already_discovered": "这处见闻已经记入行旅札记。",
+    "returned_to_ferry": "你与砚青沿石阶回到渡口，山道中的动静并未追来。",
+    "battle_started_rock_armor_young": "你循着碎甲声靠近，岩甲兽幼体压低肩背，未闭合的甲缝露出微光。",
+    "battle_started_spring_moss_shell": "你触到潮湿空壳，泉苔沿壳缘收紧，孢雾正从缝隙里鼓起。",
+    "battle_started_unbalanced_stone_puppet": "旧石傀被脚步惊醒，偏斜的摆锤拖过石路，重心摇摇欲坠。",
+    "enemy_bypassed": "你照着箭记逆溪而上，从岩甲兽嗅觉之外的高石缘进入泉室。符箓与气血都未损耗。",
+    "art_hit": "你引出一缕泉息，准确击中对手。",
+    "talisman_hit": "镇岩符贴上灵物外壳，灵纹骤然收紧。",
+    "weakness_exposed": "你用对了材质相克之法，破甲效果将在后续攻势中延续。",
+    "no_talisman": "镇岩符已经用尽。",
+    "guarded": "你收束气息稳住经脉，砚青替你看住对手的动作。",
+    "enemy_hit": "{enemy}按预告意图攻来，你受到伤害。",
+    "enemy_glanced": "当前防护削弱了这次冲击。",
+    "companion_supported": "砚青扬开护脉药雾，替你稳住伤势与岩甲兽的冲势。",
+    "no_companion_support": "砚青的护脉药已经用尽，本场战斗无法再次援护。",
+    "spring_lamp_deployed": "你将引泉石灯按进路旁阵眼，青白泉光护住前路。",
+    "spring_lamp_absorbed": "石灯引开一缕冲势，本次伤害降低一点。",
+    "no_spring_lamp": "本次挑战的引泉石灯已经布下，无法重复部署。",
+    "retreated": "你与砚青退到旧石标旁。{enemy}没有追远，并恢复到交战前的状态。",
+    "companion_rescue": "你气血耗尽前，砚青将你拖离山道。休整后仍可再次进山。",
+    "regular_enemy_won": "眼前灵物退开，石门后的泉息却让更沉重的甲片开始摩擦。",
+    "boss_arrived": "岩甲兽守巢者撞开石门。砚青替你重新包扎，提醒你先看清它的动作再出手。",
+    "battle_won": "{enemy}退出山道，通往泉室的道路已经打开。",
+    "spring_listened": "你在泉沿听出水声一急一缓，呼吸渐渐与石脉同拍。",
+    "meridians_warmed": "月芽草在舌下化开寒意，温润药性护住尚未启灵的经脉。",
+    "breakthrough": "你在石纹前静坐，引入第一缕泉息，灵气完成周天，踏入引息境一层。",
+    "first_breath_out_of_order": "气息未能接续。先听泉辨脉，再以月芽温脉，最后静坐引息。",
+    "review": "渡口、月芽田与藏泉连成了你的第一段修行记忆。",
+    "chapter_closed": "序章进度已经保存。山河会在你下次归来时继续展开。",
+    "chapter_replayed": "序章状态已经重置。你再次站在照禾渡口。",
+    "nothing_nearby": "附近没有可以交互的事物。沿石路寻找金色圆环。",
+    "save_loaded": "旅程已从本地存档恢复。",
+    "save_loaded_temporary": "主存档未能通过校验，旅程已从完整的中断写入恢复并重新落盘。",
+    "save_loaded_backup": "主存档不可用，旅程已从安全备份恢复。",
+    "save_migrated": "旧版存档已安全迁移，并按新版规则继续旅程。",
+    "invalid_action": "此刻无法执行这个行动。"
+  }
+}

@@ -1,0 +1,109 @@
+extends RefCounted
+class_name EnemyCatalog
+
+const ROCK_ARMOR_YOUNG := "rock_armor_young"
+const SPRING_MOSS_SHELL := "spring_moss_shell"
+const UNBALANCED_STONE_PUPPET := "unbalanced_stone_puppet"
+const ROCK_ARMOR_WARDEN := "rock_armor_warden"
+const DEFAULT_ENEMY_ID := ROCK_ARMOR_YOUNG
+const REGULAR_ENEMY_IDS := [ROCK_ARMOR_YOUNG, SPRING_MOSS_SHELL, UNBALANCED_STONE_PUPPET]
+const ENEMY_IDS := [ROCK_ARMOR_YOUNG, SPRING_MOSS_SHELL, UNBALANCED_STONE_PUPPET, ROCK_ARMOR_WARDEN]
+
+const PROFILES := {
+	ROCK_ARMOR_YOUNG: {
+		"name": "岩甲兽幼体",
+		"max_hp": 12,
+		"weak_bonus": 1,
+		"weakness": "镇岩符压住甲缝",
+		"description": "幼兽的岩甲尚未闭合，却会用肩背连续撞击。",
+		"intents": [
+			{"id": "rock_probing_charge", "name": "试探冲撞", "damage": 3},
+			{"id": "rock_rending_charge", "name": "裂石冲撞", "damage": 4, "counter_action": "use_talisman"},
+		],
+	},
+	SPRING_MOSS_SHELL: {
+		"name": "泉苔寄壳",
+		"max_hp": 8,
+		"weak_bonus": 1,
+		"weakness": "引气术吹散湿苔",
+		"description": "泉苔借空壳移动，吸水时迟缓，喷出孢雾时危险。",
+		"intents": [
+			{"id": "moss_absorb_tide", "name": "吸潮蓄壳", "damage": 2, "counter_action": "use_art"},
+			{"id": "moss_spore_spray", "name": "喷苔孢雾", "damage": 3},
+		],
+	},
+	UNBALANCED_STONE_PUPPET: {
+		"name": "失衡石傀",
+		"max_hp": 10,
+		"weak_bonus": 2,
+		"weakness": "守势借力令它倾倒",
+		"description": "废弃石傀的重心已经偏斜，摆锤越重，回正越慢。",
+		"intents": [
+			{"id": "puppet_unbalanced_swing", "name": "失衡摆锤", "damage": 4, "counter_action": "guard"},
+			{"id": "puppet_rebalance_step", "name": "踏地回正", "damage": 2},
+		],
+	},
+	ROCK_ARMOR_WARDEN: {
+		"name": "岩甲兽守巢者",
+		"max_hp": 14,
+		"weak_bonus": 2,
+		"weakness": "守住重击令腹甲错位",
+		"description": "守巢者从泉室石门后现身，成熟岩甲随着呼吸发出沉重摩擦声。",
+		"intents": [
+			{"id": "warden_pressing_charge", "name": "压阵肩撞", "damage": 3},
+			{"id": "warden_stonebreaking_blow", "name": "崩石重击", "damage": 5, "counter_action": "guard"},
+			{"id": "warden_nest_guard", "name": "回身护巢", "damage": 2},
+		],
+	},
+}
+
+
+static func supports(enemy_id: Variant) -> bool:
+	return typeof(enemy_id) == TYPE_STRING and PROFILES.has(enemy_id)
+
+
+static func supports_intel(enemy_id: Variant) -> bool:
+	return typeof(enemy_id) == TYPE_STRING and enemy_id in REGULAR_ENEMY_IDS
+
+
+static func intel_id(enemy_id: Variant) -> String:
+	if enemy_id == ROCK_ARMOR_WARDEN:
+		return ROCK_ARMOR_YOUNG
+	if supports_intel(enemy_id):
+		return enemy_id
+	return ""
+
+
+static func profile(enemy_id: String) -> Dictionary:
+	return PROFILES.get(enemy_id, {}).duplicate(true)
+
+
+static func max_hp(enemy_id: String) -> int:
+	return int(PROFILES.get(enemy_id, {}).get("max_hp", 0))
+
+
+static func intent(enemy_id: String, round_number: int) -> Dictionary:
+	var enemy_profile: Dictionary = PROFILES.get(enemy_id, {})
+	var intents: Array = enemy_profile.get("intents", [])
+	if intents.is_empty() or round_number <= 0:
+		return {}
+	return intents[(round_number - 1) % intents.size()].duplicate(true)
+
+
+static func player_damage(enemy_id: String, action_id: String, round_number: int = 1) -> int:
+	if not supports(enemy_id):
+		return 0
+	var base_damage: int = {"use_art": 3, "use_talisman": 5, "guard": 0}.get(action_id, 0)
+	if exposes_weakness(enemy_id, action_id, round_number):
+		base_damage += int(PROFILES[enemy_id].get("weak_bonus", 0))
+	return base_damage
+
+
+static func exposes_weakness(enemy_id: String, action_id: String, round_number: int = 1) -> bool:
+	if action_id.is_empty():
+		return false
+	return action_id == intent(enemy_id, round_number).get("counter_action", "")
+
+
+static func is_boss(enemy_id: String) -> bool:
+	return enemy_id == ROCK_ARMOR_WARDEN

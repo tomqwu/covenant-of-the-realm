@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+local_godot="$repo_dir/.tools/godot-4.7.1/godot"
+
+if command -v godot >/dev/null 2>&1; then
+  exec godot "$@"
+fi
+
+if [[ -x "$local_godot" ]]; then
+  exec "$local_godot" "$@"
+fi
+
+printf '%s\n' "Godot 4.7.1 is missing. Run 'make setup-rpg' first." >&2
+exit 1

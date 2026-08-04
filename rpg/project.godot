@@ -1,0 +1,31 @@
+; Engine configuration file.
+; Edit through Godot when possible; keep this file reviewable and deterministic.
+
+config_version=5
+
+[application]
+
+config/name="山河有契 · 序章"
+run/main_scene="res://src/ui/main.tscn"
+config/features=PackedStringArray("4.7")
+
+[display]
+
+window/size/viewport_width=1152
+window/size/viewport_height=648
+window/size/window_width_override=1152
+window/size/window_height_override=648
+window/size/min_width=1152
+window/size/min_height=648
+window/stretch/mode="canvas_items"
+
+[editor]
+
+; Binary scene repacking assigns fresh node identities on empty import caches.
+export/convert_text_resources_to_binary=false
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.153, 0.192, 0.18, 1)

@@ -1,6 +1,52 @@
 # Project Context
 
-Last updated: 2026-07-31
+Last updated: 2026-08-04
+
+## Current direction
+
+The primary future product is now an original, Chinese-first, story-driven 2D cultivation
+RPG. Its high-level interaction grammar is the classic single-player party RPG: chapter-based
+story, top-down exploration, towns and dungeons, temporary companions, preparation, and
+deterministic turn-based combat. This is a genre and structure reference, not permission to
+copy another game's presentation or content.
+
+Godot 4.7.1 is the chosen engine for the first 90-minute vertical slice. The Evennia MUD and
+Journey PWA remain playable research prototypes and regression suites; they no longer define
+the primary client architecture.
+
+The confirmed visual direction uses bright, hand-authored pixel art for ordinary play, warm
+painted-paper portraiture for narrative expression, and rare layered-paper scenes for
+breakthroughs and major secret-realm reveals. The active lighting and palette contract is
+`docs/design/ART_DIRECTION_v0.2.md`.
+
+The current playable baseline also uses three original, repeatable spatial-prose interactions —
+the ferry boat-repair rack, drying rack, and mountain rain shelter. Keyboard, mouse, and controller
+reach the same no-reward actions; they do not change the Journey snapshot or add save fields.
+Their original schema decision remains intact. Save v15 introduced the independent ferry-runner
+route and response; save v16 added no field and only expanded the resumable active-dialogue enum
+for four route-aware variants across the runner's two worksite actions. Save v17 added a separate
+top-level `path_keeper` snapshot for 岑苇's deterministic four-point mountain route. Current save
+v18 adds the persistent `path_mark_response` choice and resumable old-marker dialogue while
+preserving every v17 route field.
+
+岑苇 is a repeatable mountain-path presence rather than a quest or reward source. He yields within
+an enter/exit hysteresis band, then continues the authored route after the player leaves. Near him,
+one of five higher-priority original progress echoes is selected first: setback, basket returned,
+basket left on the trail, basket found but unresolved, or enemy spoor noted. Otherwise his echo
+reflects the low-knot/high-streamer sunny-cord result, or the default route check while unanswered.
+The echo never mutates Journey state; his visual owns no collision, quest, battle, reward, or save
+authority.
+
+At the existing old stone marker, 砚青 helps the player retie one communal sunny cord. The player
+chooses a low knot for burden carriers or a high bright streamer for mist and wind. The choice is
+original, persistent, selectable by mouse/keyboard/controller, visible on the map, and reflected in
+the journal, chapter summary, epilogue, and 岑苇's lowest-priority response. It does not add items,
+statistics, combat power, route changes, or a mainline gate; replay clears it.
+
+The content remains original. The user has not established a production license for any
+external novel IP, so no protected characters, names, prose, locations, treasures, or plot
+combinations may enter this public repository. If formal adaptation rights are obtained later,
+licensed content needs a separate repository and legal-review pipeline.
 
 ## Origin of the project
 
@@ -39,7 +85,7 @@ The useful long-form principles are:
 
 These are genre-level principles. They do not authorize copying any protected expression or distinctive combination.
 
-## Current product decision
+## Cultivation scope retained from the earlier direction
 
 The user clarified that the game must be a **complete cultivation game**, not simply an abstract “covenant-based Eastern fantasy.” It should visibly and mechanically contain the major pillars players expect from cultivation fiction:
 
@@ -71,9 +117,9 @@ An initial design report exists at:
 
 It contains useful work on multiplayer persistence, factions, economy, technical architecture, copyright clean-room procedures, operational risks, and MVP planning. Its metaphysics are a draft, not final canon, because the user later requested a more complete and recognizably traditional cultivation system.
 
-## Proposed technical direction
+## Previous multiplayer technical direction
 
-The initial recommendation was:
+The implemented multiplayer prototype used:
 
 - Evennia and Python for the first MUD server;
 - PostgreSQL for production persistence;
@@ -100,31 +146,36 @@ Nakama may be evaluated later if the product grows into match-based content, ext
 
 ## Next major deliverable
 
-Write a new **Complete Cultivation World and Multiplayer MUD Bible v0.2** that replaces the draft metaphysics while preserving useful multiplayer and operational work. It should cover, in order:
+Expand the executable RPG graybox into a complete 90-minute original chapter:
 
-1. design pillars and target player fantasy;
-2. cosmology and rules of spiritual energy;
-3. original historical eras and causal timeline;
-4. worlds, continents, regions, ecology, and travel;
-5. complete cultivation realms, paths, techniques, professions, costs, failure, lifespan, mind, karma, tribulation, death, and ascension;
-6. factions and ordinary society;
-7. character creation and long-, medium-, and short-session loops;
-8. combat, exploration, crafting, economy, quests, politics, PvP, inheritance, and seasonal world evolution;
-9. multiplayer fairness and abuse prevention;
-10. data model, command model, architecture, security, deployment, observability, and recovery;
-11. copyright clean-room workflow and launch-market compliance;
-12. a small vertical slice suitable for implementation.
+1. top-down movement, collision, proximity interaction, 48×27 32 px TileMapLayer ground, a shared deterministic detail layer, an eleven-profile asset-backed landmark atlas, a bounded integer-pixel rolling camera, a saved six-waypoint ferry-runner route between two work sites, and 岑苇's saved four-point mountain route in 照禾渡口 / 藏泉山道, including three repeatable no-reward life landmarks, route-order-aware reactions at both runner endpoints, courtesy yielding, five higher-priority path-keeper progress echoes plus low-knot/high-streamer/default results, and the persistent sunny-cord marker choice (implemented; final hand-authored map refinement remains);
+2. resumable seven-line companion briefing, two attitude responses, dynamic quest-state presentation, and a resumable five-line chapter epilogue reflecting the played route (implemented);
+3. 月芽田两种不会锁死主线的采集方式、可见余留与结算回声（implemented）;
+4. 藏泉山道 free exploration, warning, optional stone-marker investigation, return/retreat, no-combat bypass, mid-map save, and companion rescue path (implemented);
+5. three regular enemy profiles plus a shared-resolver boss, stable intent-local counter windows, three optional spatial spoor investigations, a no-spoiler `灵物志`, material weaknesses, armor-break and focus states, and semantic attack/reaction animation for all four profiles (implemented; animation and intelligence change presentation only, never combat results);
+6. an active chapter companion and a visible two-turn tactical deployable (implemented);
+7. side-story-, patrol-route-, path-keeper-route-, discovery-, harvest-, battle-status-, enemy-intelligence-, dialogue-, first-breath-stage-, and map-aware save v18, title/continue, two-step new-game protection, crash-consistent temporary/backup recovery with anti-downgrade validation, chapter replay, and an input-safe no-spoiler journey journal (implemented; v1–v17 migrate explicitly, phase/map/dialogue/patrol/path-keeper combinations are validated strictly, save v16 remains the historical no-new-field dialogue boundary, v17 adds the top-level path-keeper snapshot, v18 adds the sunny-cord result/dialogue boundary, and replay clears the ritual, side-story result, and both NPC route states);
+8. mouse, keyboard, and controller parity with physical-event/focus acceptance coverage, including selectable journal pages, proximity investigations, the route-order dialogue, a representative herbs-priority runner worksite reaction (with the full four-variant matrix in E2E), 岑苇's selectable proximity action and modal freeze/resume, and all three repeatable life-landmark actions (implemented);
+9. original visual direction and opt-in procedural ambience with recorded provenance (reproducible protagonist/companion/ferryman/herbkeeper/ferry-runner/path-keeper, enemy, ground/detail, and 2112×128 Zhaohe landmark atlases; animated map actors; and bright painted-paper dialogue portraits implemented; final art refinement remains);
+10. a third `cangquan_spring` micro-map and the ordered spatial ritual “听泉辨脉 → 月芽温脉 → 静坐引息” (implemented; wrong-order actions reject atomically, every successful step autosaves, and restoration preserves the exact ritual stage and coordinate);
+11. new-game-to-ending-to-save-resume-to-replay automated Godot acceptance path (implemented);
+12. settings-v4 standard/fast/instant dialogue reveal, with title/pause and keyboard/mouse/controller
+    parity, conservative v1–v3 migration, no auto-advance, and no Journey/save-v18 authority
+    (implemented).
+
+The next production milestone is a 15–20 minute asset-backed sample chapter, prioritizing a
+painted portrait refinement, additional original NPC schedules, and longer original side-story content before
+expanding to the full 90-minute target. The ordered implementation and decision boundaries are recorded in
+[Next Production Plan v0.1](design/NEXT_PRODUCTION_PLAN_v0.1.md).
 
 ## Open decisions
 
 Do not assume answers without recording them:
 
 - primary launch market and languages;
-- pure text MUD versus text-first graphical interface;
-- PvP intensity and permanent-loss tolerance;
 - monetization or fully open-source/non-commercial operation;
-- desired concurrency and operations budget;
-- solo-versus-social balance;
-- real-time, tick-based, or hybrid combat pacing;
-- whether the world is one canonical server, several shards, or seasonal worlds;
+- PC-only first release versus mobile and console ports;
+- degree of main-story branching;
+- controller launch requirement;
+- voice acting scope;
 - whether the codebase, game content, or both will be open source.

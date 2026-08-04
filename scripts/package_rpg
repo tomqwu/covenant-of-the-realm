@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+output_dir="${1:-$repo_root/build/rpg}"
+pack_path="$output_dir/covenant-of-the-realm.pck"
+manifest_path="$output_dir/covenant-of-the-realm.manifest.json"
+
+mkdir -p "$output_dir"
+"$repo_root/scripts/godot_checked" --quiet --headless --path "$repo_root/rpg" \
+  --export-pack "Playable Pack" "$pack_path"
+
+source_revision="$(git -C "$repo_root" rev-parse HEAD)"
+source_tree_state="clean"
+if [[ -n "$(git -C "$repo_root" status --porcelain)" ]]; then
+  source_tree_state="dirty"
+fi
+
+cd "$repo_root"
+uv run python scripts/rpg_package_manifest.py \
+  --pack "$pack_path" \
+  --manifest "$manifest_path" \
+  --source-revision "$source_revision" \
+  --source-tree-state "$source_tree_state"
