@@ -11,6 +11,7 @@ const PATROL_BOAT_PRIORITY := "patrol_boat_priority"
 const PATROL_BOAT_FOLLOWUP := "patrol_boat_followup"
 const PATROL_HERBS_PRIORITY := "patrol_herbs_priority"
 const PATROL_HERBS_FOLLOWUP := "patrol_herbs_followup"
+const PATH_MARK_BRIEFING := "path_mark_briefing"
 const SUPPORTED_DIALOGUES := [
 	COMPANION_BRIEFING,
 	CHAPTER_EPILOGUE,
@@ -21,6 +22,7 @@ const SUPPORTED_DIALOGUES := [
 	PATROL_BOAT_FOLLOWUP,
 	PATROL_HERBS_PRIORITY,
 	PATROL_HERBS_FOLLOWUP,
+	PATH_MARK_BRIEFING,
 ]
 const MAX_SAVED_LINE_INDEX := 64
 

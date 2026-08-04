@@ -307,6 +307,8 @@ func _benchmark_scene_lifecycle_sample(budget: Dictionary) -> Dictionary:
 		"patrol": 0,
 		"patrol_worksite_dialogue": 0,
 		"battle": 0,
+		"path_mark_dialogue": 0,
+		"path_mark_result": 0,
 		"battle_action_immediate": 0,
 		"battle_action_stable": 0,
 		"battle_replacement_immediate": 0,
@@ -453,6 +455,47 @@ func _benchmark_scene_lifecycle_sample(budget: Dictionary) -> Dictionary:
 		var path_camera: Dictionary = instance.world_camera_contract()
 		if path_camera["normalized_focus"] != instance.exploration.player_position or not bool(path_camera["pixel_snap"]):
 			failures.append("山道切换必须同步确定性坐标与整数像素镜头")
+		if not instance.exploration.restore({
+			"map_id": ExplorationStateScript.MOUNTAIN_PATH_MAP_ID,
+			"player_x": ExplorationStateScript.PATH_MARKER_POSITION.x,
+			"player_y": ExplorationStateScript.PATH_MARKER_POSITION.y,
+		}):
+			failures.append("晴绳生命周期夹具无法恢复旧石标近距位置")
+		instance._render([])
+		var path_mark_start: Dictionary = instance.interact()
+		if (
+			not bool(path_mark_start.get("ok", false))
+			or instance.dialogue.dialogue_id != "path_mark_briefing"
+		):
+			failures.append("晴绳旧石标必须进入结构化同伴选择")
+		instance.skip_dialogue_to_response()
+		await process_frame
+		await process_frame
+		state_peaks["path_mark_dialogue"] = maxi(
+			int(state_peaks["path_mark_dialogue"]),
+			_count_nodes(instance)
+		)
+		instance._choose_dialogue_response(JourneyStateScript.PATH_MARK_HIGH_STREAMER)
+		state_peaks["path_mark_result"] = maxi(
+			int(state_peaks["path_mark_result"]),
+			_count_nodes(instance)
+		)
+		var path_mark_visual: Dictionary = instance.get_node("%MapCanvas").path_mark_visual_contract()
+		if (
+			instance.dialogue.active
+			or instance.journey.path_mark_response != JourneyStateScript.PATH_MARK_HIGH_STREAMER
+			or not bool(path_mark_visual["visible"])
+			or path_mark_visual["shape"] != "high_double_streamer"
+			or bool(path_mark_visual["collision_authority"])
+			or bool(path_mark_visual["quest_authority"])
+			or bool(path_mark_visual["battle_authority"])
+			or bool(path_mark_visual["reward_authority"])
+			or bool(path_mark_visual["rule_authority"])
+			or bool(path_mark_visual["input_authority"])
+			or bool(path_mark_visual["gameplay_timing_authority"])
+			or bool(path_mark_visual["save_authority"])
+		):
+			failures.append("晴绳生命周期结果必须持久呈现高穗且保持全部规则零权威")
 		var path_keeper_before: Dictionary = instance.path_keeper.snapshot()
 		instance.path_keeper.advance(2.0, Vector2(0.90, 0.70))
 		instance._render([])

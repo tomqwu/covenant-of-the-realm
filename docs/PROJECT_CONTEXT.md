@@ -1,6 +1,6 @@
 # Project Context
 
-Last updated: 2026-08-03
+Last updated: 2026-08-04
 
 ## Current direction
 
@@ -24,15 +24,24 @@ the ferry boat-repair rack, drying rack, and mountain rain shelter. Keyboard, mo
 reach the same no-reward actions; they do not change the Journey snapshot or add save fields.
 Their original schema decision remains intact. Save v15 introduced the independent ferry-runner
 route and response; save v16 added no field and only expanded the resumable active-dialogue enum
-for four route-aware variants across the runner's two worksite actions. Current save v17 adds a
-separate top-level `path_keeper` snapshot for 岑苇's deterministic four-point mountain route.
+for four route-aware variants across the runner's two worksite actions. Save v17 added a separate
+top-level `path_keeper` snapshot for 岑苇's deterministic four-point mountain route. Current save
+v18 adds the persistent `path_mark_response` choice and resumable old-marker dialogue while
+preserving every v17 route field.
 
 岑苇 is a repeatable mountain-path presence rather than a quest or reward source. He yields within
 an enter/exit hysteresis band, then continues the authored route after the player leaves. Near him,
-one of six original echoes is selected in fixed story-progress order: setback, basket returned,
-basket left on the trail, basket found but unresolved, enemy spoor noted, or the default route
-check. The echo never mutates Journey state; his visual owns no collision, quest, battle, reward,
-or save authority.
+one of five higher-priority original progress echoes is selected first: setback, basket returned,
+basket left on the trail, basket found but unresolved, or enemy spoor noted. Otherwise his echo
+reflects the low-knot/high-streamer sunny-cord result, or the default route check while unanswered.
+The echo never mutates Journey state; his visual owns no collision, quest, battle, reward, or save
+authority.
+
+At the existing old stone marker, 砚青 helps the player retie one communal sunny cord. The player
+chooses a low knot for burden carriers or a high bright streamer for mist and wind. The choice is
+original, persistent, selectable by mouse/keyboard/controller, visible on the map, and reflected in
+the journal, chapter summary, epilogue, and 岑苇's lowest-priority response. It does not add items,
+statistics, combat power, route changes, or a mainline gate; replay clears it.
 
 The content remains original. The user has not established a production license for any
 external novel IP, so no protected characters, names, prose, locations, treasures, or plot
@@ -139,19 +148,19 @@ Nakama may be evaluated later if the product grows into match-based content, ext
 
 Expand the executable RPG graybox into a complete 90-minute original chapter:
 
-1. top-down movement, collision, proximity interaction, 48×27 32 px TileMapLayer ground, a shared deterministic detail layer, an eleven-profile asset-backed landmark atlas, a bounded integer-pixel rolling camera, a saved six-waypoint ferry-runner route between two work sites, and 岑苇's saved four-point mountain route in 照禾渡口 / 藏泉山道, including three repeatable no-reward life landmarks, route-order-aware reactions at both runner endpoints, courtesy yielding, and six progression-aware path-keeper echoes (implemented; final hand-authored map refinement remains);
+1. top-down movement, collision, proximity interaction, 48×27 32 px TileMapLayer ground, a shared deterministic detail layer, an eleven-profile asset-backed landmark atlas, a bounded integer-pixel rolling camera, a saved six-waypoint ferry-runner route between two work sites, and 岑苇's saved four-point mountain route in 照禾渡口 / 藏泉山道, including three repeatable no-reward life landmarks, route-order-aware reactions at both runner endpoints, courtesy yielding, five higher-priority path-keeper progress echoes plus low-knot/high-streamer/default results, and the persistent sunny-cord marker choice (implemented; final hand-authored map refinement remains);
 2. resumable seven-line companion briefing, two attitude responses, dynamic quest-state presentation, and a resumable five-line chapter epilogue reflecting the played route (implemented);
 3. 月芽田两种不会锁死主线的采集方式、可见余留与结算回声（implemented）;
 4. 藏泉山道 free exploration, warning, optional stone-marker investigation, return/retreat, no-combat bypass, mid-map save, and companion rescue path (implemented);
 5. three regular enemy profiles plus a shared-resolver boss, stable intent-local counter windows, three optional spatial spoor investigations, a no-spoiler `灵物志`, material weaknesses, armor-break and focus states, and semantic attack/reaction animation for all four profiles (implemented; animation and intelligence change presentation only, never combat results);
 6. an active chapter companion and a visible two-turn tactical deployable (implemented);
-7. side-story-, patrol-route-, path-keeper-route-, discovery-, harvest-, battle-status-, enemy-intelligence-, dialogue-, first-breath-stage-, and map-aware save v17, title/continue, two-step new-game protection, crash-consistent temporary/backup recovery with anti-downgrade validation, chapter replay, and an input-safe no-spoiler journey journal (implemented; v1–v16 migrate explicitly, phase/map/dialogue/patrol/path-keeper combinations are validated strictly, save v16 remains the historical no-new-field dialogue boundary, v17 adds the top-level path-keeper snapshot, and replay clears the ritual plus both NPC route states);
+7. side-story-, patrol-route-, path-keeper-route-, discovery-, harvest-, battle-status-, enemy-intelligence-, dialogue-, first-breath-stage-, and map-aware save v18, title/continue, two-step new-game protection, crash-consistent temporary/backup recovery with anti-downgrade validation, chapter replay, and an input-safe no-spoiler journey journal (implemented; v1–v17 migrate explicitly, phase/map/dialogue/patrol/path-keeper combinations are validated strictly, save v16 remains the historical no-new-field dialogue boundary, v17 adds the top-level path-keeper snapshot, v18 adds the sunny-cord result/dialogue boundary, and replay clears the ritual, side-story result, and both NPC route states);
 8. mouse, keyboard, and controller parity with physical-event/focus acceptance coverage, including selectable journal pages, proximity investigations, the route-order dialogue, a representative herbs-priority runner worksite reaction (with the full four-variant matrix in E2E), 岑苇's selectable proximity action and modal freeze/resume, and all three repeatable life-landmark actions (implemented);
 9. original visual direction and opt-in procedural ambience with recorded provenance (reproducible protagonist/companion/ferryman/herbkeeper/ferry-runner/path-keeper, enemy, ground/detail, and 2112×128 Zhaohe landmark atlases; animated map actors; and bright painted-paper dialogue portraits implemented; final art refinement remains);
 10. a third `cangquan_spring` micro-map and the ordered spatial ritual “听泉辨脉 → 月芽温脉 → 静坐引息” (implemented; wrong-order actions reject atomically, every successful step autosaves, and restoration preserves the exact ritual stage and coordinate);
 11. new-game-to-ending-to-save-resume-to-replay automated Godot acceptance path (implemented);
 12. settings-v4 standard/fast/instant dialogue reveal, with title/pause and keyboard/mouse/controller
-    parity, conservative v1–v3 migration, no auto-advance, and no Journey/save-v17 authority
+    parity, conservative v1–v3 migration, no auto-advance, and no Journey/save-v18 authority
     (implemented).
 
 The next production milestone is a 15–20 minute asset-backed sample chapter, prioritizing a

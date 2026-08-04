@@ -7,13 +7,13 @@
 
 **《山河有契》**（英文工作名：**Covenant of the Realm**）正在发展为一款原创、
 中文优先、章节式的 2D 修仙剧情 RPG。Godot 可玩章节已经串联自由移动、碰撞、
-双地图地表、第三张藏泉石室微地图与原创像素细节层、可恢复分支与章节余波对话、明亮纸绘头像、可选择“见闻/灵物志”的行旅札记、脚印式同伴跟随、陶小满六点送件巡路及船架/竹架两端点回响、岑苇四点巡山与六类进度回声、持久环境见闻、三痕辨势、守堤与药篓双结果支线、补船木架/晾晒竹架/避雨石棚三处可重复生活叙事、近距离采集、三类意图窗口敌人、守巢首领、事件驱动的四敌攻击/受击/败退像素动画、可撤退回合战斗、同伴援护、save v17 版本化存档和“听泉辨脉 → 月芽温脉 → 静坐引息”的首次境界突破；现有多人
+双地图地表、第三张藏泉石室微地图与原创像素细节层、可恢复分支与章节余波对话、明亮纸绘头像、可选择“见闻/灵物志”的行旅札记、脚印式同伴跟随、陶小满六点送件巡路及船架/竹架两端点回响、岑苇四点巡山与进度回声、可选择低结或高穗的“晴绳路签”支线、持久环境见闻、三痕辨势、守堤与药篓双结果支线、补船木架/晾晒竹架/避雨石棚三处可重复生活叙事、近距离采集、三类意图窗口敌人、守巢首领、事件驱动的四敌攻击/受击/败退像素动画、可撤退回合战斗、同伴援护、save v18 版本化存档和“听泉辨脉 → 月芽温脉 → 静坐引息”的首次境界突破；现有多人
 MUD 与单人 PWA 作为可运行研究原型保留。标题与暂停页还提供标准、快速、整句三档
 对话显字偏好；整句模式只关闭逐字揭示，不会自动推进或代选回应。
 
 战斗中另有固定屏幕“照禾临势签”：九项稳定敌势分别使用不同线形，当前伤害始终
 可读，已调查敌迹才显示后一势与破绽；动作前敌人与意图只进入瞬时表现上下文，
-不会写入 save v17 或成为第二套战斗权威。敌方回应真正结算时，敌人脚下会留下
+不会写入 save v18 或成为第二套战斗权威。敌方回应真正结算时，敌人脚下会留下
 九形之一的“刚才”势痕，明确区分旧势与临势签中的下一势；普通敌致命回合则只在
 守巢者已成为当前规则敌人的同一帧留下短暂败退旧影。两种表现都不阻断下一次
 键盘、鼠标或手柄行动。
@@ -36,7 +36,8 @@ make play-rpg-package
 ```
 
 The current graybox uses original project locations and characters only. It is playable from a
-Chinese title screen through exploration, preparation, a recoverable deterministic battle, the
+Chinese title screen through exploration, the low-knot/high-streamer sunny-cord choice, preparation,
+a recoverable deterministic battle, the
 three-point spatial ritual `听泉辨脉 → 月芽温脉 → 静坐引息`, `引息境一层`, chapter settlement,
 save resume, and replay. Keyboard, mouse, and controller
 share semantic actions. Expanding this tested short chapter toward the complete 90-minute content
@@ -88,9 +89,9 @@ make check                   # RPG, MUD, and preserved PWA gates
 make test-multiplayer-e2e    # live server + real two-client journey only
 ```
 
-The repository pytest gate passes 159 tests at 100% statement and branch coverage (621 statements /
-316 branches). Godot behavior is covered by 3,530 headless rule/scene assertions plus an independent
-374-check chapter E2E and 198-check physical-input/focus path. Nine committed pixel atlases are
+The repository pytest gate passes 160 tests at 100% statement and branch coverage (653 statements /
+334 branches). Godot behavior is covered by 3,643 headless rule/scene assertions plus an independent
+391-check chapter E2E and 210-check physical-input/focus path. Nine committed pixel atlases are
 regenerated twice and must match the Git index byte for byte. With pinned Godot 4.7.1 and export-time
 text-to-binary scene conversion disabled, the package gate compares two normal exports plus exports
 from two independent clean import caches. As historical controlled-input evidence, for the packaged runtime inputs committed in `f5c60e2`,
@@ -108,17 +109,20 @@ For the previous outgoing-defeat input, four local macOS/arm64 exports and four 
 Linux/x86_64 exports from run `30873652565`, each including two fresh-cache project copies, all
 match at 824,432 bytes and SHA-256
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
-the unchanged 25/9 probe, and packaged boot pass locally and hosted. For the current resolved-intent
+the unchanged 25/9 probe, and packaged boot pass locally and hosted. For the prior resolved-intent
 accent input, four local macOS/arm64 exports and four GitHub-hosted Linux/x86_64 exports from run
 `30879113809`, each including two independent fresh-cache project copies, all match at 870,720 bytes
 and SHA-256
 `7959ac89fe6f058b742883cacc04c6b2398b8d72355b8ce9b663e934630fbc98`; manifest verification,
 the unchanged 25-required / nine-excluded probe, and packaged boot pass locally and hosted. The
-hosted 20-cycle lifecycle passes at 5,008.02 ms against the unchanged 7,000 ms ceiling, with all
-immediate/stable samples, 117 static / 127 peak nodes, and zero root leaks.
-Two consecutive 43-PNG capture runs are
-byte-identical and produce aggregate SHA-256
-`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
+hosted 20-cycle lifecycle for that prior input passes at 5,008.02 ms against the unchanged 7,000 ms
+ceiling. The current sunny-cord input passes locally in 1,020.86 ms across 17 sampled states, with
+117 static / 127 peak nodes and zero root leaks. Four current local macOS/arm64 exports, including
+two independent fresh-cache copies, match at 890,288 bytes and SHA-256
+`948ce1db799ed4639ad8cf47ecc136b49a4d760e36c1fa3c8a77235a76193704`; the unchanged
+25-required / nine-excluded probe, manifest verification, and packaged boot pass. Two consecutive
+45-PNG capture runs are byte-identical and produce aggregate SHA-256
+`db9cf2846dc40c8aab617ed097ae944b99f5adfee9afa70d1e147b69a6f9e871`.
 The MUD adapter has
 isolated Evennia tests, and its release path
 is exercised through two real concurrent Telnet clients. The preserved browser prototype retains

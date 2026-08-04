@@ -345,6 +345,78 @@ def test_first_breath_story_locks_path_keeper_action_and_echoes() -> None:
         "'talk_to_path_keeper'" in validate_story(data)
     )
 
+
+def test_first_breath_story_locks_sunny_cord_path_mark_contract() -> None:
+    data = story()
+    path_mark_action = next(
+        action
+        for action in data["nodes"]["mountain_path"]["actions"]
+        if action["id"] == "inspect_path_marker"
+    )
+    path_mark_action["label"] = "领取路签奖励"
+    data["dialogues"]["path_mark_briefing"]["lines"][0]["text"] = "改写的开场。"
+    data["dialogues"]["path_mark_briefing"]["choices"][1]["event_id"] = (
+        "path_mark_low_knot"
+    )
+    data["messages"].pop("path_mark_choice_required")
+    data["messages"]["path_marker_low_knot_inspected"] = "改写的低结结果。"
+    data["journal_side_entries"]["path_mark_low_knot"]["title"] = "私有奖励"
+    data["journal_side_entries"]["path_mark_high_streamer"]["summary"] = (
+        "改写的高穗后果。"
+    )
+    epilogue_line = data["dialogues"]["chapter_epilogue"]["lines"][-1]
+    epilogue_line["text"] = epilogue_line["text"].replace(
+        "{path_mark_reflection}。", ""
+    )
+
+    failures = validate_story(data)
+
+    assert any(
+        failure.startswith(
+            "story.nodes.mountain_path.actions.inspect_path_marker must be "
+        )
+        for failure in failures
+    )
+    assert (
+        "story.dialogues.path_mark_briefing must match the exact sunny-cord script"
+        in failures
+    )
+    assert any(
+        failure.startswith("story.messages.path_mark_choice_required must be ")
+        for failure in failures
+    )
+    assert any(
+        failure.startswith("story.messages.path_marker_low_knot_inspected must be ")
+        for failure in failures
+    )
+    assert any(
+        failure.startswith(
+            "story.journal_side_entries.path_mark_low_knot must be "
+        )
+        for failure in failures
+    )
+    assert any(
+        failure.startswith(
+            "story.journal_side_entries.path_mark_high_streamer must be "
+        )
+        for failure in failures
+    )
+    assert (
+        "story.dialogues.chapter_epilogue.lines must contain exactly one "
+        "'{path_mark_reflection}' token" in failures
+    )
+
+    data = story()
+    data["nodes"]["mountain_path"]["actions"] = [
+        action
+        for action in data["nodes"]["mountain_path"]["actions"]
+        if action["id"] != "inspect_path_marker"
+    ]
+    assert (
+        "story.nodes.mountain_path.actions is missing path-mark action "
+        "'inspect_path_marker'" in validate_story(data)
+    )
+
     data = story()
     data["nodes"]["mountain_path"] = []
     assert (
@@ -489,6 +561,8 @@ def test_reachability_handles_converging_paths() -> None:
             "basket_trail": {"title": "留山", "summary": "药篓留给行旅。"},
             "patrol_boat_first": {"title": "先护船", "summary": "木楔先送船架。"},
             "patrol_herbs_first": {"title": "先翻药", "summary": "药叶先上竹架。"},
+            "path_mark_low_knot": {"title": "低结", "summary": "低处晴绳。"},
+            "path_mark_high_streamer": {"title": "高穗", "summary": "高处亮穗。"},
         },
         "enemy_notes": {
             "rock_armor_young": {

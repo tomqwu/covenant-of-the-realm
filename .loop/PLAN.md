@@ -1,26 +1,29 @@
 # Loop Plan
 
-## Current loop — resolved enemy-intent attack accents
+## Current loop — 晴绳路签 original side story and save v18
 
-- [x] Define nine stable, color-independent attack-accent shapes for the existing nine intent IDs,
-  with a readable Chinese “刚才” label and no new gameplay, save, scene-node, or asset authority.
-- [x] Arm only in battle when exactly one `enemy_hit` / `enemy_glanced` event, a valid action-result
-  context, a matching settled enemy, and the intent-to-enemy catalog jointly prove the old intent
-  resolved; fail closed on malformed, mismatched, interrupted, replacement, rescue, or terminal data.
-- [x] Draw the bounded enemy-foot accent behind actors with complete first-frame information,
-  standard/fast 0.70/0.18-second timing, short full-motion secondary strokes, and a fully static
-  reduced-motion path that never blocks or delays the next action.
-- [x] Expose a public presentation contract covering stable shape, text, anchors, result event,
-  expiry, motion path, and explicit zero authority for rules, damage, intent, timing, input, or saves.
-- [x] Prove all nine intents, hit/glance, standard/fast × full/reduced motion, atomic malformed and
-  stale cleanup, exact expiry/replacement, title/load/replay paths, and immediate controller input.
-- [x] Reproduce the 43-image capture set twice, preserve nine generated atlases, 117/127 node and
-  25/9 package boundaries, then pass the four-export identity/content/boot gate.
-- [x] Run `make check`, audit secrets and unrelated files, commit, push, and update/monitor Draft PR #7
+- [x] Define a bounded original old-marker scene in which the player chooses a low knot for burden
+  carriers or a high bright streamer for mist and wind, with no item, statistic, combat, route,
+  relationship, reward, or mainline-gate difference.
+- [x] Make `JourneyState.path_mark_response` the sole rule authority; drive repeat inspection,
+  code-native map geometry, journal, chapter summary, epilogue, and the lowest-priority 岑苇 echo
+  from the same stable result while preserving all older progress-echo precedence.
+- [x] Upgrade to save v18, migrate v1–v17 to neutral `unanswered`, preserve the exact v17 path-keeper
+  route, reject forged legacy dialogue IDs, and strictly validate active dialogue phase/state/position.
+- [x] Route mouse open, controller choice, and keyboard repeat through the existing semantic input
+  path; revalidate marker proximity again at commit so a moved dialogue cannot partially submit.
+- [x] Cover both choices, invalid/repeated/wrong-phase/remote responses, echo precedence, save
+  migration/recovery, scene resume, journal/epilogue/replay, and explicit presentation zero authority.
+- [x] Preserve nine generated atlases, 117/127 nodes and 25/9 package resources; pass the 17-state
+  lifecycle, two independent 45-image captures, and four-export identity/content/boot gate.
+- [ ] Finish the current documentation snapshot, run `make check`, and audit the final diff, secrets,
+  generated files, and unrelated changes.
+- [ ] Commit and push `codex/rpg-foundation`, update Draft PR #7, and monitor current hosted checks
   without merging `main`.
 
 ## Recently completed
 
+- [x] Add strict, color-independent resolved enemy-intent foot accents without weakening hosted gates.
 - [x] Add the outgoing-only regular-enemy defeat beat and nonblocking same-frame warden handoff.
 - [x] Add the fixed-screen nine-shape intent tag and ID-only settled-action presentation context
   without changing Journey or save v17.
@@ -43,8 +46,8 @@
 
 ## Next unblocked loops
 
-1. Extend the original 15–20 minute chapter target with another bounded NPC schedule or side-story
-   beat, reusing the existing route/dialogue/save contracts.
+1. Extend the original 15–20 minute chapter target with a short return visit or another bounded
+   character beat, reusing the existing route/dialogue/save contracts rather than a new subsystem.
 2. Refine one production-facing character or environment slice through the existing deterministic
    asset, provenance, readability, capture, and package gates.
 

@@ -4,6 +4,39 @@ Use this file for durable decisions. Do not depend on chat transcripts as the on
 
 ## Confirmed
 
+### 2026-08-04 — The old stone marker carries one persistent, no-reward sunny-cord choice
+
+The next content-density increment reuses the existing mountain-path marker, 砚青 portrait,
+岑苇 route, structured-dialogue adapter, journal, chapter summary, and epilogue. On first inspection,
+砚青 and the player observe that the communal sunny cord can be tied in only one stable form this
+round: a low knot reachable by burden carriers, or a high streamer whose bright bamboo tabs remain
+visible through mist and indicate wind. Both are original public-wayfinding consequences; neither is
+a hidden optimal route, item, statistic, relationship reward, combat modifier, or mainline gate.
+
+`JourneyState.path_mark_response` is the only rule field and accepts exactly `unanswered`,
+`low_knot`, or `high_streamer`. The two committed results drive repeat inspection, one side-journal
+entry, chapter summary and epilogue text, plus the lowest-priority 岑苇 echo. Existing echo precedence
+remains setback → basket result → basket found → enemy intelligence → sunny-cord result → default.
+`MapCanvas` draws a code-native low horizontal knot or high double streamer at the existing anchor;
+its public contract denies collision, quest, battle, reward, and save authority. No scene node,
+runtime resource, external asset, route point, or package-roster entry is added.
+
+Save v18 is required because the Journey payload and legal active-dialogue enum both expand. Current
+files require the result field and strictly pair an active `path_mark_briefing` with mountain phase,
+an unanswered result, and exact old-marker proximity. V1–v17 migrate to neutral `unanswered`; the
+v17→v18 step preserves the existing top-level `path_keeper` snapshot. A legacy file forged with the
+new dialogue ID is rejected rather than silently acquiring new semantics. Replay clears the choice,
+visual, journal result, and derived echo.
+
+The local gate is 160 Python tests at 100% statement/branch coverage (653 statements / 334 branches),
+3,643 Godot rule/scene assertions, 391 chapter E2E checks, and 210 physical-input/focus checks. The
+20-cycle, 17-state lifecycle is 1,020.86 ms with 117 static / 127 peak nodes and zero root leaks;
+sunny-cord dialogue/result states use 125/123 nodes. Two independent 45-PNG passes reproduce
+aggregate SHA-256 `db9cf2846dc40c8aab617ed097ae944b99f5adfee9afa70d1e147b69a6f9e871`.
+Four local macOS/arm64 exports, including two fresh-cache copies, match at 890,288 bytes and SHA-256
+`948ce1db799ed4639ad8cf47ecc136b49a4d760e36c1fa3c8a77235a76193704`; the unchanged 25/9
+resource probe, manifest verification, and packaged boot pass. Hosted evidence waits for the push.
+
 ### 2026-08-04 — Resolved enemy intent leaves a strict, zero-authority foot accent
 
 `MapCanvas` draws an enemy-foot “刚才” accent only when the action-result evidence proves that an
@@ -203,14 +236,14 @@ development evidence, not a packaged scene or alternate portrait implementation.
 ### 2026-08-03 — Hosted-runner lifecycle timing confirms a clean overage before failing
 
 The lifecycle benchmark still requires one complete 20-cycle sample under 7 seconds. Every cycle
-executes the same 13-state create/destroy route, dialogue progression and save writes, static/peak
+executes the same 17-state create/destroy route, dialogue progression and save writes, static/peak
 node checks, map-detail and camera contracts, and root-child cleanup. Any correctness, structure,
 node, or leak failure remains an immediate gate failure and is never retried.
 
 The first cycle in every complete sample additionally executes the full standard → fast → instant
 → standard → fast reveal profile with four real settings writes. The other 19 cycles still start
 standard reveal, complete and advance a line, save, and traverse the same dialogue response and
-remaining 13-state route; they do not multiply an already-covered settings flush, verification,
+remaining 17-state route; they do not multiply an already-covered settings flush, verification,
 backup rotation, and full accessibility-theme refresh by 20. Unit, E2E, and physical-input suites
 remain the exhaustive owners of reveal and settings semantics. The lifecycle result reports the
 actual probe-cycle and settings-write counts so a future edit cannot silently remove this coverage.
@@ -221,8 +254,9 @@ clean but exceeds 7 seconds therefore triggers exactly one complete confirmation
 Godot process. The lower of the two complete timings is the accepted low-contention measurement;
 both must exceed 7 seconds for a timing failure. The runner reports every sample, sample count, total
 cycles, probe/write counts, and the maximum structural observations across both runs. The 20-cycle
-workload, 7-second ceiling, exact 114 static nodes, 124 peak cap, 13 states, and zero-leak contract
-are not relaxed.
+workload, 7-second ceiling, exact 117 static nodes, 127 peak cap, 17 states, and zero-leak contract
+are not relaxed. The later sunny-cord addition is sampled at 125 dialogue / 123 result nodes without
+raising either structural limit.
 
 ### 2026-08-03 — Dialogue reveal speed is a presentation preference, not a reading timer
 

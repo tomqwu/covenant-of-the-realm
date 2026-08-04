@@ -7,6 +7,26 @@ treats the scene tree as an adapter. `JourneyState` owns phase, combat, resource
 resolution, and the settled action snapshot. `Main`, `MapCanvas`, and screen-space controls may
 interpret returned facts, but they cannot delay, replay, or replace the domain result.
 
+### Sunny-cord side-story authority and save boundary
+
+The old stone marker remains an `ExplorationState` proximity anchor; it does not become a quest
+object. On first inspection, `Main` verifies the real mountain-path action and starts the stable
+`path_mark_briefing` dialogue. A staged `JourneyState` atomically accepts exactly `low_knot` or
+`high_streamer`, emits the matching content event, and only then replaces the live state and writes
+the save. Unknown, repeated, wrong-phase, or remote attempts cannot partially mutate the journey.
+
+`JourneyState.path_mark_response` is the sole gameplay authority. `MapCanvas` consumes it to draw
+either a low horizontal knot or high double streamer at the existing marker anchor and explicitly
+owns no collision, quest, battle, reward, or save authority. Content maps the same stable result to
+repeat inspection, one journal entry, the chapter summary, epilogue reflection, and a lowest-priority
+岑苇 echo; none changes resources, routes, combat, or progression.
+
+Save v18 adds this Journey field and the new resumable dialogue ID. Current files require the field;
+an active sunny-cord dialogue additionally requires mountain phase, an unanswered result, and exact
+marker proximity. V1–v17 migrate to `unanswered` rather than inventing a choice, v17 preserves its
+existing top-level `path_keeper` route snapshot, forged legacy files containing the new dialogue ID
+are rejected, and replay clears the result.
+
 ### Battle action-result presentation boundary
 
 A successful battle action returns semantic `events`, the settled authoritative `snapshot`, and
@@ -38,7 +58,8 @@ leaked counter data. Unknown or mismatched profile/intent pairs use a neutral si
 
 The tag provides complete text equivalents plus large-text, high-contrast, fast, and reduced-motion
 behavior. Its short cue clock is non-blocking and has no damage, intent, profile, intelligence,
-round, counter, input, gameplay-timing, or save authority. Save v17 is unchanged: loading derives a
+round, counter, input, gameplay-timing, or save authority. Save v18 is unchanged by this transient
+presentation: loading derives a
 fresh tag from the restored enemy ID and round and never resumes old action-result context.
 
 ### Resolved enemy-intent attack accents
@@ -62,7 +83,7 @@ secondary-stroke offset and fade; reduced motion freezes the complete first fram
 the result text. Expiry, replacement, terminal facts, leaving battle, title, load, replay, and
 re-entering battle clear identity and time together. The accent ignores mouse/focus input, adds no
 scene node or asset, and has explicit zero authority for rules, damage, intent selection, gameplay
-timing, input, Journey, content, or save v17.
+timing, input, Journey, content, or save v18.
 
 ### Outgoing regular-enemy presentation
 
@@ -78,7 +99,7 @@ for every profile. The outgoing role accepts only regular profiles, starts from 
 and uses a local 0.70/0.18-second clock. Full motion shifts and fades the debris; reduced motion
 freezes the first defeat frame. Expiry, the next action, title, load, retreat, rescue, final victory,
 replay, or any non-battle phase hides the node and clears its ID. It never enters camera focus,
-Journey, save v17, content, damage, round timing, or input. Boss arrival no longer starts a same-phase
+Journey, save v18, content, damage, round timing, or input. Boss arrival no longer starts a same-phase
 full-screen transition, so the cue cannot be hidden and the next focused action remains available.
 
 The outgoing-defeat historical closure is covered by four local macOS/arm64 exports and four
@@ -87,17 +108,16 @@ each including two fresh-cache copies, match at 824,432 bytes and SHA-256
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
 the 25/9 resource probe, and packaged boot pass locally and hosted.
 
-The current resolved-intent contract is covered locally by 3,530 Godot unit/scene assertions,
-374 chapter E2E checks, 198 physical-input checks, a 117-node static scene / 127-node peak with zero
-root leaks, and the 43-capture aggregate
-`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`. The complete local
-20-cycle scene sample is 948.09 ms; hosted run `30879113809` passes the same 7,000 ms ceiling at
-5,008.02 ms. Four local macOS/arm64 and four hosted Linux/x86_64 exports, each including two
-fresh-cache copies, match at 870,720 bytes and SHA-256
-`7959ac89fe6f058b742883cacc04c6b2398b8d72355b8ce9b663e934630fbc98`; manifest verification,
-the unchanged 25-required / nine-excluded resource probe, and packaged boot pass locally and
-hosted. The hot-path fix preserves all 20 cycles and immediate/stable state samples; it removes
-only repeated nonbattle reset, empty-event, idle, and second no-state settle work.
+The current full RPG contract is covered locally by 3,643 Godot unit/scene assertions, 391 chapter
+E2E checks, 210 physical-input checks, a 117-node static scene / 127-node peak with zero root leaks,
+and the 45-capture aggregate
+`db9cf2846dc40c8aab617ed097ae944b99f5adfee9afa70d1e147b69a6f9e871`. The complete local
+20-cycle, 17-state scene sample is 1,020.86 ms. Four local macOS/arm64 exports, including two
+fresh-cache copies, match at 890,288 bytes and SHA-256
+`948ce1db799ed4639ad8cf47ecc136b49a4d760e36c1fa3c8a77235a76193704`; manifest verification,
+the unchanged 25-required / nine-excluded resource probe, and packaged boot pass. Hosted run
+`30879113809` remains green evidence for the prior resolved-intent input; the sunny-cord input awaits
+its feature-branch run.
 
 ## Preserved multiplayer prototype
 

@@ -309,7 +309,8 @@ func _render(event_ids: Array, presentation_context: Dictionary = {}) -> void:
 		snapshot["basket_response"],
 		snapshot["patrol_response"],
 		snapshot.get("enemy_intel", []),
-		str(snapshot.get("first_breath_stage", "unstarted"))
+		str(snapshot.get("first_breath_stage", "unstarted")),
+		str(snapshot.get("path_mark_response", "unanswered"))
 	)
 	map_canvas.set_patrol_state(
 		patrol.position,
@@ -563,7 +564,11 @@ func _chapter_summary(snapshot: Dictionary) -> String:
 		"boat_first": "先送船架",
 		"herbs_first": "先翻药叶",
 	}.get(snapshot["patrol_response"], "巡路未定")
-	return "本节结算　%s · %s · %s · %s · %s · %s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, discovery_text, intel_text, ferryman_text, basket_text, patrol_text, response_text]
+	var path_mark_text: String = {
+		"low_knot": "低结护篓",
+		"high_streamer": "高穗辨风",
+	}.get(snapshot.get("path_mark_response", "unanswered"), "晴绳未系")
+	return "本节结算　%s · %s · %s · %s · %s · %s · %s · %s · %s · %s · %s · %s" % [snapshot["realm"], setback_text, talisman_text, lamp_text, harvest_text, discovery_text, intel_text, ferryman_text, basket_text, path_mark_text, patrol_text, response_text]
 
 
 func _build_actions(node: Dictionary) -> void:
@@ -664,6 +669,9 @@ func _on_action(action_id: String) -> void:
 		return
 	if action_id in [PatrolStateScript.TALK_AT_BOAT_WORKSITE, PatrolStateScript.TALK_AT_HERBS_WORKSITE]:
 		_start_patrol_work_dialogue(action_id)
+		return
+	if action_id == JourneyStateScript.INSPECT_PATH_MARKER and journey.path_mark_response == JourneyStateScript.PATH_MARK_UNANSWERED:
+		_start_path_mark_dialogue()
 		return
 	if action_id == JourneyStateScript.REVIEW_JOURNEY and journey.phase_id() == "complete":
 		_start_chapter_epilogue()
@@ -803,6 +811,8 @@ func interact() -> Dictionary:
 		return _start_patrol_dialogue()
 	if nearby_action_id in [PatrolStateScript.TALK_AT_BOAT_WORKSITE, PatrolStateScript.TALK_AT_HERBS_WORKSITE]:
 		return _start_patrol_work_dialogue(nearby_action_id)
+	if nearby_action_id == JourneyStateScript.INSPECT_PATH_MARKER and journey.path_mark_response == JourneyStateScript.PATH_MARK_UNANSWERED:
+		return _start_path_mark_dialogue()
 	var result: Dictionary = journey.choose(nearby_action_id)
 	if result["ok"]:
 		_sync_exploration_after_action(nearby_action_id, result["events"])
@@ -1327,6 +1337,20 @@ func _decode_save(loaded: Dictionary) -> Dictionary:
 					true
 				) != str(current_worksite.get("action_id", "")):
 					return {"ok": false, "reason": "存档中的工作点对话位置无效"}
+			DialogueStateScript.PATH_MARK_BRIEFING:
+				if (
+					restored_journey.phase_id() != "mountain_path"
+					or restored_journey.path_mark_response != JourneyStateScript.PATH_MARK_UNANSWERED
+					or restored_exploration.interaction_action(
+						restored_journey.gathered_moonleaf,
+						restored_journey.talked_to_companion,
+						restored_journey.discoveries,
+						restored_journey.ferryman_response,
+						restored_journey.basket_response,
+						restored_journey.enemy_intel
+					) != JourneyStateScript.INSPECT_PATH_MARKER
+				):
+					return {"ok": false, "reason": "存档中的晴绳对话与旧石标位置不一致"}
 		var dialogue_data: Dictionary = content.get("dialogues", {}).get(restored_dialogue.dialogue_id, {})
 		if dialogue_data.is_empty() or restored_dialogue.line_index > dialogue_data.get("lines", []).size():
 			return {"ok": false, "reason": "存档中的对话位置无效"}
@@ -1436,6 +1460,20 @@ func _start_patrol_work_dialogue(action_id: String) -> Dictionary:
 	return {"ok": true, "events": ["dialogue_started"], "snapshot": journey.snapshot()}
 
 
+func _start_path_mark_dialogue() -> Dictionary:
+	if (
+		journey.phase_id() != "mountain_path"
+		or journey.path_mark_response != JourneyStateScript.PATH_MARK_UNANSWERED
+		or _resolved_nearby_action(journey.snapshot()) != JourneyStateScript.INSPECT_PATH_MARKER
+		or not dialogue.start(DialogueStateScript.PATH_MARK_BRIEFING)
+	):
+		return {"ok": false, "events": ["path_mark_unavailable"], "snapshot": journey.snapshot()}
+	dialogue_history_visible = false
+	_render_dialogue_overlay()
+	_save_game()
+	return {"ok": true, "events": ["dialogue_started"], "snapshot": journey.snapshot()}
+
+
 func advance_dialogue() -> void:
 	if not dialogue.active or _dialogue_at_choices():
 		return
@@ -1476,6 +1514,11 @@ func toggle_dialogue_history() -> void:
 
 func _choose_dialogue_response(response_id: String) -> void:
 	if not _dialogue_at_choices():
+		return
+	if (
+		dialogue.dialogue_id == DialogueStateScript.PATH_MARK_BRIEFING
+		and _resolved_nearby_action(journey.snapshot()) != JourneyStateScript.INSPECT_PATH_MARKER
+	):
 		return
 	var expected_event_id := _dialogue_choice_event(response_id)
 	if expected_event_id.is_empty():
@@ -1521,6 +1564,8 @@ func _choose_dialogue_response(response_id: String) -> void:
 				str(patrol_work_context.get("worksite_id", "")),
 				response_id
 			)
+		DialogueStateScript.PATH_MARK_BRIEFING:
+			result = staged_journey.complete_path_mark_dialogue(response_id)
 		_:
 			return
 	if not result["ok"]:
@@ -1677,6 +1722,10 @@ func _resolved_dialogue_text(source_text: String) -> String:
 		"return": "蕙婶已把公用药篓挂回圃门",
 		"trail": "补好提绳的药篓仍在山道等后来人",
 	}.get(snapshot["basket_response"], "那只山道药篓还没有找到下一处归宿")
+	var path_mark_reflection: String = {
+		"low_knot": "旧石标的低结会先碰到负篓人的手",
+		"high_streamer": "旧石标的亮穗会把山风方向递给雾里的人",
+	}.get(snapshot.get("path_mark_response", "unanswered"), "旧石标背后的晴绳还等着人重新系好")
 	var patrol_reflection: String = {
 		"boat_first": "陶小满先把怕潮的木楔送往补船架",
 		"herbs_first": "陶小满先赶在日头偏西前翻好了药叶",
@@ -1693,6 +1742,7 @@ func _resolved_dialogue_text(source_text: String) -> String:
 		.replace("{companion_reflection}", companion_reflection) \
 		.replace("{ferryman_reflection}", ferryman_reflection) \
 		.replace("{basket_reflection}", basket_reflection) \
+		.replace("{path_mark_reflection}", path_mark_reflection) \
 		.replace("{patrol_reflection}", patrol_reflection) \
 		.replace("{intel_reflection}", intel_reflection)
 
@@ -1796,6 +1846,10 @@ func _render_discovery_journal(snapshot: Dictionary) -> void:
 		var basket_side_id := "basket_%s" % snapshot["basket_response"]
 		var basket_entry: Dictionary = content.get("journal_side_entries", {}).get(basket_side_id, {})
 		lines.append("◆ %s\n%s" % [basket_entry.get("title", "药篓小记"), basket_entry.get("summary", "这段药篓去向暂时无法辨认。")])
+	if snapshot.get("path_mark_response", JourneyStateScript.PATH_MARK_UNANSWERED) != JourneyStateScript.PATH_MARK_UNANSWERED:
+		var path_mark_side_id := "path_mark_%s" % snapshot["path_mark_response"]
+		var path_mark_entry: Dictionary = content.get("journal_side_entries", {}).get(path_mark_side_id, {})
+		lines.append("◆ %s\n%s" % [path_mark_entry.get("title", "晴绳小记"), path_mark_entry.get("summary", "这段路签去向暂时无法辨认。")])
 	if snapshot["patrol_response"] != JourneyStateScript.PATROL_UNANSWERED:
 		var patrol_side_id := "patrol_%s" % snapshot["patrol_response"]
 		var patrol_entry: Dictionary = content.get("journal_side_entries", {}).get(patrol_side_id, {})
@@ -1828,20 +1882,27 @@ func _render_enemy_journal(snapshot: Dictionary) -> void:
 
 func journal_contract() -> Dictionary:
 	var entries: Dictionary = content.get("journal_entries", {})
+	var side_entries: Dictionary = content.get("journal_side_entries", {})
 	var unlocked_titles: Array[String] = []
 	for discovery_id in journey.discoveries:
 		if entries.has(discovery_id):
 			unlocked_titles.append(str(entries[discovery_id].get("title", "")))
 	if journey.ferryman_response != JourneyStateScript.FERRYMAN_UNANSWERED:
 		var side_id := "ferryman_%s" % journey.ferryman_response
-		var side_entries: Dictionary = content.get("journal_side_entries", {})
 		if side_entries.has(side_id):
 			unlocked_titles.append(str(side_entries[side_id].get("title", "")))
 	if journey.basket_response != JourneyStateScript.BASKET_UNANSWERED:
 		var basket_side_id := "basket_%s" % journey.basket_response
-		var basket_side_entries: Dictionary = content.get("journal_side_entries", {})
-		if basket_side_entries.has(basket_side_id):
-			unlocked_titles.append(str(basket_side_entries[basket_side_id].get("title", "")))
+		if side_entries.has(basket_side_id):
+			unlocked_titles.append(str(side_entries[basket_side_id].get("title", "")))
+	if journey.path_mark_response != JourneyStateScript.PATH_MARK_UNANSWERED:
+		var path_mark_side_id := "path_mark_%s" % journey.path_mark_response
+		if side_entries.has(path_mark_side_id):
+			unlocked_titles.append(str(side_entries[path_mark_side_id].get("title", "")))
+	if journey.patrol_response != JourneyStateScript.PATROL_UNANSWERED:
+		var patrol_side_id := "patrol_%s" % journey.patrol_response
+		if side_entries.has(patrol_side_id):
+			unlocked_titles.append(str(side_entries[patrol_side_id].get("title", "")))
 	var enemy_titles: Array[String] = []
 	var enemy_notes: Dictionary = content.get("enemy_notes", {})
 	for enemy_id in journey.enemy_intel:

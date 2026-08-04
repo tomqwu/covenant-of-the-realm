@@ -35,10 +35,12 @@ func _run() -> void:
 	_test_patrol_endpoint_work()
 	_test_path_keeper_state()
 	_test_path_keeper_echoes()
+	_test_path_mark_side_story()
 	_test_life_landmark_observations()
 	_test_state_restore()
 	_test_dialogue_state()
 	_test_versioned_save()
+	_test_path_mark_save_validation()
 	_test_patrol_work_save_validation()
 	_test_crash_consistent_save_recovery()
 	_test_stale_temporary_branch_replacement()
@@ -835,6 +837,72 @@ func _test_path_keeper_echoes() -> void:
 		_expect_equal(journey.snapshot(), before, "%s重复询问仍无任务、战斗或奖励权威" % echo_case["label"])
 
 
+func _test_path_mark_side_story() -> void:
+	var initial = JourneyStateScript.new()
+	_expect_equal(initial.path_mark_response, JourneyStateScript.PATH_MARK_UNANSWERED, "晴绳支线从未选择状态开始")
+	var wrong_phase_before: Dictionary = initial.snapshot()
+	_expect_false(initial.complete_path_mark_dialogue(JourneyStateScript.PATH_MARK_LOW_KNOT)["ok"], "渡口不能远程提交晴绳选择")
+	_expect_equal(initial.snapshot(), wrong_phase_before, "错误阶段提交不会部分修改旅程")
+
+	var low_knot = _path_keeper_ready_journey()
+	var choice_required_before: Dictionary = low_knot.snapshot()
+	var choice_required: Dictionary = low_knot.choose(JourneyStateScript.INSPECT_PATH_MARKER)
+	_expect_false(choice_required["ok"], "未回应时规则层要求先完成结构化晴绳选择")
+	_expect_equal(choice_required["events"], ["path_mark_choice_required"], "未回应返回稳定选择提示事件")
+	_expect_equal(low_knot.snapshot(), choice_required_before, "选择提示不偷偷采用默认路签")
+	_expect_false(low_knot.complete_path_mark_dialogue("reward_knot")["ok"], "未知晴绳样式被原子拒绝")
+	_expect_equal(low_knot.snapshot(), choice_required_before, "未知晴绳样式不会修改任何旅程字段")
+	var low_result: Dictionary = low_knot.complete_path_mark_dialogue(JourneyStateScript.PATH_MARK_LOW_KNOT)
+	_expect_true(low_result["ok"], "可选择伸手可触的晴绳低结")
+	_expect_equal(low_result["events"], ["path_mark_low_knot"], "低结选择返回唯一内容事件")
+	var expected_low := choice_required_before.duplicate(true)
+	expected_low["path_mark_response"] = JourneyStateScript.PATH_MARK_LOW_KNOT
+	_expect_equal(low_knot.snapshot(), expected_low, "低结选择只修改一个显式 Journey 字段")
+	var low_inspection: Dictionary = low_knot.choose(JourneyStateScript.INSPECT_PATH_MARKER)
+	_expect_true(low_inspection["ok"], "系好后可重复查看低结地图余留")
+	_expect_equal(low_inspection["events"], ["path_marker_low_knot_inspected"], "低结余留使用稳定独立事件")
+	var low_before_repeat: Dictionary = low_knot.snapshot()
+	_expect_false(low_knot.complete_path_mark_dialogue(JourneyStateScript.PATH_MARK_HIGH_STREAMER)["ok"], "本轮不能覆盖已经系稳的晴绳")
+	_expect_equal(low_knot.snapshot(), low_before_repeat, "重复选择保持已提交结果原子不变")
+	var low_echo: Dictionary = low_knot.choose(JourneyStateScript.TALK_TO_PATH_KEEPER)
+	_expect_equal(low_echo["events"], ["path_keeper_low_knot"], "岑苇确认低结服务负篓行人")
+	_expect_equal(low_knot.snapshot(), low_before_repeat, "岑苇低结回声没有奖励或支线二次权威")
+
+	var high_streamer = _path_keeper_ready_journey()
+	var high_before: Dictionary = high_streamer.snapshot()
+	var high_result: Dictionary = high_streamer.complete_path_mark_dialogue(JourneyStateScript.PATH_MARK_HIGH_STREAMER)
+	_expect_true(high_result["ok"], "可选择隔雾可见的晴绳高穗")
+	_expect_equal(high_result["events"], ["path_mark_high_streamer"], "高穗选择返回唯一内容事件")
+	var expected_high := high_before.duplicate(true)
+	expected_high["path_mark_response"] = JourneyStateScript.PATH_MARK_HIGH_STREAMER
+	_expect_equal(high_streamer.snapshot(), expected_high, "高穗选择同样只修改显式支线字段")
+	_expect_equal(high_streamer.choose(JourneyStateScript.INSPECT_PATH_MARKER)["events"], ["path_marker_high_streamer_inspected"], "高穗地图余留可重复辨认")
+	var high_after: Dictionary = high_streamer.snapshot()
+	_expect_equal(high_streamer.choose(JourneyStateScript.TALK_TO_PATH_KEEPER)["events"], ["path_keeper_high_streamer"], "岑苇确认高穗可借山风辨向")
+	_expect_equal(high_streamer.snapshot(), high_after, "岑苇高穗回声不改变规则或资源")
+
+	var precedence = _path_keeper_ready_journey()
+	precedence.complete_path_mark_dialogue(JourneyStateScript.PATH_MARK_LOW_KNOT)
+	precedence.choose(JourneyStateScript.APPROACH_ENEMY)
+	precedence.choose(JourneyStateScript.RETREAT)
+	_expect_equal(precedence.choose(JourneyStateScript.TALK_TO_PATH_KEEPER)["events"], ["path_keeper_after_setback"], "撤退回声继续优先于晴绳结果")
+	var intel_precedence = _path_keeper_ready_journey()
+	intel_precedence.complete_path_mark_dialogue(JourneyStateScript.PATH_MARK_HIGH_STREAMER)
+	intel_precedence.choose(JourneyStateScript.INSPECT_ROCK_SPOOR)
+	var intel_precedence_before: Dictionary = intel_precedence.snapshot()
+	_expect_equal(intel_precedence.choose(JourneyStateScript.TALK_TO_PATH_KEEPER)["events"], ["path_keeper_spoor_noted"], "旧敌迹进度回声继续优先于晴绳结果")
+	_expect_equal(intel_precedence.snapshot(), intel_precedence_before, "敌迹与晴绳组合回声仍保持完整旅程快照")
+
+	var replay = _path_keeper_ready_journey()
+	replay.complete_path_mark_dialogue(JourneyStateScript.PATH_MARK_HIGH_STREAMER)
+	replay.choose(JourneyStateScript.BYPASS_ENEMY)
+	replay.choose(JourneyStateScript.LISTEN_TO_SPRING)
+	replay.choose(JourneyStateScript.WARM_MERIDIANS)
+	replay.choose(JourneyStateScript.BREAKTHROUGH)
+	_expect_true(replay.choose(JourneyStateScript.REPLAY_CHAPTER)["ok"], "完成态可重游并重置晴绳支线")
+	_expect_equal(replay.path_mark_response, JourneyStateScript.PATH_MARK_UNANSWERED, "重游不继承上一轮晴绳选择")
+
+
 func _path_keeper_ready_journey():
 	var journey = JourneyStateScript.new()
 	journey.complete_companion_briefing(JourneyStateScript.RESPONSE_CAREFUL)
@@ -1029,6 +1097,15 @@ func _test_state_restore() -> void:
 	var impossible_patrol: Dictionary = JourneyStateScript.new().snapshot()
 	impossible_patrol["patrol_response"] = "boat_first"
 	_expect_false(restored.restore(impossible_patrol), "同伴简报前不能伪造已决定的巡路先后")
+	var missing_path_mark := snapshot.duplicate(true)
+	missing_path_mark.erase("path_mark_response")
+	_expect_false(restored.restore(missing_path_mark), "当前规则快照缺少晴绳回应时拒绝恢复")
+	var invalid_path_mark: Dictionary = JourneyStateScript.new().snapshot()
+	invalid_path_mark["path_mark_response"] = "licensed_waymark"
+	_expect_false(restored.restore(invalid_path_mark), "未知晴绳回应不能进入持久规则状态")
+	var impossible_path_mark: Dictionary = JourneyStateScript.new().snapshot()
+	impossible_path_mark["path_mark_response"] = JourneyStateScript.PATH_MARK_LOW_KNOT
+	_expect_false(restored.restore(impossible_path_mark), "未获进山条件的初始状态不能伪造已系晴绳")
 	var impossible_basket: Dictionary = JourneyStateScript.new().snapshot()
 	impossible_basket["basket_response"] = "return"
 	_expect_false(restored.restore(impossible_basket), "没有发现公用印记时不能伪造药篓已安置")
@@ -1140,6 +1217,13 @@ func _test_dialogue_state() -> void:
 	_expect_true(restored_patrol_dialogue.restore(patrol_dialogue_snapshot), "巡路对话可在两项选择前恢复")
 	_expect_equal(restored_patrol_dialogue.dialogue_id, "patrol_runner_briefing", "巡路恢复保持稳定对话标识")
 	_expect_true(restored_patrol_dialogue.finish(), "巡路回应后释放结构化对话")
+	_expect_true(restored_patrol_dialogue.start(DialogueStateScript.PATH_MARK_BRIEFING), "晴绳支线使用受支持的结构化对话")
+	_expect_true(restored_patrol_dialogue.advance(4), "晴绳对话可逐句推进")
+	var path_mark_dialogue_snapshot: Dictionary = restored_patrol_dialogue.snapshot()
+	var restored_path_mark_dialogue = DialogueStateScript.new()
+	_expect_true(restored_path_mark_dialogue.restore(path_mark_dialogue_snapshot), "晴绳对话可在两项选择前恢复")
+	_expect_equal(restored_path_mark_dialogue.dialogue_id, DialogueStateScript.PATH_MARK_BRIEFING, "晴绳恢复保持稳定对话标识")
+	_expect_true(restored_path_mark_dialogue.finish(), "晴绳回应后释放结构化对话")
 	var patrol_work_dialogues := [
 		{"worksite_id": "boat", "patrol_response": "boat_first", "dialogue_id": "patrol_boat_priority", "route_role": "priority", "action_id": "talk_at_boat_worksite"},
 		{"worksite_id": "boat", "patrol_response": "herbs_first", "dialogue_id": "patrol_boat_followup", "route_role": "followup", "action_id": "talk_at_boat_worksite"},
@@ -1718,6 +1802,92 @@ func _test_versioned_save() -> void:
 	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_json", "损坏 JSON 被安全拒绝")
 	SaveGameScript.remove(TEST_SAVE_PATH)
 	_expect_false(FileAccess.file_exists(TEST_SAVE_PATH), "测试存档和临时文件可清理")
+
+
+func _test_path_mark_save_validation() -> void:
+	SaveGameScript.remove(TEST_SAVE_PATH)
+	var journey = _path_keeper_ready_journey()
+	var exploration = ExplorationStateScript.new()
+	_expect_true(exploration.restore({
+		"map_id": ExplorationStateScript.MOUNTAIN_PATH_MAP_ID,
+		"player_x": ExplorationStateScript.PATH_MARKER_POSITION.x,
+		"player_y": ExplorationStateScript.PATH_MARKER_POSITION.y,
+	}), "晴绳存档夹具把玩家放在旧石标准确交互点")
+	var path_keeper = PathKeeperStateScript.new()
+	path_keeper.advance(2.4, Vector2(0.90, 0.70))
+	var active_dialogue := {
+		"active": true,
+		"dialogue_id": DialogueStateScript.PATH_MARK_BRIEFING,
+		"line_index": 2,
+	}
+	var payload := {
+		"save_version": SaveGameScript.SAVE_VERSION,
+		"story_id": SaveGameScript.STORY_ID,
+		"journey": journey.snapshot(),
+		"exploration": exploration.snapshot(),
+		"dialogue": active_dialogue,
+		"patrol": PatrolStateScript.default_snapshot(),
+		"path_keeper": path_keeper.snapshot(),
+	}
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify(payload))
+	var current: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(current["ok"], "save v18 可恢复旧石标准确位置的活动晴绳对话")
+	var restored_path_mark_dialogue = DialogueStateScript.new()
+	_expect_true(restored_path_mark_dialogue.restore(current["data"]["dialogue"]), "save v18 的晴绳对话通过严格状态恢复")
+	_expect_equal(restored_path_mark_dialogue.snapshot(), active_dialogue, "save v18 逐字段保留晴绳对话行号")
+
+	var far_payload: Dictionary = payload.duplicate(true)
+	far_payload["exploration"] = {
+		"map_id": ExplorationStateScript.MOUNTAIN_PATH_MAP_ID,
+		"player_x": ExplorationStateScript.PATH_START_POSITION.x,
+		"player_y": ExplorationStateScript.PATH_START_POSITION.y,
+	}
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify(far_payload))
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_dialogue", "玩家远离旧石标时活动晴绳对话被拒绝")
+
+	var answered = _path_keeper_ready_journey()
+	answered.complete_path_mark_dialogue(JourneyStateScript.PATH_MARK_HIGH_STREAMER)
+	var answered_payload: Dictionary = payload.duplicate(true)
+	answered_payload["journey"] = answered.snapshot()
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify(answered_payload))
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_dialogue", "已提交晴绳结果不能伪造仍活动的选择对话")
+
+	var missing_field: Dictionary = payload.duplicate(true)
+	missing_field["dialogue"] = DialogueStateScript.default_snapshot()
+	missing_field["journey"].erase("path_mark_response")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify(missing_field))
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_journey", "save v18 缺少晴绳状态时严格拒绝")
+	var unknown_field: Dictionary = payload.duplicate(true)
+	unknown_field["dialogue"] = DialogueStateScript.default_snapshot()
+	unknown_field["journey"]["path_mark_response"] = "licensed_waymark"
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify(unknown_field))
+	_expect_equal(SaveGameScript.read(TEST_SAVE_PATH)["reason"], "invalid_journey", "save v18 拒绝未知晴绳枚举")
+
+	var version_seventeen: Dictionary = payload.duplicate(true)
+	version_seventeen["save_version"] = 17
+	version_seventeen["dialogue"] = DialogueStateScript.default_snapshot()
+	version_seventeen["journey"].erase("path_mark_response")
+	_write_test_file(TEST_SAVE_PATH, JSON.stringify(version_seventeen))
+	var migrated_v17: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect_true(migrated_v17["ok"], "save v17 显式迁移到 v18")
+	_expect_equal(migrated_v17["migrated_from_version"], 17, "v17 迁移声明准确来源")
+	_expect_equal(migrated_v17["data"]["journey"]["path_mark_response"], JourneyStateScript.PATH_MARK_UNANSWERED, "v17 迁移不替玩家发明晴绳选择")
+	var restored_v17_path_keeper = PathKeeperStateScript.new()
+	_expect_true(restored_v17_path_keeper.restore(migrated_v17["data"]["path_keeper"]), "v17 迁移后的岑苇路线仍通过严格恢复")
+	_expect_equal(restored_v17_path_keeper.snapshot(), path_keeper.snapshot(), "v17 迁移逐字段保留已有岑苇巡山进度")
+
+	for legacy_version in range(1, 18):
+		_write_test_file(TEST_SAVE_PATH, JSON.stringify({
+			"save_version": legacy_version,
+			"story_id": SaveGameScript.STORY_ID,
+			"journey": {},
+			"exploration": {},
+			"dialogue": active_dialogue,
+		}))
+		var forged: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+		_expect_false(forged["ok"], "v%d 不能伪造尚不存在的晴绳对话" % legacy_version)
+		_expect_equal(forged["reason"], "invalid_dialogue", "v%d 伪造晴绳对话返回稳定原因" % legacy_version)
+	SaveGameScript.remove(TEST_SAVE_PATH)
 
 
 func _test_patrol_work_save_validation() -> void:
@@ -2523,7 +2693,9 @@ func _test_gathering_and_gate() -> void:
 	_expect_false(state.available_actions().has("gather_moonleaf_cutting"), "采集后另一种方式也从选项隐藏")
 	_expect_true(state.choose("enter_spring")["ok"], "准备后进入战斗")
 	_expect_equal(state.phase_id(), "mountain_path", "山门先进入可探索山道")
-	_expect_true(state.choose("inspect_path_marker")["ok"], "山道石标可以调查")
+	_expect_false(state.choose("inspect_path_marker")["ok"], "山道石标首次调查等待显式晴绳选择")
+	_expect_true(state.complete_path_mark_dialogue(JourneyStateScript.PATH_MARK_LOW_KNOT)["ok"], "山道石标可提交低结支线结果")
+	_expect_true(state.choose("inspect_path_marker")["ok"], "系好晴绳后山道石标可以重复调查")
 	_expect_true(state.choose("return_to_ferry")["ok"], "山道可以主动返回渡口")
 	_expect_equal(state.phase_id(), "riverbank", "返回行动回到渡口阶段")
 	_expect_true(state.choose("enter_spring")["ok"], "再次从山门进入山道")
@@ -4434,7 +4606,53 @@ func _test_scene_smoke() -> void:
 	instance._render([])
 	_expect_equal(instance.get_node("%MapCanvas").companion_follow_contract()["reset_count"], resets_before_restore + 1, "远距离读档重建砚青位置而不跨图跑来")
 	await _press_action(instance, "查看旧石标")
-	_expect_true(instance.get_node("%EventLabel").text.contains("旧猎户的箭记"), "山道可选调查返回原创环境线索")
+	_expect_true(instance.dialogue.active and instance.dialogue.dialogue_id == DialogueStateScript.PATH_MARK_BRIEFING, "旧石标首次交互开启可恢复晴绳对话")
+	_expect_true(instance.get_node("%DialogueLabel").text.contains("晴绳松了"), "晴绳对话从原创空间细节开始")
+	_expect_equal(instance.get_node("%DialoguePortrait").visual_contract()["portrait_id"], "yanqing", "晴绳对话复用砚青纸绘头像")
+	instance.skip_dialogue_to_response()
+	await process_frame
+	_expect_equal(_dialogue_choice_count(instance), 2, "晴绳支线公开两项无奖励选择")
+	_expect_true(instance.get_node("%DialogueLabel").text.contains("不改变战斗强度"), "晴绳回应提示明确没有战力奖励")
+	var remote_path_mark_before: Dictionary = instance.journey.snapshot()
+	var remote_path_mark_save_before: Dictionary = SaveGameScript.read(TEST_SCENE_SAVE_PATH)
+	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.40, "player_y": 0.30}), "晴绳原子测试可把活动对话夹具移出旧石标范围")
+	instance._render([])
+	instance._choose_dialogue_response(JourneyStateScript.PATH_MARK_LOW_KNOT)
+	_expect_equal(instance.journey.snapshot(), remote_path_mark_before, "移远后回应不能提交晴绳 Journey 结果")
+	_expect_true(instance.dialogue.active and instance.dialogue.dialogue_id == DialogueStateScript.PATH_MARK_BRIEFING, "移远后回应保持原活动对话供玩家返回")
+	_expect_equal(SaveGameScript.read(TEST_SCENE_SAVE_PATH), remote_path_mark_save_before, "移远后回应不覆盖旧石标处的最后合法存档")
+	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.43, "player_y": 0.57}), "晴绳原子测试返回旧石标后可继续选择")
+	instance._render([])
+	await _press_dialogue_choice(instance, "系成低结，照顾负篓行人。")
+	_expect_false(instance.dialogue.active, "晴绳选择提交后关闭结构化对话")
+	_expect_equal(instance.journey.path_mark_response, JourneyStateScript.PATH_MARK_LOW_KNOT, "场景原子提交低结结果")
+	_expect_true(instance.get_node("%EventLabel").text.contains("负篓人"), "低结选择立即返回原创公共后果")
+	var path_mark_visual: Dictionary = instance.get_node("%MapCanvas").path_mark_visual_contract()
+	_expect_true(path_mark_visual["visible"], "低结选择立即形成山道地图余留")
+	_expect_equal(path_mark_visual["shape"], "low_horizontal_knot", "低结余留以独立几何而非仅换色辨认")
+	_expect_true(
+		not path_mark_visual["collision_authority"]
+		and not path_mark_visual["quest_authority"]
+		and not path_mark_visual["battle_authority"]
+		and not path_mark_visual["reward_authority"]
+		and not path_mark_visual["rule_authority"]
+		and not path_mark_visual["input_authority"]
+		and not path_mark_visual["gameplay_timing_authority"]
+		and not path_mark_visual["save_authority"],
+		"晴绳地图余留不取得规则、碰撞、任务、战斗、奖励或存档权威"
+	)
+	var path_mark_disk: Dictionary = SaveGameScript.read(TEST_SCENE_SAVE_PATH)
+	_expect_equal(path_mark_disk["data"]["save_version"], float(SaveGameScript.SAVE_VERSION), "晴绳选择写入 save v18")
+	_expect_equal(path_mark_disk["data"]["journey"]["path_mark_response"], JourneyStateScript.PATH_MARK_LOW_KNOT, "晴绳选择立即自动保存")
+	instance.open_journal()
+	await process_frame
+	var path_mark_journal: Dictionary = instance.journal_contract()
+	_expect_true(path_mark_journal["unlocked_titles"].has("伸手可触的晴绳低结"), "低结结果进入内容驱动札记")
+	_expect_true(path_mark_journal["entries_text"].contains("伸手便能摸到回程的结"), "晴绳札记保留对后来人的公共后果")
+	instance.close_journal()
+	instance._render([])
+	await _press_action(instance, "查看旧石标")
+	_expect_true(instance.get_node("%EventLabel").text.contains("低结仍系得牢"), "已选择后查看旧石标显示持久地图结果而不重复弹出选择")
 	_expect_true(instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.73, "player_y": 0.34}), "场景测试移动到敌人预警区")
 	instance._render([])
 	await _press_action(instance, "接近岩甲幼兽")

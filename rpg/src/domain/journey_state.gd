@@ -61,6 +61,10 @@ const PATROL_UNANSWERED := "unanswered"
 const PATROL_BOAT_FIRST := "boat_first"
 const PATROL_HERBS_FIRST := "herbs_first"
 const PATROL_RESPONSES := [PATROL_UNANSWERED, PATROL_BOAT_FIRST, PATROL_HERBS_FIRST]
+const PATH_MARK_UNANSWERED := "unanswered"
+const PATH_MARK_LOW_KNOT := "low_knot"
+const PATH_MARK_HIGH_STREAMER := "high_streamer"
+const PATH_MARK_RESPONSES := [PATH_MARK_UNANSWERED, PATH_MARK_LOW_KNOT, PATH_MARK_HIGH_STREAMER]
 const WORKSITE_BOAT := "boat"
 const WORKSITE_HERBS := "herbs"
 const SECURE_BOAT_CLOTH := "secure_boat_cloth"
@@ -110,6 +114,7 @@ var discoveries: Array[String] = []
 var ferryman_response := FERRYMAN_UNANSWERED
 var basket_response := BASKET_UNANSWERED
 var patrol_response := PATROL_UNANSWERED
+var path_mark_response := PATH_MARK_UNANSWERED
 var enemy_intel: Array[String] = []
 var first_breath_stage := FIRST_BREATH_UNSTARTED
 
@@ -198,7 +203,13 @@ func choose(action_id: String) -> Dictionary:
 			if action_id == TALK_TO_PATH_KEEPER:
 				return _result(true, [_path_keeper_event_id()])
 			if action_id == INSPECT_PATH_MARKER:
-				return _result(true, ["path_marker_inspected"])
+				if path_mark_response == PATH_MARK_UNANSWERED:
+					return _result(false, ["path_mark_choice_required"])
+				return _result(true, [
+					"path_marker_low_knot_inspected"
+					if path_mark_response == PATH_MARK_LOW_KNOT
+					else "path_marker_high_streamer_inspected"
+				])
 			if action_id == INSPECT_RAIN_SHELTER:
 				return _result(true, ["rain_shelter_inspected"])
 			if action_id == INSPECT_SPRING_SEAM:
@@ -265,6 +276,7 @@ func snapshot() -> Dictionary:
 		"ferryman_response": ferryman_response,
 		"basket_response": basket_response,
 		"patrol_response": patrol_response,
+		"path_mark_response": path_mark_response,
 		"enemy_intel": enemy_intel.duplicate(),
 		"first_breath_stage": first_breath_stage,
 	}
@@ -293,6 +305,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		"ferryman_response",
 		"basket_response",
 		"patrol_response",
+		"path_mark_response",
 		"enemy_intel",
 		"first_breath_stage",
 	]
@@ -318,6 +331,8 @@ func restore(snapshot_data: Dictionary) -> bool:
 	if typeof(snapshot_data["basket_response"]) != TYPE_STRING:
 		return false
 	if typeof(snapshot_data["patrol_response"]) != TYPE_STRING:
+		return false
+	if typeof(snapshot_data["path_mark_response"]) != TYPE_STRING:
 		return false
 	if not _valid_enemy_intel(snapshot_data["enemy_intel"]):
 		return false
@@ -383,6 +398,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	var next_ferryman_response: String = snapshot_data["ferryman_response"]
 	var next_basket_response: String = snapshot_data["basket_response"]
 	var next_patrol_response: String = snapshot_data["patrol_response"]
+	var next_path_mark_response: String = snapshot_data["path_mark_response"]
 	var next_enemy_intel: Array[String] = []
 	for intel_id in snapshot_data["enemy_intel"]:
 		next_enemy_intel.append(intel_id)
@@ -409,6 +425,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 		next_ferryman_response,
 		next_basket_response,
 		next_patrol_response,
+		next_path_mark_response,
 		next_enemy_intel,
 		next_first_breath_stage
 	):
@@ -435,6 +452,7 @@ func restore(snapshot_data: Dictionary) -> bool:
 	ferryman_response = next_ferryman_response
 	basket_response = next_basket_response
 	patrol_response = next_patrol_response
+	path_mark_response = next_path_mark_response
 	enemy_intel = next_enemy_intel
 	first_breath_stage = next_first_breath_stage
 	return true
@@ -638,6 +656,10 @@ func _path_keeper_event_id() -> String:
 		return "path_keeper_basket_found"
 	if not enemy_intel.is_empty():
 		return "path_keeper_spoor_noted"
+	if path_mark_response == PATH_MARK_LOW_KNOT:
+		return "path_keeper_low_knot"
+	if path_mark_response == PATH_MARK_HIGH_STREAMER:
+		return "path_keeper_high_streamer"
 	return "path_keeper_route_checked"
 
 
@@ -689,6 +711,15 @@ func complete_patrol_dialogue(response_id: String) -> Dictionary:
 		return _result(false, ["invalid_patrol_response"])
 	patrol_response = response_id
 	return _result(true, ["patrol_%s" % response_id])
+
+
+func complete_path_mark_dialogue(response_id: String) -> Dictionary:
+	if phase != Phase.MOUNTAIN_PATH or path_mark_response != PATH_MARK_UNANSWERED:
+		return _result(false, ["path_mark_unavailable"])
+	if response_id not in [PATH_MARK_LOW_KNOT, PATH_MARK_HIGH_STREAMER]:
+		return _result(false, ["invalid_path_mark_response"])
+	path_mark_response = response_id
+	return _result(true, ["path_mark_%s" % response_id])
 
 
 func complete_patrol_work_dialogue(worksite_id: String, response_id: String) -> Dictionary:
@@ -785,6 +816,7 @@ func _reset_chapter() -> void:
 	ferryman_response = FERRYMAN_UNANSWERED
 	basket_response = BASKET_UNANSWERED
 	patrol_response = PATROL_UNANSWERED
+	path_mark_response = PATH_MARK_UNANSWERED
 	enemy_intel.clear()
 	first_breath_stage = FIRST_BREATH_UNSTARTED
 
@@ -818,6 +850,7 @@ func _valid_phase_invariants(
 	next_ferryman_response: String,
 	next_basket_response: String,
 	next_patrol_response: String,
+	next_path_mark_response: String,
 	next_enemy_intel: Array[String],
 	next_first_breath_stage: String
 ) -> bool:
@@ -828,6 +861,13 @@ func _valid_phase_invariants(
 	if next_patrol_response not in PATROL_RESPONSES:
 		return false
 	if next_patrol_response != PATROL_UNANSWERED and not next_talked:
+		return false
+	if next_path_mark_response not in PATH_MARK_RESPONSES:
+		return false
+	if (
+		next_path_mark_response != PATH_MARK_UNANSWERED
+		and (not next_talked or next_moonleaf_method == MOONLEAF_UNSELECTED)
+	):
 		return false
 	if not _valid_discoveries(next_discoveries):
 		return false

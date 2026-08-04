@@ -1,7 +1,7 @@
 # 《山河有契》RPG 灰盒
 
 这是 Godot 4.7.1 制作的原创单机剧情 RPG 基础。当前灰盒验证数据驱动中文行动、
-确定性回合战斗、九形临势签、敌足九形“刚才”势痕、非阻断旧敌败退、陶小满与岑苇两条独立 NPC 日程、一次性资源与“听泉辨脉 → 月芽温脉 → 静坐引息”的三步首次境界突破；
+确定性回合战斗、九形临势签、敌足九形“刚才”势痕、非阻断旧敌败退、陶小满与岑苇两条独立 NPC 日程、低结/高穗可选的“晴绳路签”支线、一次性资源与“听泉辨脉 → 月芽温脉 → 静坐引息”的三步首次境界突破；
 不包含外部小说的受保护内容。
 
 ```sh
@@ -47,38 +47,42 @@ For the previous outgoing-defeat input, four local macOS/arm64 exports and four 
 Linux/x86_64 exports from run `30873652565`, each including two independent fresh-cache project
 copies, all match at 824,432 bytes and SHA-256
 `6865587823cf2c69a4ed706d959f80f3a827edfe39a796c52882ba4edb5f7ada`; manifest verification,
-the unchanged 25/9 resource probe, and packaged boot pass locally and hosted. For the current
+the unchanged 25/9 resource probe, and packaged boot pass locally and hosted. For the prior
 resolved-intent accent input, four local macOS/arm64 exports and four GitHub-hosted Linux/x86_64
 exports from run `30879113809`, each including two independent fresh-cache project copies, all
 match at 870,720 bytes and SHA-256
 `7959ac89fe6f058b742883cacc04c6b2398b8d72355b8ce9b663e934630fbc98`; manifest verification,
 the unchanged 25/9 resource probe, and packaged boot pass locally and hosted. The hosted 20-cycle
-lifecycle passes at 5,008.02 ms against the unchanged 7,000 ms ceiling, with every immediate/stable
-sample, 117 static / 127 peak nodes, and zero root leaks.
-Two consecutive 43-PNG capture batches are byte-identical and reproduce
-aggregate SHA-256
-`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
+lifecycle for that prior input passes at 5,008.02 ms against the unchanged 7,000 ms ceiling, with
+every immediate/stable sample, 117 static / 127 peak nodes, and zero root leaks.
+For the current sunny-cord input, four local macOS/arm64 outputs, including two independent
+fresh-cache copies, match at 890,288 bytes and SHA-256
+`948ce1db799ed4639ad8cf47ecc136b49a4d760e36c1fa3c8a77235a76193704`; manifest verification,
+the unchanged 25/9 probe, and packaged boot pass. Two consecutive 45-PNG capture batches are
+byte-identical at aggregate SHA-256
+`db9cf2846dc40c8aab617ed097ae944b99f5adfee9afa70d1e147b69a6f9e871`.
 A native `.app`/`.exe` is intentionally deferred until the owner selects the first platform and public
 license, then confirms export templates, signing identity, product icon, and distribution target.
 
 The development window has a 1152×648 minimum because that is the validated readable layout.
 Keyboard `E`/`S`, controller A/Start, focus navigation, movement, interaction, battle confirmation,
 and pause/resume are exercised as physical input events by `make test-rpg-input`.
-The current automated Godot evidence is 3,530 rule/scene assertions, 374 complete-chapter E2E
-assertions, and 198 semantic physical-input/focus assertions.
+The current automated Godot evidence is 3,643 rule/scene assertions, 391 complete-chapter E2E
+assertions, and 210 semantic physical-input/focus assertions.
 
 `make test-rpg-performance` executes 100,000 deterministic movement/collision steps, 100,000
 deterministic ferry-runner route steps, 100,000 deterministic path-keeper route steps, 50,000
-bounded companion-footprint updates, 2,000 complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. Lifecycle sampling covers title, path, dialogue choices, active patrol, patrol worksite dialogue, stable battle, immediate and settled post-action frames, immediate and settled regular-enemy replacement frames, the scrollable journal, all three spring stages, and completion. The checked-in
-budget allows 2.5 seconds for each pure-domain workload and 7 seconds for the expanded 15-state lifecycle workload,
+bounded companion-footprint updates, 2,000 complete regular-enemy-to-warden rule loops, and 20 main-scene create/destroy cycles. Lifecycle sampling covers title, path, dialogue choices, the sunny-cord dialogue and persistent result, active patrol, patrol worksite dialogue, stable battle, immediate and settled post-action frames, immediate and settled regular-enemy replacement frames, the scrollable journal, all three spring stages, and completion. The checked-in
+budget allows 2.5 seconds for each pure-domain workload and 7 seconds for the expanded 17-state lifecycle workload,
 caps the main scene at 127 nodes, and requires every cycle to return the root to its baseline child
 count. The static scene uses 117 nodes; the measured peak is 127, mountain-path exploration uses
-123, active ferry patrol uses 125, worksite dialogue uses 127, each spring ritual stage uses 118,
-the completed scene uses 120, title uses 125, dialogue uses 127, and journal plus both enemy-replacement samples use 126, with zero root-child leaks. Godot runs the
+123, sunny-cord dialogue/result use 125/123, active ferry patrol uses 125, worksite dialogue uses 127,
+each spring ritual stage uses 118, the completed scene uses 120, title uses 125, dialogue uses 127,
+and journal plus both enemy-replacement samples use 126, with zero root-child leaks. Godot runs the
 lifecycle gate on a fixed 60 FPS clock, keeps required focus/deferred-tree settle frames, and
 disables automatic drawing because deterministic PNG captures own pixel verification. The runner
 reports measured times but does not treat one development machine as a release hardware promise.
-One checked sample measured 53.45 ms for 100,000 path-keeper advances and 948.09 ms for the complete
+One current checked sample measured 56.43 ms for 100,000 path-keeper advances and 1,020.86 ms for the complete
 20-cycle lifecycle workload.
 Every cycle starts, advances, and saves dialogue before traversing the remaining states. The first
 cycle of each complete sample additionally runs standard/fast/instant reveal behavior through four
@@ -90,9 +94,9 @@ process runs exactly one more complete 20-cycle sample; both must exceed the unc
 fail. Node, state, map/camera, or leak failures never retry, and the report retains every timing plus
 the maximum structural observations across both samples.
 
-启动后可选择新游戏或继续本机的版本化存档。当前 save v17 同时记录稳定地图标识、
+启动后可选择新游戏或继续本机的版本化存档。当前 save v18 同时记录稳定地图标识、
 归一化坐标、首次引息阶段、对话行号、敌人标识、战斗状态、月芽采集方式、环境见闻、
-三项敌情、守堤/药篓/巡路选择、陶小满精确位置和岑苇独立巡山快照；v1–v16 自动
+三项敌情、守堤/药篓/巡路/晴绳选择、陶小满精确位置和岑苇独立巡山快照；v1–v17 自动
 迁移，当前格式严格校验阶段、地图、对话、巡路与巡山状态的组合，
 未知地图、无效对话、未知敌人、非法采集、见闻、敌情、首次引息或支线状态不会被
 静默放进错误场景。游戏会在成功交互、战斗行动和持续
@@ -101,10 +105,12 @@ the maximum structural observations across both samples.
 主文件损坏时依次校验完整的中断写入与备份，恢复后重新落盘。普通保存会先替换废弃的
 中断分支，再轮转已提交主文件；恢复专用 `.repair` 只作写入工作区，不会被当作可玩进度。
 主文件、临时写入、恢复工作区或备份中只要出现未来版本或不同剧情，就会阻止旧运行时
-降级和覆盖；v1–v16 迁移也必须通过当前规则、地图、对话、巡路与巡山校验。save v16
+降级和覆盖；v1–v17 迁移也必须通过当前规则、地图、对话、巡路与巡山校验。save v16
 是历史上的显式 schema 边界：它没有新增字段，只扩展了可恢复的活动对话标识域，让
 船架与竹架的巡路端点回响能逐句续读。save v17 新增顶层 `path_keeper`，只保存岑苇的
-归一化位置、相邻目标、方向、停留和礼让状态；旧运行时会把新版本识别为未来版本屏障，
+归一化位置、相邻目标、方向、停留和礼让状态。save v18 新增 Journey 中的
+`path_mark_response` 与可恢复的 `path_mark_briefing`；v17 迁移保留已有岑苇路线并把晴绳
+设为未选择，v1–v16 同样不替旧玩家推断结果。旧运行时会把新版本识别为未来版本屏障，
 而不是误读同形状的新状态。只要主文件、备份或
 中断写入文件仍在，第一次选择重新开始只会进入警告态；取消默认获得焦点，第二次
 明确确认后才删除旧进度并建立新旅程，异常文件也不会被一次点击覆盖。
@@ -131,7 +137,7 @@ Unicode 字符每秒显示当前行；整句在新行出现时直接显示全文
 选择回应或缩短阅读时间。玩家仍可随时显示全文、回顾最近四句或跳到回应。切到整句
 会补全当前行，切回渐显不会重新遮住已经读过的文字；负数、NaN、无限与超大 delta
 均安全处理。该偏好与战斗表现、动态简化互相独立，只写 settings，不进入 Journey、
-Dialogue 行号或 save v17。v1–v3 保留已有合法偏好并迁移为标准显字速度；当前 v4
+Dialogue 行号或 save v18。v1–v3 保留已有合法偏好并迁移为标准显字速度；当前 v4
 缺失、错类型或未知枚举会整体回落安全默认值。设置提升先轮转已提交主文件；备份
 失败保持原字节，提升失败回滚，中断后缺失主文件会在下次读取时从已验证备份恢复。
 
@@ -159,13 +165,13 @@ Dialogue 行号或 save v17。v1–v3 保留已有合法偏好并迁移为标准
 地图深度不会穿过对话或菜单模态层。1536×864 世界层由整数像素滚动镜头裁入
 1152×648 窗口内四边 12 px 内缩的 1128×624 `MapFrame`；主角、同伴、巡路者、敌人、地标与细节共享同一相机变换，HUD、
 对话和菜单保持屏幕固定。镜头四边夹紧，并在出生、跨图、读档、撤退、救援和重游时
-立即重构安全取景，不把相机状态写入 save v17。山道返程山门另有固定 7×7 石桥，保证出生点、
+立即重构安全取景，不把相机状态写入 save v18。山道返程山门另有固定 7×7 石桥，保证出生点、
 退路和所有交互锚点都落在非水地表，同时保持既有坐标兼容。
 
 渡口的补船木架、晾晒竹架和山道的避雨石棚是三处可重复查看的空间叙事。每次靠近
 都可用键盘、鼠标或手柄触发同一条原创中文行动；它们不发资源、数值、札记或结算
 奖励，也不写入旅程快照。普通移动仍可按既有规则自动保存位置，但这三项行动本身
-不增加持久状态，因此 Journey snapshot 不因查看动作而变化；当前 save v17 只保存其他明确的路线与剧情状态。
+不增加持久状态，因此 Journey snapshot 不因查看动作而变化；当前 save v18 只保存其他明确的路线与剧情状态。
 
 渡口、山道、战斗、泉室和章节结算之间使用 0.48 秒的明亮纸墨转场。转场文字来自
 同一份已验证原创内容，活动期间由透明输入接收层临时接管鼠标、键盘和手柄焦点，
@@ -181,11 +187,18 @@ Dialogue 行号或 save v17。v1–v3 保留已有合法偏好并迁移为标准
 岑苇只在藏泉山道沿四个公开可走点往返。路线以 0.075 归一化单位/秒推进，端点
 停留 1.5 秒、中点停留 0.25 秒；玩家进入 0.080 的礼让范围后他会停步，离开 0.100
 后继续，近距行动半径固定为 0.065。对话、札记、暂停、标题、转场和非山道阶段都会
-冻结完整巡山快照。靠近后“问问岑苇”按固定优先级返回挫败、药篓归圃、药篓
-留山、已发现未处置药篓、已辨敌迹或默认巡路六类原创回声；全部可以重复，且 Journey
-快照字段完全不变。独立 `PathKeeperState` 只拥有位置、相邻目标、方向、停留与礼让，
+冻结完整巡山快照。靠近后“问问岑苇”先按固定优先级返回挫败、药篓归圃、药篓
+留山、已发现未处置药篓或已辨敌迹五类进度回声；都没有时才返回晴绳低结、高穗，
+或未选择时的默认巡路。全部八个事件回声可以重复，且 Journey 快照字段完全不变。
+独立 `PathKeeperState` 只拥有位置、相邻目标、方向、停留与礼让，
 地图精灵只负责动画、整数脚点和 Y 深度，不拥有碰撞、任务、战斗、奖励或存档权威。
-save v17 顶层 `path_keeper` 精确恢复这条路线；v1–v16 从固定起点迁移，重游同样清空。
+save v17 起由顶层 `path_keeper` 精确恢复这条路线；v1–v16 从固定起点迁移，重游同样清空。
+
+旧石标还承载一段原创“晴绳路签”同伴支线。第一次查看时，砚青请玩家把有限余绳
+系成伸手可触的低结，照顾负篓行人；或系成隔雾可见的高穗，让亮竹片指风。选择只写入
+`JourneyState.path_mark_response`，并改变旧石标的代码绘制几何、重复查看文字、岑苇回声、
+札记、章节总结与余波，不改变路线、碰撞、物品、战斗或奖励。活动对话只有在山道、
+尚未选择且玩家精确靠近旧石标时才能从 save v18 恢复；重游清空选择与地图余留。
 
 越过山道后进入第三张微地图 `cangquan_spring`。石室把首次突破拆为三个固定、
 可接近的空间目标，必须依次完成“听泉辨脉 → 月芽温脉 → 静坐引息”；三个目标会
@@ -197,7 +210,7 @@ save v17 顶层 `path_keeper` 精确恢复这条路线；v1–v16 从固定起�
 
 月芽田在近距离交互时提供两个明确按钮：“依旧规取一株”保留旧单键流程，
 “剪叶留根”取得同样足以护脉的成熟叶，但地图会留下可见新芽。两种方式都不会
-锁死主线；采集字段自 save v9 起保存，并由当前 v17 在章节结算中回显。键盘/手柄单键交互采用稳定的
+锁死主线；采集字段自 save v9 起保存，并由当前 v18 在章节结算中回显。键盘/手柄单键交互采用稳定的
 旧规默认项，鼠标或行动按钮可以选择任一方式。
 
 三类普通敌人与首领共享同一战斗解析器，但生命、意图循环和材质弱点不同。独立
@@ -212,7 +225,7 @@ save v17 顶层 `path_keeper` 精确恢复这条路线；v1–v16 从固定起�
 
 普通敌人退场后，岩甲兽守巢者会从泉室石门出现，但不会切换到另一套解析器。
 每次战斗行动只在返回值中携带瞬时表现上下文：行动前敌人 ID 与已宣告意图 ID；
-地图反馈据此区分已结算意图、退场敌人和替换首领。该上下文不写入 save v17，读档
+地图反馈据此区分已结算意图、退场敌人和替换首领。该上下文不写入 save v18，读档
 会清空旧新身份等瞬时反馈并从 Journey 规则快照重建当前临势签；普通敌替换与终局
 还分别验证新敌身份原子切换和离开战斗时清签。严格配对成功时，隐藏常驻的
 `OutgoingEnemySprite` 在守巢者左侧显示 0.70 秒（快速 0.18 秒）的旧敌败退双帧；
@@ -226,11 +239,11 @@ save v17 顶层 `path_keeper` 精确恢复这条路线；v1–v16 从固定起�
 不得含终止事件，才会启动。非法或不完整数据、终局、离开战斗、读档、重游与下一次
 替换都会清空；离战后即使马上以同一敌人重入，也不会复活旧势痕。标准/快速时长为
 0.70/0.18 秒，简化动态冻结完整首帧且保留事件文字，大字和高对比模式下仍留在安全
-画框内。该表现不拥有规则、伤害、意图、游戏时序、输入或 save v17 权威，也不新增
+画框内。该表现不拥有规则、伤害、意图、游戏时序、输入或 save v18 权威，也不新增
 场景节点。
 
 守住首领重击会产生两层破甲，后续攻击逐层获得额外伤害；砚青援护会产生两层
-凝息，强化后续术式或符箓。两种状态自 save v8 起明确记录，并由当前 v17 继续保存；完整 E2E 会在
+凝息，强化后续术式或符箓。两种状态自 save v8 起明确记录，并由当前 v18 继续保存；完整 E2E 会在
 首领战中断并恢复后继续结算；绕行路线仍可避开普通战与首领战。
 
 开场任务采用同一套近距离交互：先在渡碑旁与砚青交谈。七句原创风险简报支持
@@ -256,7 +269,7 @@ save v17 顶层 `path_keeper` 精确恢复这条路线；v1–v16 从固定起�
 搭手回应中选择后，不新增物品、数值、关系、札记、结算或主线门槛；完成搭手会立即把
 当前端点停留归零，但保留既有礼让状态。玩家若仍在近处，陶小满继续
 礼让；离开 0.100 的迟滞范围后巡路才恢复。四段活动对话自 save v16 起精确恢复，
-当前 save v17 继续接受这些稳定 ID；它们没有为旅程或巡路增加字段。
+当前 save v18 继续接受这些稳定 ID；它们没有为旅程或巡路增加字段。
 
 对话正文、主角回应、梁叔/蕙婶/陶小满台词与最近四句回顾分别使用砚青、行旅者、守堤人、药圃守、渡口跑腿人与行旅札记六种明亮纸绘
 表现。头像由项目代码确定性绘制，不含外部图片或逐帧动态；身份文字始终可见，
@@ -264,12 +277,12 @@ save v17 顶层 `path_keeper` 精确恢复这条路线；v1–v16 从固定起�
 
 第一次引息后的“回顾此行”会进入五句章节余波，而不是重复一条结算消息。余波从
 同一确定性快照回显整株/留根、见闻数、撤退/无伤和谨慎/信任同行；逐句位置仍由
-save v17 中沿用自 v10 的对话对象保存，中途返回标题后可精确续读。两个收束回应各有原创
+save v18 中沿用自 v10 的对话对象保存，中途返回标题后可精确续读。两个收束回应各有原创
 事件回声，但不发放资源或隐藏奖励；内容声明的事件必须与规则返回值一致。
 
 渡口旧水痕、山道石缝泉纹与弃置药篓是三处可选近距离见闻。调查只补充照禾的
 治水、药圃和行旅生活历史，不提供隐藏战斗数值；每处只记一次，读后保留明确地图
-余留并从行动列表隐藏。save v17 继续保存 v10 引入的稳定见闻标识，章节结算显示 `见闻 n/3`，重游
+余留并从行动列表隐藏。save v18 继续保存 v10 引入的稳定见闻标识，章节结算显示 `见闻 n/3`，重游
 才清空；v1–v9 保守迁移为空列表，不虚构旧版本从未记录的探索。
 
 点击地图左上“行旅札记”、按 `J` 或手柄 Y，可在探索、战斗、泉室和结算时查看
@@ -277,12 +290,12 @@ save v17 中沿用自 v10 的对话对象保存，中途返回标题后可精确
 泄露地点、敌名、招式或反制；已辨认的三处敌迹按发现结果显示行止循环和时机。
 札记打开
 期间移动和交互无法穿透纸面，关闭后恢复先前焦点。札记直接读取确定性见闻列表，
-灵物志直接读取 save v17 的三项稳定敌情 ID；当前页和滚动位置属于表现状态，不进入存档。
+灵物志直接读取 save v18 的三项稳定敌情 ID；当前页和滚动位置属于表现状态，不进入存档。
 
 渡口下游的守堤人梁叔提供一项有限支线：玩家只能选择扶正被涨水冲歪的水尺，或
 先把退水时刻与泥痕高度写进守堤簿。两项都不改变战斗、资源、关系数值或主线门槛，
 但会分别留下直立木尺或纸签地图余留，并进入行旅札记、章节结算与余波对白。
-save v11 引入稳定的 `repair`/`record` 结果，当前 v17 继续保存；v1–v10 统一迁移为未回应，不替旧玩家
+save v11 引入稳定的 `repair`/`record` 结果，当前 v18 继续保存；v1–v10 统一迁移为未回应，不替旧玩家
 作出选择。重游章节会清空该结果，键盘 E、鼠标行动与手柄 A 共享同一对话选择路径。
 
 发现山道弃置药篓的双叶公用印后，玩家可以带它返回渡口找药圃守蕙婶。四句原创

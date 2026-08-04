@@ -24,6 +24,8 @@ REQUIRED_JOURNAL_SIDE_IDS = {
     "ferryman_repair",
     "patrol_boat_first",
     "patrol_herbs_first",
+    "path_mark_high_streamer",
+    "path_mark_low_knot",
 }
 ENEMY_NOTE_REFERENCE_CONTRACT = {
     "rock_armor_young": {
@@ -60,6 +62,7 @@ ALLOWED_DIALOGUE_TOKENS = {
     "harvest_reflection",
     "intel_reflection",
     "patrol_reflection",
+    "path_mark_reflection",
     "setback_reflection",
 }
 TOKEN_PATTERN = re.compile(r"\{([^{}]+)\}")
@@ -219,7 +222,94 @@ PATH_KEEPER_MESSAGES = {
         "岑苇把浸过桐油的竹签插进石缝，退后看了看："
         "“亮面朝下山。雾一起来，回头的人也不会认反。”"
     ),
+    "path_keeper_low_knot": (
+        "岑苇用指节轻碰晴绳低结：“负篓的人腾不出手抬头，这个高度正好。"
+        "路签先照顾最难走路的人。”"
+    ),
+    "path_keeper_high_streamer": (
+        "岑苇抬头看着亮穗翻过一面：“雾再厚一些，山风也会替它说话。"
+        "远处先看见，脚下就少慌一步。”"
+    ),
 }
+PATH_MARK_ACTION = {
+    "id": "inspect_path_marker",
+    "label": "查看旧石标",
+    "possible_targets": ["mountain_path"],
+}
+PATH_MARK_DIALOGUE = {
+    "lines": [
+        {
+            "speaker": "砚青",
+            "text": "旧石标背后的晴绳松了，一端还挂着两枚磨亮的小竹片。",
+        },
+        {
+            "speaker": "你",
+            "text": "低处的绳结伸手就能摸到；高处的亮穗隔着薄雾也看得见。",
+        },
+        {
+            "speaker": "砚青",
+            "text": (
+                "余绳只够稳稳系成一种。不是替谁选路，是让后来的人更早知道路还在。"
+            ),
+        },
+        {
+            "speaker": "砚青",
+            "text": "你来收最后这个结。我扶住石标，免得旧刻又被碰歪。",
+        },
+    ],
+    "choices": [
+        {
+            "id": "low_knot",
+            "label": "系成低结，照顾负篓行人。",
+            "event_id": "path_mark_low_knot",
+        },
+        {
+            "id": "high_streamer",
+            "label": "系成高穗，让亮片指风。",
+            "event_id": "path_mark_high_streamer",
+        },
+    ],
+    "choice_prompt": "两种晴绳都服务后来人，不提供奖励，也不改变战斗强度。",
+}
+PATH_MARK_MESSAGES = {
+    "path_mark_low_knot": (
+        "你把晴绳系成低结，又留出一截能被负篓人轻易碰到的绳尾。"
+        "砚青退后看了看，笑说回程的人不用先抬头找路。"
+    ),
+    "path_mark_high_streamer": (
+        "你把两枚亮竹片系成高穗。山风一过，竹片便在雾色前轻轻翻亮，"
+        "远处也能辨清下山方向。"
+    ),
+    "path_mark_choice_required": (
+        "晴绳还没有重新系好；先与砚青商量哪种路签更适合后来人。"
+    ),
+    "path_mark_unavailable": "晴绳已经按你的选择系稳，或此刻不在旧石标旁。",
+    "invalid_path_mark_response": "这不是此刻可以系成的晴绳样式。",
+    "path_marker_low_knot_inspected": (
+        "旧石标的低结仍系得牢。绳尾落在负篓人伸手可触的高度，"
+        "亮竹片朝着下山一侧。"
+    ),
+    "path_marker_high_streamer_inspected": (
+        "旧石标的高穗随风轻摆。两枚亮竹片一正一反，隔着薄雾也能指出下山方向。"
+    ),
+}
+PATH_MARK_JOURNAL_SIDE_ENTRIES = {
+    "path_mark_low_knot": {
+        "title": "伸手可触的晴绳低结",
+        "summary": (
+            "你把晴绳系在旧石标低处。负篓行人不必抬头找路，"
+            "伸手便能摸到回程的结。"
+        ),
+    },
+    "path_mark_high_streamer": {
+        "title": "隔雾可见的晴绳亮穗",
+        "summary": (
+            "你把两枚亮竹片系成高穗。薄雾与山风经过时，"
+            "后来人能更早辨清路向。"
+        ),
+    },
+}
+PATH_MARK_REFLECTION_TOKEN = "{path_mark_reflection}"
 PATROL_WORKSITE_DIALOGUES = {
     "patrol_boat_priority": {
         "lines": [
@@ -581,7 +671,7 @@ def _validate_path_keeper_contract(
     source: str,
     failures: list[str],
 ) -> None:
-    """Lock Cen Wei's selectable action and six original progress echoes."""
+    """Lock Cen Wei's selectable action and original progress echoes."""
     if story.get("story_id") != FIRST_BREATH_STORY_ID:
         return
 
@@ -609,6 +699,72 @@ def _validate_path_keeper_contract(
     for message_id, expected_text in PATH_KEEPER_MESSAGES.items():
         if messages.get(message_id) != expected_text:
             failures.append(f"{source}.messages.{message_id} must be {expected_text!r}")
+
+
+def _validate_path_mark_contract(
+    story: dict[str, Any],
+    nodes: dict[str, Any],
+    dialogues: dict[str, Any],
+    messages: dict[str, Any],
+    journal_side_entries: dict[str, Any],
+    source: str,
+    failures: list[str],
+) -> None:
+    """Lock the original sunny-cord choice and its persistent public echoes."""
+    if story.get("story_id") != FIRST_BREATH_STORY_ID:
+        return
+
+    mountain_path = nodes.get("mountain_path")
+    raw_actions = (
+        mountain_path.get("actions") if isinstance(mountain_path, dict) else []
+    )
+    actions = raw_actions if isinstance(raw_actions, list) else []
+    path_mark_actions = [
+        action
+        for action in actions
+        if isinstance(action, dict) and action.get("id") == PATH_MARK_ACTION["id"]
+    ]
+    if not path_mark_actions:
+        failures.append(
+            f"{source}.nodes.mountain_path.actions is missing path-mark action "
+            f"'{PATH_MARK_ACTION['id']}'"
+        )
+    elif path_mark_actions != [PATH_MARK_ACTION]:
+        failures.append(
+            f"{source}.nodes.mountain_path.actions.{PATH_MARK_ACTION['id']} must be "
+            f"{PATH_MARK_ACTION!r}"
+        )
+
+    dialogue = dialogues.get("path_mark_briefing")
+    if dialogue != PATH_MARK_DIALOGUE:
+        failures.append(
+            f"{source}.dialogues.path_mark_briefing must match the exact "
+            "sunny-cord script"
+        )
+
+    for message_id, expected_text in PATH_MARK_MESSAGES.items():
+        if messages.get(message_id) != expected_text:
+            failures.append(f"{source}.messages.{message_id} must be {expected_text!r}")
+
+    for entry_id, expected_entry in PATH_MARK_JOURNAL_SIDE_ENTRIES.items():
+        if journal_side_entries.get(entry_id) != expected_entry:
+            failures.append(
+                f"{source}.journal_side_entries.{entry_id} must be {expected_entry!r}"
+            )
+
+    epilogue = dialogues.get("chapter_epilogue")
+    raw_lines = epilogue.get("lines") if isinstance(epilogue, dict) else []
+    lines = raw_lines if isinstance(raw_lines, list) else []
+    token_count = sum(
+        line.get("text", "").count(PATH_MARK_REFLECTION_TOKEN)
+        for line in lines
+        if isinstance(line, dict) and isinstance(line.get("text", ""), str)
+    )
+    if token_count != 1:
+        failures.append(
+            f"{source}.dialogues.chapter_epilogue.lines must contain exactly one "
+            f"{PATH_MARK_REFLECTION_TOKEN!r} token"
+        )
 
 
 def validate_story(data: Any, source: str = "story") -> list[str]:
@@ -704,6 +860,15 @@ def validate_story(data: Any, source: str = "story") -> list[str]:
         failures,
     )
     _validate_path_keeper_contract(story, nodes, messages, source, failures)
+    _validate_path_mark_contract(
+        story,
+        nodes,
+        dialogues,
+        messages,
+        journal_side_entries,
+        source,
+        failures,
+    )
 
     if not dialogues:
         failures.append(f"{source}.dialogues must not be empty")

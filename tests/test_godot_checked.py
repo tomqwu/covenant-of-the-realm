@@ -49,6 +49,8 @@ REFERENCE_CAPTURE_FILENAMES = (
     "02-enemy-spoors.png",
     "02-path-discoveries.png",
     "02-path-keeper-route.png",
+    "02-path-mark-choice.png",
+    "02-path-mark-high-streamer.png",
     "03-moonleaf-warmed.png",
     "03-spring-chamber.png",
     "03-spring-listened.png",
@@ -56,7 +58,7 @@ REFERENCE_CAPTURE_FILENAMES = (
     "04-first-breath.png",
 )
 REFERENCE_CAPTURE_AGGREGATE_SHA256 = (
-    "153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4"
+    "db9cf2846dc40c8aab617ed097ae944b99f5adfee9afa70d1e147b69a6f9e871"
 )
 
 
@@ -195,7 +197,7 @@ def test_package_scripts_use_checked_godot_gate() -> None:
     assert "export/convert_text_resources_to_binary=false" in project_settings
 
 
-def test_asset_reproducibility_and_capture_contract_include_transient_battle_roles() -> None:
+def test_asset_reproducibility_and_capture_contract_include_playable_visual_evidence() -> None:
     reproducibility_script = (
         REPO_ROOT / "scripts" / "check_rpg_asset_reproducibility"
     ).read_text(encoding="utf-8")
@@ -204,11 +206,17 @@ def test_asset_reproducibility_and_capture_contract_include_transient_battle_rol
     )
 
     assert "  cenwei.png\n" in reproducibility_script
-    assert capture_script.count("await _save_frame(") == 43
+    assert capture_script.count("await _save_frame(") == 45
     assert (
         'await _save_frame("02-path-keeper-route.png", false, true)'
         in capture_script
     )
+    assert 'await _save_frame("02-path-mark-choice.png")' in capture_script
+    assert (
+        'await _save_frame("02-path-mark-high-streamer.png", false, true)'
+        in capture_script
+    )
+    assert "path_mark_visual_contract()" in capture_script
     assert 'await _save_frame("02-cangquan-enemy-defeat.png")' in capture_script
     assert "outgoing_enemy_defeat_contract()" in capture_script
     assert "attack_accent_contract()" in capture_script

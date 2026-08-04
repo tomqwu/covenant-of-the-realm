@@ -256,7 +256,7 @@
         {"speaker": "你", "text": "第一次引息不像登上高处，倒像终于听见脚下的水往哪里去。"},
         {"speaker": "砚青", "text": "{setback_reflection}。能走到这里，说明路线与退路都没有白看。"},
         {"speaker": "你", "text": "下一次出门，我得先知道自己能失去什么，也得知道什么值得留下。"},
-        {"speaker": "砚青", "text": "{companion_reflection}。{ferryman_reflection}。{basket_reflection}。{patrol_reflection}。照禾的河明早还会涨，我们也还来得及再走一段。"}
+        {"speaker": "砚青", "text": "{companion_reflection}。{ferryman_reflection}。{basket_reflection}。{path_mark_reflection}。{patrol_reflection}。照禾的河明早还会涨，我们也还来得及再走一段。"}
       ],
       "choices": [
         {"id": "record", "label": "先把所见写进札记。", "event_id": "epilogue_recorded"},
@@ -346,6 +346,19 @@
         {"id": "check_herb_light", "label": "陪她看清叶背日影。", "event_id": "patrol_herbs_light_checked"}
       ],
       "choice_prompt": "竹架这头已经照看妥当。你愿意再帮她确认哪一处？"
+    },
+    "path_mark_briefing": {
+      "lines": [
+        {"speaker": "砚青", "text": "旧石标背后的晴绳松了，一端还挂着两枚磨亮的小竹片。"},
+        {"speaker": "你", "text": "低处的绳结伸手就能摸到；高处的亮穗隔着薄雾也看得见。"},
+        {"speaker": "砚青", "text": "余绳只够稳稳系成一种。不是替谁选路，是让后来的人更早知道路还在。"},
+        {"speaker": "砚青", "text": "你来收最后这个结。我扶住石标，免得旧刻又被碰歪。"}
+      ],
+      "choices": [
+        {"id": "low_knot", "label": "系成低结，照顾负篓行人。", "event_id": "path_mark_low_knot"},
+        {"id": "high_streamer", "label": "系成高穗，让亮片指风。", "event_id": "path_mark_high_streamer"}
+      ],
+      "choice_prompt": "两种晴绳都服务后来人，不提供奖励，也不改变战斗强度。"
     }
   },
   "journal_entries": {
@@ -386,6 +399,14 @@
     "patrol_herbs_first": {
       "title": "先往晾晒架的脚步",
       "summary": "你请陶小满先赶在日头偏西前翻药。她转向东头竹架，回来再把木楔送去补船。"
+    },
+    "path_mark_low_knot": {
+      "title": "伸手可触的晴绳低结",
+      "summary": "你把晴绳系在旧石标低处。负篓行人不必抬头找路，伸手便能摸到回程的结。"
+    },
+    "path_mark_high_streamer": {
+      "title": "隔雾可见的晴绳亮穗",
+      "summary": "你把两枚亮竹片系成高穗。薄雾与山风经过时，后来人能更早辨清路向。"
     }
   },
   "enemy_notes": {
@@ -462,12 +483,20 @@
     "path_entered": "你与砚青越过山门。溪声掩住了林间的碎甲声，退路仍在身后。",
     "boat_repair_inspected": "补船木架上压着一块新桐木。旧船板被削成楔子，湿麻绳和桐油在晨风里慢慢收干；渡舟午后就能再下水。",
     "drying_rack_inspected": "竹架把月芽叶、芦根和刚洗过的布分层晾开。木牌记着翻晒时辰，药香与河风各有自己的位置。",
-    "path_marker_inspected": "石标背面刻着旧猎户的箭记：逆溪三步可避开第一轮冲撞。",
+    "path_mark_low_knot": "你把晴绳系成低结，又留出一截能被负篓人轻易碰到的绳尾。砚青退后看了看，笑说回程的人不用先抬头找路。",
+    "path_mark_high_streamer": "你把两枚亮竹片系成高穗。山风一过，竹片便在雾色前轻轻翻亮，远处也能辨清下山方向。",
+    "path_mark_choice_required": "晴绳还没有重新系好；先与砚青商量哪种路签更适合后来人。",
+    "path_mark_unavailable": "晴绳已经按你的选择系稳，或此刻不在旧石标旁。",
+    "invalid_path_mark_response": "这不是此刻可以系成的晴绳样式。",
+    "path_marker_low_knot_inspected": "旧石标的低结仍系得牢。绳尾落在负篓人伸手可触的高度，亮竹片朝着下山一侧。",
+    "path_marker_high_streamer_inspected": "旧石标的高穗随风轻摆。两枚亮竹片一正一反，隔着薄雾也能指出下山方向。",
     "rain_shelter_inspected": "避雨石棚下留着干柴、引火绒和一只空水瓢。石壁刻着旧规：取一束，后来补一束。",
     "rock_spoor_inspected": "你蹲在晴光照亮的碎石边。两短一深的爪痕指向低处；砚青看出幼兽第二次冲撞前会先伏低肩甲，正好让镇岩符贴进甲缝。",
     "moss_spoor_inspected": "泉边孢尘被日光照成细亮的青点。潮湿空壳先贴地吸水，再昂起吐雾；趁它吸潮时引气，最容易吹散湿苔。",
     "puppet_spoor_inspected": "石屑拖痕一深一浅，穿过松影又回到亮处。沉锤扫落时，石傀的回正足会离地片刻，守稳便能借它自己的力气破势。",
     "path_keeper_after_setback": "岑苇把被风拨歪的下山签敲正：“退回来不是走错。能把下一步带回来，这趟路就没白走。”",
+    "path_keeper_low_knot": "岑苇用指节轻碰晴绳低结：“负篓的人腾不出手抬头，这个高度正好。路签先照顾最难走路的人。”",
+    "path_keeper_high_streamer": "岑苇抬头看着亮穗翻过一面：“雾再厚一些，山风也会替它说话。远处先看见，脚下就少慌一步。”",
     "path_keeper_basket_returned": "岑苇见你空着手回来，笑着点头：“篓子回了药圃，下一位借用的人就不必从山脚空跑。”",
     "path_keeper_basket_left": "岑苇往石棚方向望了一眼：“篓子留在背风处正好；山上的公用物，也该替山上的人省几步路。”",
     "path_keeper_basket_found": "岑苇从签筒里抽出一截备用麻绳：“公用篓不怕旧，怕的是明明还能用，却没人肯搭一把手。”",

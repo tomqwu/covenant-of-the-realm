@@ -180,6 +180,52 @@ func _capture_flow() -> void:
 	)
 	await _save_frame("02-path-keeper-route.png", false, true)
 	instance.path_keeper.reset()
+	var path_mark_journey_snapshot: Dictionary = instance.journey.snapshot()
+	assert(instance.exploration.restore({
+		"map_id": ExplorationStateScript.MOUNTAIN_PATH_MAP_ID,
+		"player_x": ExplorationStateScript.PATH_MARKER_POSITION.x,
+		"player_y": ExplorationStateScript.PATH_MARKER_POSITION.y,
+	}), "晴绳参考图必须把玩家恢复到旧石标交互锚点")
+	instance._render([])
+	var path_mark_start: Dictionary = instance.interact()
+	assert(
+		path_mark_start.get("ok", false)
+		and instance.dialogue.active
+		and instance.dialogue.dialogue_id == "path_mark_briefing",
+		"晴绳参考图必须通过真实旧石标交互进入结构化同伴对话"
+	)
+	instance.skip_dialogue_to_response()
+	await _settle()
+	await _save_frame("02-path-mark-choice.png")
+	instance._choose_dialogue_response("high_streamer")
+	await _settle()
+	assert(instance.exploration.restore({
+		"map_id": ExplorationStateScript.MOUNTAIN_PATH_MAP_ID,
+		"player_x": 0.55,
+		"player_y": ExplorationStateScript.PATH_MARKER_POSITION.y,
+	}), "晴绳结果参考图必须让玩家移开以完整显示路签几何")
+	instance._render(["path_mark_high_streamer"])
+	await _settle()
+	var path_mark_capture_contract: Dictionary = instance.get_node("%MapCanvas").path_mark_visual_contract()
+	assert(
+		path_mark_capture_contract["visible"]
+		and path_mark_capture_contract["response"] == "high_streamer"
+		and path_mark_capture_contract["shape"] == "high_double_streamer",
+		"晴绳结果参考图必须显示玩家真实选择的高穗几何"
+	)
+	assert(
+		not path_mark_capture_contract["collision_authority"]
+		and not path_mark_capture_contract["quest_authority"]
+		and not path_mark_capture_contract["battle_authority"]
+		and not path_mark_capture_contract["reward_authority"]
+		and not path_mark_capture_contract["rule_authority"]
+		and not path_mark_capture_contract["input_authority"]
+		and not path_mark_capture_contract["gameplay_timing_authority"]
+		and not path_mark_capture_contract["save_authority"],
+		"晴绳结果参考图不得持有规则或存档权威"
+	)
+	await _save_frame("02-path-mark-high-streamer.png", false, true)
+	assert(instance.journey.restore(path_mark_journey_snapshot), "晴绳参考态结束后必须恢复中立旅程夹具")
 	instance.exploration.restore({"map_id": "cangquan_path", "player_x": 0.40, "player_y": 0.30})
 	instance._render([])
 	await _settle()

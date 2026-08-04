@@ -1,6 +1,8 @@
 extends SceneTree
 
 const ExplorationStateScript := preload("res://src/domain/exploration_state.gd")
+const DialogueStateScript := preload("res://src/domain/dialogue_state.gd")
+const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
 const SaveGameScript := preload("res://src/domain/save_game.gd")
 const SettingsStoreScript := preload("res://src/domain/settings_store.gd")
@@ -396,7 +398,42 @@ func _run() -> void:
 	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": 0.43, "player_y": 0.57}), "E2E 到达旧石标")
 	game._render([])
 	await _trigger_semantic_action(game, "interact")
-	_expect(game.get_node("%EventLabel").text.contains("箭记"), "E2E 调查旧石标")
+	_expect(game.dialogue.active and game.dialogue.dialogue_id == DialogueStateScript.PATH_MARK_BRIEFING, "E2E 旧石标开启原创晴绳支线")
+	_expect(game.get_node("%DialogueLabel").text.contains("晴绳松了"), "E2E 晴绳对话从空间痕迹开始")
+	game.advance_dialogue()
+	await _settle()
+	var path_mark_line: int = game.dialogue.line_index
+	var path_mark_text: String = game.get_node("%DialogueLabel").text
+	var path_keeper_during_dialogue: Dictionary = game.path_keeper.snapshot()
+	game.queue_free()
+	await _settle()
+	game = scene.instantiate()
+	game.configure_save_path(TEST_SAVE_PATH)
+	game.configure_settings_path(TEST_SETTINGS_PATH)
+	root.add_child(game)
+	await _settle()
+	_expect(game.continue_game(), "E2E 可从新场景恢复晴绳中途对话")
+	_expect(game.dialogue.dialogue_id == DialogueStateScript.PATH_MARK_BRIEFING and game.dialogue.line_index == path_mark_line, "E2E 晴绳对话恢复保持稳定标识与行号")
+	_expect(game.get_node("%DialogueLabel").text == path_mark_text, "E2E 晴绳对话恢复保持当前原创台词")
+	_expect(_snapshots_match(game.path_keeper.snapshot(), path_keeper_during_dialogue), "E2E 晴绳对话保存恢复不会推进岑苇巡山时钟")
+	game.skip_dialogue_to_response()
+	await _settle()
+	_expect(_dialogue_choice_count(game) == 2, "E2E 晴绳支线显示两项无奖励回应")
+	await _press_dialogue_choice(game, "系成高穗，让亮片指风。")
+	_expect(game.journey.path_mark_response == JourneyStateScript.PATH_MARK_HIGH_STREAMER, "E2E 主路线选择高穗辨风")
+	_expect(game.get_node("%EventLabel").text.contains("远处也能辨清"), "E2E 高穗选择立即回显公共空间结果")
+	var path_mark_visual: Dictionary = game.get_node("%MapCanvas").path_mark_visual_contract()
+	_expect(path_mark_visual["visible"] and path_mark_visual["shape"] == "high_double_streamer", "E2E 高穗以独立地图几何持久可见")
+	_expect(not path_mark_visual["collision_authority"] and not path_mark_visual["quest_authority"] and not path_mark_visual["battle_authority"] and not path_mark_visual["reward_authority"] and not path_mark_visual["rule_authority"] and not path_mark_visual["input_authority"] and not path_mark_visual["gameplay_timing_authority"] and not path_mark_visual["save_authority"], "E2E 晴绳地图余留保持零规则、输入、时序与奖励权威")
+	var path_mark_disk: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
+	_expect(path_mark_disk["data"]["save_version"] == SaveGameScript.SAVE_VERSION and path_mark_disk["data"]["journey"]["path_mark_response"] == JourneyStateScript.PATH_MARK_HIGH_STREAMER, "E2E 高穗结果原子写入 save v18")
+	game.open_journal()
+	await _settle()
+	_expect(game.journal_contract()["unlocked_titles"].has("隔雾可见的晴绳亮穗"), "E2E 高穗结果进入内容驱动札记")
+	game.close_journal()
+	game._render([])
+	await _trigger_semantic_action(game, "interact")
+	_expect(game.get_node("%EventLabel").text.contains("高穗随风轻摆"), "E2E 再查旧石标显示高穗余留而不重复选择")
 	_expect(game.exploration.restore({"map_id": "cangquan_path", "player_x": 0.73, "player_y": 0.34}), "E2E 到达敌人预警区")
 	game._render([])
 	await _trigger_semantic_action(game, "interact")
@@ -886,6 +923,7 @@ func _run() -> void:
 	_expect(game.get_node("%DescriptionLabel").text.contains("敌情 3/3"), "E2E 章节结算回显三痕辨势完成度")
 	_expect(game.get_node("%DescriptionLabel").text.contains("水尺扶正"), "E2E 章节结算回显扶尺选择")
 	_expect(game.get_node("%DescriptionLabel").text.contains("药篓归圃"), "E2E 章节结算回显药篓归圃选择")
+	_expect(game.get_node("%DescriptionLabel").text.contains("高穗辨风"), "E2E 章节结算回显晴绳高穗选择")
 	_expect(game.get_node("%DescriptionLabel").text.contains("先送船架"), "E2E 章节结算回显陶小满巡路先后")
 	var completed_disk: Dictionary = SaveGameScript.read(TEST_SAVE_PATH)
 	_expect(_snapshots_match(completed_disk["data"]["journey"], game.journey.snapshot()), "E2E 完成态完整旅程已落盘")
@@ -896,6 +934,7 @@ func _run() -> void:
 	_expect(game._resolved_dialogue_text("{intel_reflection}").contains("三种灵物"), "E2E 余波回显已辨明的三种灵物")
 	_expect(game._resolved_dialogue_text("{ferryman_reflection}").contains("重新立稳"), "E2E 余波回显扶尺结果")
 	_expect(game._resolved_dialogue_text("{basket_reflection}").contains("挂回圃门"), "E2E 余波回显药篓归圃结果")
+	_expect(game._resolved_dialogue_text("{path_mark_reflection}").contains("亮穗"), "E2E 余波回显晴绳高穗结果")
 	_expect(game._resolved_dialogue_text("{patrol_reflection}").contains("木楔"), "E2E 余波回显先送船架结果")
 	game.show_full_dialogue_line()
 	game.advance_dialogue()
@@ -960,6 +999,8 @@ func _run() -> void:
 	_expect(resumed.exploration.map_id == ExplorationStateScript.DEFAULT_MAP_ID, "E2E 重游从藏泉石室清回渡口地图")
 	_expect(resumed.journey.first_breath_stage == "unstarted", "E2E 重游清空三步引息进度")
 	_expect(resumed.journey.enemy_intel.is_empty(), "E2E 重游只在明确重置时清空灵物志")
+	_expect(resumed.journey.path_mark_response == JourneyStateScript.PATH_MARK_UNANSWERED, "E2E 重游清空上一轮晴绳选择")
+	_expect(not resumed.get_node("%MapCanvas").path_mark_visual_contract()["visible"], "E2E 重游恢复未系晴绳的中立地图表现")
 	resumed._on_action("talk_to_companion")
 	resumed.skip_dialogue_to_response()
 	await _press_dialogue_choice(resumed, "我信你的判断，一起走。")
@@ -1177,6 +1218,14 @@ func _press_dialogue_choice(game: Node, label: String) -> void:
 			await _settle()
 			return
 	failures.append("E2E 找不到对话回应：%s" % label)
+
+
+func _dialogue_choice_count(game: Node) -> int:
+	var count := 0
+	for child in game.get_node("%DialogueChoices").get_children():
+		if child is Button:
+			count += 1
+	return count
 
 
 func _trigger_semantic_action(game: Node, action_name: StringName) -> void:

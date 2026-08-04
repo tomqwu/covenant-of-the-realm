@@ -82,8 +82,8 @@ drawing code.
 `docs/concepts/gameplay-ui-v1/01-portrait-gallery.png` is a direct Godot capture of those same
 runtime controls at the production dialogue size. The capture-only 3×2 board adds no packaged scene,
 runtime asset, or alternate art source. It is regenerated with the other functional screenshots in
-the current 43-image capture definition. Two complete passes reproduce aggregate SHA-256
-`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
+the current 45-image capture definition. Two complete passes reproduce aggregate SHA-256
+`db9cf2846dc40c8aab617ed097ae944b99f5adfee9afa70d1e147b69a6f9e871`.
 
 ## 2026-08-03 · Code-drawn Zhaohe battle-intent telegraph
 
@@ -129,7 +129,7 @@ third-party drawing code is used; this feature adds no image or scene-node asset
 
 The geometry consumes only an already validated transient old-enemy/old-intent context and one
 semantic hit/glance result. It cannot read or change damage, choose an intent, advance a round,
-delay input, or write save v17. Standard/fast timing and complete/reduced motion are existing local
+delay input, or write save v18. Standard/fast timing and complete/reduced motion are existing local
 presentation preferences; reduced motion keeps the full first geometry and result label static.
 Large-text and high-contrast variants remain inside the same declared safe bounds. Invalid,
 terminal, expired, replaced, non-battle, title, load, replay, and immediate same-enemy re-entry
@@ -139,9 +139,23 @@ states clear the cue rather than deriving an image from stale data.
 captures of the first and replacement resolved-intent accents while the fixed tag already shows the
 next intent. `02-cangquan-enemy-defeat.png` deliberately contains no attack accent because the old
 announced response was interrupted by a lethal player action. These two revised PNGs remain
-development evidence, not source textures or package resources. Two complete 43-image capture
+development evidence, not source textures or package resources. Two complete 45-image capture
 passes reproduce aggregate SHA-256
-`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
+`db9cf2846dc40c8aab617ed097ae944b99f5adfee9afa70d1e147b69a6f9e871`.
+
+## 2026-08-04 · Code-drawn sunny-cord path-mark result
+
+`rpg/src/ui/map_canvas.gd` draws the “晴绳路签” result directly from project-authored lines at the
+existing old-stone-marker anchor. `low_knot` uses a low horizontal cord and knot; `high_streamer`
+uses two raised bright tabs. No raster/vector input, model output, stock effect, external font,
+plugin, random source, or third-party drawing code is used. The geometry adds no runtime resource or
+scene node and owns no collision, quest, battle, reward, or save authority.
+
+`02-path-mark-choice.png` and `02-path-mark-high-streamer.png` are deterministic development
+captures of the real structured response UI and the high-streamer runtime result. They are not
+source textures, cuttable sprite assets, alternate map art, or package resources. Their inclusion
+raises only the documentation capture definition from 43 to 45 images; the runtime package roster
+remains 25 required / nine excluded resources.
 
 ## 2026-08-03 · Deterministic Zhaohe landmark atlas
 
@@ -157,7 +171,7 @@ the three life landmarks in the ferry, mountain-path, and battle views. Houses a
 foreground nodes; other landmarks are fixed map-canvas regions. These sprites own no collision,
 navigation, story, reward, or save authority. The life landmarks provide repeatable original
 spatial prose through the same keyboard, mouse, and controller action path while leaving the
-Journey snapshot unchanged and add no fields to the current save v17. The adjacent mountain-return bridge is ground data generated
+Journey snapshot unchanged and add no fields to the current save v18. The adjacent mountain-return bridge is ground data generated
 from the existing original tile atlas, not an imported asset.
 
 The landmark fields introduced in `asset_contract.json` schema v4 remain enforced by the current
@@ -233,8 +247,9 @@ these screenshots.
 The screenshots can be rebuilt with `make capture-rpg-ui`. They document layout, scale, input,
 and readability decisions; the runtime-drawn shapes are placeholders rather than final sprites,
 tiles, portraits, textures, or promotional art. The current set includes
-`02-path-keeper-route.png`, a direct runtime capture of 岑苇 on the mountain route, and
+`02-path-keeper-route.png`, a direct runtime capture of 岑苇 on the mountain route;
+`02-path-mark-choice.png` and `02-path-mark-high-streamer.png`, the real response/result states; and
 `02-cangquan-enemy-defeat.png`, the non-authoritative outgoing-enemy beat. The battle and reaction
 captures additionally show the zero-authority resolved-intent foot accents. The expected set contains
-43 images; two consecutive complete passes are byte-identical and reproduce aggregate SHA-256
-`153ee23c5cbf0a6208fd9853b2722e7fb032ef2539468a210b47ffa8278568b4`.
+45 images; two consecutive complete passes are byte-identical and reproduce aggregate SHA-256
+`db9cf2846dc40c8aab617ed097ae944b99f5adfee9afa70d1e147b69a6f9e871`.

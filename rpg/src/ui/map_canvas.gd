@@ -206,6 +206,7 @@ var enemy_intel: Array[String] = []
 var ferryman_response := "unanswered"
 var basket_response := "unanswered"
 var patrol_response := "unanswered"
+var path_mark_response := "unanswered"
 var first_breath_stage := "unstarted"
 var patrol_position := Vector2(0.55, 0.66)
 var patrol_motion := Vector2.UP
@@ -230,7 +231,8 @@ func set_story_state(
 	next_basket_response: String,
 	next_patrol_response: String,
 	next_enemy_intel: Array = [],
-	next_first_breath_stage: String = "unstarted"
+	next_first_breath_stage: String = "unstarted",
+	next_path_mark_response: String = "unanswered"
 ) -> void:
 	if phase_id == "battle" and next_phase != "battle":
 		_reset_battle_feedback()
@@ -252,6 +254,7 @@ func set_story_state(
 	basket_response = next_basket_response
 	patrol_response = next_patrol_response
 	first_breath_stage = next_first_breath_stage
+	path_mark_response = next_path_mark_response
 	_sync_actor_visuals()
 	queue_redraw()
 
@@ -751,6 +754,26 @@ func path_keeper_visual_contract() -> Dictionary:
 	}
 
 
+func path_mark_visual_contract() -> Dictionary:
+	return {
+		"response": path_mark_response,
+		"visible": phase_id == "mountain_path" and path_mark_response in ["low_knot", "high_streamer"],
+		"normalized_anchor": ExplorationStateScript.PATH_MARKER_POSITION,
+		"shape": {
+			"low_knot": "low_horizontal_knot",
+			"high_streamer": "high_double_streamer",
+		}.get(path_mark_response, "unanswered"),
+		"collision_authority": false,
+		"quest_authority": false,
+		"battle_authority": false,
+		"reward_authority": false,
+		"rule_authority": false,
+		"input_authority": false,
+		"gameplay_timing_authority": false,
+		"save_authority": false,
+	}
+
+
 func first_breath_visual_contract() -> Dictionary:
 	var completed := _completed_first_breath_actions()
 	return {
@@ -1094,6 +1117,7 @@ func _draw_mountain_path() -> void:
 	_draw_landmark("spring_cave", Vector2(size.x * 0.84 + 64.0, size.y * 0.12 + 90.0))
 	_draw_landmark("spring_gate", Vector2(size.x * 0.10, size.y * 0.68 + 25.0))
 	_draw_landmark("path_rain_shelter", RAIN_SHELTER_VISUAL_FEET * size)
+	_draw_path_mark_result(ExplorationStateScript.PATH_MARKER_POSITION * size)
 	_draw_spring_seam(Vector2(size.x * 0.40, size.y * 0.30), discoveries.has("spring_seam"))
 	if basket_response != "return":
 		_draw_abandoned_basket(Vector2(size.x * 0.68, size.y * 0.60), discoveries.has("abandoned_basket"), basket_response == "trail")
@@ -1123,6 +1147,38 @@ func _draw_mountain_path() -> void:
 	_draw_interaction_marker(Vector2(size.x * 0.80, size.y * 0.25), nearby_action == "approach_stone_puppet")
 	_draw_interaction_marker(Vector2(size.x * 0.86, size.y * 0.18), nearby_action == "bypass_enemy")
 	draw_circle(Vector2(size.x * 0.73, size.y * 0.34), 62.0, Color(0.78, 0.35, 0.24, 0.18), false, 3.0)
+
+
+func _draw_path_mark_result(anchor: Vector2) -> void:
+	if path_mark_response not in ["low_knot", "high_streamer"]:
+		return
+	var post_bottom := anchor + Vector2(0, 14)
+	var post_top := anchor + Vector2(0, -34)
+	draw_line(post_bottom, post_top, INK_ROOT, 5.0)
+	draw_line(post_bottom + Vector2(-8, 0), post_bottom + Vector2(8, 0), INK_ROOT, 3.0)
+	if path_mark_response == "low_knot":
+		var cord_y := anchor.y - 8.0
+		draw_line(Vector2(anchor.x - 22.0, cord_y), Vector2(anchor.x + 18.0, cord_y), RIVER_JADE, 4.0)
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(anchor.x - 6.0, cord_y),
+			Vector2(anchor.x, cord_y - 6.0),
+			Vector2(anchor.x + 6.0, cord_y),
+			Vector2(anchor.x, cord_y + 6.0),
+		]), SPIRIT_GOLD)
+		draw_line(Vector2(anchor.x + 10.0, cord_y), Vector2(anchor.x + 15.0, cord_y + 14.0), RIVER_JADE, 3.0)
+		return
+	var streamer_top := anchor + Vector2(0, -29)
+	draw_line(streamer_top, streamer_top + Vector2(22, 4), RIVER_JADE, 3.0)
+	draw_colored_polygon(PackedVector2Array([
+		streamer_top + Vector2(7, 1),
+		streamer_top + Vector2(17, 3),
+		streamer_top + Vector2(10, 11),
+	]), SPIRIT_GOLD)
+	draw_colored_polygon(PackedVector2Array([
+		streamer_top + Vector2(14, 2),
+		streamer_top + Vector2(24, 4),
+		streamer_top + Vector2(18, 13),
+	]), DAWN_PEACH)
 
 
 func _draw_spring_chamber(completed: bool) -> void:

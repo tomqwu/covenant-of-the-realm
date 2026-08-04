@@ -8,7 +8,7 @@ const JourneyStateScript := preload("res://src/domain/journey_state.gd")
 const PatrolStateScript := preload("res://src/domain/patrol_state.gd")
 const PathKeeperStateScript := preload("res://src/domain/path_keeper_state.gd")
 
-const SAVE_VERSION := 17
+const SAVE_VERSION := 18
 const STORY_ID := "zhaohe_first_breath"
 const DEFAULT_SAVE_PATH := "user://zhaohe-save.json"
 
@@ -167,6 +167,10 @@ static func _validate(payload: Dictionary) -> Dictionary:
 	# pre-worksite save merely because the current schema advanced again.
 	if version_number < 16 and _legacy_contains_patrol_work_dialogue(payload):
 		return _result(false, {}, "invalid_dialogue")
+	# The path-mark choice and its resumable dialogue begin in v18. Older files
+	# cannot legitimately name that dialogue even though this runtime supports it.
+	if version_number < 18 and _legacy_contains_path_mark_dialogue(payload):
+		return _result(false, {}, "invalid_dialogue")
 	if version_number == 1:
 		var migrated := payload.duplicate(true)
 		migrated["save_version"] = SAVE_VERSION
@@ -268,6 +272,10 @@ static func _validate(payload: Dictionary) -> Dictionary:
 		var migrated := payload.duplicate(true)
 		migrated["save_version"] = SAVE_VERSION
 		return _validated_migration(migrated, 16, false)
+	if version_number == 17:
+		var migrated := payload.duplicate(true)
+		migrated["save_version"] = SAVE_VERSION
+		return _validated_migration(migrated, 17, false, false)
 	return _validate_current(payload)
 
 
@@ -299,7 +307,7 @@ static func _validate_current(payload: Dictionary) -> Dictionary:
 		return _result(false, {}, "invalid_path_keeper")
 	if not _exploration_matches_journey(restored_exploration, restored_journey):
 		return _result(false, {}, "invalid_map_phase")
-	if not _dialogue_matches_journey(restored_dialogue, restored_journey):
+	if not _dialogue_matches_journey(restored_dialogue, restored_journey, restored_exploration):
 		return _result(false, {}, "invalid_dialogue")
 	if not _patrol_dialogue_matches_world(
 		restored_dialogue,
@@ -314,11 +322,14 @@ static func _validate_current(payload: Dictionary) -> Dictionary:
 static func _validated_migration(
 	payload: Dictionary,
 	source_version: int,
-	migrate_patrol: bool = true
+	migrate_patrol: bool = true,
+	migrate_path_keeper: bool = true
 ) -> Dictionary:
 	if migrate_patrol:
 		_migrate_patrol_snapshot(payload)
-	_migrate_path_keeper_snapshot(payload)
+	if migrate_path_keeper:
+		_migrate_path_keeper_snapshot(payload)
+	_migrate_path_mark_snapshot(payload["journey"])
 	_normalize_migrated_exploration(payload["journey"], payload["exploration"])
 	var result := _validate_current(payload)
 	if result["ok"]:
@@ -326,7 +337,7 @@ static func _validated_migration(
 	return result
 
 
-static func _dialogue_matches_journey(dialogue, journey) -> bool:
+static func _dialogue_matches_journey(dialogue, journey, exploration) -> bool:
 	if not dialogue.active:
 		return true
 	match dialogue.dialogue_id:
@@ -347,6 +358,19 @@ static func _dialogue_matches_journey(dialogue, journey) -> bool:
 				journey.phase_id() == "riverbank"
 				and journey.talked_to_companion
 				and journey.patrol_response == JourneyStateScript.PATROL_UNANSWERED
+			)
+		DialogueStateScript.PATH_MARK_BRIEFING:
+			return (
+				journey.phase_id() == "mountain_path"
+				and journey.path_mark_response == JourneyStateScript.PATH_MARK_UNANSWERED
+				and exploration.interaction_action(
+					journey.gathered_moonleaf,
+					journey.talked_to_companion,
+					journey.discoveries,
+					journey.ferryman_response,
+					journey.basket_response,
+					journey.enemy_intel
+				) == JourneyStateScript.INSPECT_PATH_MARKER
 			)
 	var patrol_work_context: Dictionary = DialogueStateScript.patrol_work_context(dialogue.dialogue_id)
 	if not patrol_work_context.is_empty():
@@ -497,6 +521,15 @@ static func _legacy_contains_patrol_work_dialogue(payload: Dictionary) -> bool:
 	).is_empty()
 
 
+static func _legacy_contains_path_mark_dialogue(payload: Dictionary) -> bool:
+	var dialogue_snapshot = payload.get("dialogue")
+	return (
+		typeof(dialogue_snapshot) == TYPE_DICTIONARY
+		and str(dialogue_snapshot.get("dialogue_id", DialogueStateScript.NONE))
+		== DialogueStateScript.PATH_MARK_BRIEFING
+	)
+
+
 static func _legacy_briefing_response(journey_snapshot: Dictionary) -> String:
 	return "careful" if journey_snapshot.get("talked_to_companion", false) else "unanswered"
 
@@ -566,6 +599,12 @@ static func _migrate_path_keeper_snapshot(payload: Dictionary) -> void:
 	# V1-v16 never recorded the mountain path keeper's live route. Start from
 	# the neutral authored endpoint rather than inventing elapsed patrol time.
 	payload["path_keeper"] = PathKeeperStateScript.default_snapshot()
+
+
+static func _migrate_path_mark_snapshot(journey_snapshot: Dictionary) -> void:
+	# V1-v17 never offered the sunny-cord choice. Preserve every recorded route
+	# fact, but do not invent which public waymark the player would have tied.
+	journey_snapshot["path_mark_response"] = JourneyStateScript.PATH_MARK_UNANSWERED
 
 
 static func _result(ok: bool, data: Dictionary, reason: String) -> Dictionary:
