@@ -5,7 +5,7 @@ description = "Server-authoritative multiplayer cultivation MUD"
 readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
-  "evennia==6.0.0",
+  "evennia==6.1.0",
 ]
 
 [dependency-groups]
